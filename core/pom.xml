@@ -1,15 +1,24 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion>
 
-	<parent>
-		<groupId>se.sics.caracaldb</groupId>
-		<artifactId>caracaldb-parent-pom</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
-	</parent>
+    <parent>
+        <groupId>se.sics.caracaldb</groupId>
+        <artifactId>caracaldb-parent-pom</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
 
-	<artifactId>caracaldb-core</artifactId>
-	<packaging>jar</packaging>
-	<name>CaracalDB Core</name>
+    <artifactId>caracaldb-core</artifactId>
+    <packaging>jar</packaging>
+    <name>CaracalDB Core</name>
+        
+    <dependencies>
+        <dependency>
+            <groupId>se.sics.kompics.basic</groupId>
+            <artifactId>kompics-port-virtual-rtscts-network</artifactId>
+            <version>0.4.5-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
 
     <repositories>
         <repository>
