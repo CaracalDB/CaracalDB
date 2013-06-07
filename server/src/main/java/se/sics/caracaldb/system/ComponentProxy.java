@@ -9,6 +9,7 @@ import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.ControlPort;
 import se.sics.kompics.Event;
+import se.sics.kompics.Init;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
@@ -22,7 +23,9 @@ public interface ComponentProxy {
 
     public <P extends PortType> void trigger(Event e, Port<P> p);
 
-    public Component create(Class<? extends ComponentDefinition> definition);
+    public <T extends ComponentDefinition> Component create(Class<T> definition, Init<T> initEvent);
+    
+    public <T extends ComponentDefinition> Component create(Class<T> definition, Init.None initEvent);
 
     public void destroy(Component component);
 

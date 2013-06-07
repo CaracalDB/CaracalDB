@@ -12,6 +12,8 @@ import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.ControlPort;
 import se.sics.kompics.Event;
 import se.sics.kompics.Handler;
+import se.sics.kompics.Init;
+import se.sics.kompics.Init.None;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
@@ -35,11 +37,6 @@ public class NodeManager extends ComponentDefinition {
         @Override
         public <P extends PortType> void trigger(Event e, Port<P> p) {
             NodeManager.this.trigger(e, p);
-        }
-
-        @Override
-        public Component create(Class<? extends ComponentDefinition> definition) {
-            return NodeManager.this.create(definition);
         }
 
         @Override
@@ -71,28 +68,36 @@ public class NodeManager extends ComponentDefinition {
         public Negative<ControlPort> getControlPort() {
             return NodeManager.this.control;
         }
-    };
 
-    public NodeManager() {
-        networkPort = requires(Network.class);
-
-        subscribe(initHandler, control);
-        subscribe(stopNodeHandler, networkPort);
-    }
-    private final Handler<NodeManagerInit> initHandler = new Handler<NodeManagerInit>() {
         @Override
-        public void handle(NodeManagerInit event) {
-            vsc = event.vsc;
-            config = event.config;
-            self = vsc.getSelf();
+        public <T extends ComponentDefinition> Component create(Class<T> definition, Init<T> initEvent) {
+            return NodeManager.this.create(definition, initEvent);
+        }
 
-            log.debug("Setting up VNode: " + self);
-
-            for (VirtualComponentHook hook : config.getVirtualHooks()) {
-                hook.setUp(vsc, proxy);
-            }
+        @Override
+        public <T extends ComponentDefinition> Component create(Class<T> definition, None initEvent) {
+            return NodeManager.this.create(definition, initEvent);
         }
     };
+
+    public NodeManager(NodeManagerInit init) {
+        networkPort = requires(Network.class);
+
+
+        subscribe(stopNodeHandler, networkPort);
+
+
+        // INIT
+        vsc = init.vsc;
+        config = init.config;
+        self = vsc.getSelf();
+
+        log.debug("Setting up VNode: " + self);
+
+        for (VirtualComponentHook hook : config.getVirtualHooks()) {
+            hook.setUp(vsc, proxy);
+        }
+    }
     private final Handler<StopVNode> stopNodeHandler = new Handler<StopVNode>() {
         @Override
         public void handle(StopVNode event) {

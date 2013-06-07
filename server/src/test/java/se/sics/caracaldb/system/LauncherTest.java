@@ -7,8 +7,6 @@ package se.sics.caracaldb.system;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,6 +62,8 @@ public class LauncherTest {
         virtAddr2 = netAddr.newVirtual((byte) 1);
 
         Launcher.reset();
+        Launcher.getCurrentConfig().toggleBoot(); // don't actually boot up
+
     }
 
     @Test
@@ -76,11 +76,10 @@ public class LauncherTest {
             @Override
             public void setUp(HostSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
-                Component sender = parent.create(SenderComponent.class);
-                Component receiver = parent.create(ReceiverComponent.class);
+                Component sender = parent.create(SenderComponent.class, new SenderInit(shared.getSelf()));
+                Component receiver = parent.create(ReceiverComponent.class, Init.NONE);
                 shared.connectNetwork(sender);
                 shared.connectNetwork(receiver);
-                parent.trigger(new SenderInit(shared.getSelf()), sender.control());
             }
 
             @Override
@@ -97,6 +96,7 @@ public class LauncherTest {
         System.out.println("Stopping.");
         Launcher.stop();
         System.out.println("Done.");
+
     }
 
     @Test
@@ -110,7 +110,7 @@ public class LauncherTest {
             @Override
             public void setUp(HostSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
-                Component spawner = parent.create(SpawnerComponent.class);
+                Component spawner = parent.create(SpawnerComponent.class, Init.NONE);
                 shared.connectNetwork(spawner);
             }
 
@@ -124,11 +124,10 @@ public class LauncherTest {
             @Override
             public void setUp(VirtualSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
-                Component sender = parent.create(SenderComponent.class);
-                Component receiver = parent.create(ReceiverComponent.class);
+                Component sender = parent.create(SenderComponent.class, new SenderInit(shared.getSelf()));
+                Component receiver = parent.create(ReceiverComponent.class, Init.NONE);
                 shared.connectNetwork(sender);
                 shared.connectNetwork(receiver);
-                parent.trigger(new SenderInit(shared.getSelf()), sender.control());
             }
 
             @Override
@@ -142,11 +141,14 @@ public class LauncherTest {
         System.out.println("Starting up.");
         TestUtil.reset();
         Launcher.start();
+
         TestUtil.waitFor(SPAWN_SENT);
         TestUtil.waitForAll(MSG_SENT, MSG_SENT, MSG_RECEIVED, MSG_RECEIVED);
         System.out.println("Stopping.");
+
         Launcher.stop();
         System.out.println("Done.");
+
 
     }
 
@@ -161,7 +163,7 @@ public class LauncherTest {
             @Override
             public void setUp(HostSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
-                Component spawner = parent.create(SpawnerComponent.class);
+                Component spawner = parent.create(SpawnerComponent.class, Init.NONE);
                 shared.connectNetwork(spawner);
             }
 
@@ -173,15 +175,13 @@ public class LauncherTest {
         });
 
         config.addVirtualHook(new VirtualComponentHook() {
-            
             private Component respawner;
-            
+
             @Override
             public void setUp(VirtualSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
-                respawner = parent.create(RespawnerComponent.class);
+                respawner = parent.create(RespawnerComponent.class, new RespawnerInit(shared.getSelf()));
                 shared.connectNetwork(respawner);
-                parent.trigger(new SenderInit(shared.getSelf()), respawner.control());
             }
 
             @Override
@@ -197,18 +197,21 @@ public class LauncherTest {
         System.out.println("Starting up.");
         TestUtil.reset();
         Launcher.start();
+
         //TestUtil.waitFor(SPAWN_SENT);
-        String[] waits = new String[NUM_SPAWNS*2];
+        String[] waits = new String[NUM_SPAWNS * 2];
         for (byte i = 0; i < NUM_SPAWNS; i++) {
-            waits[2*i] = NODE_DOWN;
-            waits[2*i+1] = SPAWN_SENT;
+            waits[2 * i] = NODE_DOWN;
+            waits[2 * i + 1] = SPAWN_SENT;
         }
         System.out.println("Wait: " + Arrays.toString(waits));
         TestUtil.waitForAll(waits);
         System.out.println("Stopping.");
+
         Launcher.stop();
         TestUtil.waitFor(SYSTEM_DOWN);
         System.out.println("Done.");
+
 
     }
 
@@ -216,20 +219,11 @@ public class LauncherTest {
 
         private Address self;
 
-        {
+        public SenderComponent(SenderInit init) {
             final Positive<Network> net = requires(Network.class);
 
+            self = init.self;
 
-
-
-            Handler<SenderInit> initHandler = new Handler<SenderInit>() {
-                @Override
-                public void handle(SenderInit event) {
-                    self = event.self;
-                }
-            };
-
-            subscribe(initHandler, control);
 
             Handler<Start> startHandler = new Handler<Start>() {
                 @Override
@@ -282,17 +276,11 @@ public class LauncherTest {
 
         private Address self;
 
-        {
+        public RespawnerComponent(RespawnerInit init) {
             final Positive<Network> net = requires(Network.class);
 
-            Handler<SenderInit> initHandler = new Handler<SenderInit>() {
-                @Override
-                public void handle(SenderInit event) {
-                    self = event.self;
-                }
-            };
+            self = init.self;
 
-            subscribe(initHandler, control);
 
             Handler<Start> startHandler = new Handler<Start>() {
                 @Override
@@ -311,11 +299,20 @@ public class LauncherTest {
         }
     }
 
-    public static class SenderInit extends Init {
+    public static class SenderInit extends Init<SenderComponent> {
 
         public final Address self;
 
         public SenderInit(Address self) {
+            this.self = self;
+        }
+    }
+
+    public static class RespawnerInit extends Init<RespawnerComponent> {
+
+        public final Address self;
+
+        public RespawnerInit(Address self) {
             this.self = self;
         }
     }

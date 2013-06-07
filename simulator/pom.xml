@@ -7,9 +7,9 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>caracaldb-core</artifactId>
+    <artifactId>caracaldb-simulator</artifactId>
     <packaging>jar</packaging>
-    <name>CaracalDB Core</name>
+    <name>CaracalDB Simulator</name>
         
     <dependencies>
         <dependency>
@@ -20,9 +20,14 @@
         </dependency>
         <dependency>
             <groupId>se.sics.kompics.basic</groupId>
-            <artifactId>kompics-component-rtscts-grizzly-network</artifactId>
+            <artifactId>kompics-port-timer</artifactId>
             <version>${kompics.version}</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>se.sics.kompics.p2p</groupId>
+            <artifactId>kompics-experiment-scenario-dsl</artifactId>
+            <version>${kompics.version}</version>
         </dependency>
     </dependencies>
 

@@ -7,12 +7,20 @@ package se.sics.caracaldb.system;
 import java.net.UnknownHostException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.bootstrap.BootUp;
+import se.sics.caracaldb.bootstrap.Bootstrap;
+import se.sics.caracaldb.bootstrap.BootstrapCInit;
+import se.sics.caracaldb.bootstrap.BootstrapClient;
+import se.sics.caracaldb.bootstrap.BootstrapSInit;
+import se.sics.caracaldb.bootstrap.BootstrapServer;
 import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.ControlPort;
 import se.sics.kompics.Event;
 import se.sics.kompics.Handler;
+import se.sics.kompics.Init;
+import se.sics.kompics.Init.None;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
@@ -27,6 +35,8 @@ import se.sics.kompics.network.grizzly.ConstantQuotaAllocator;
 import se.sics.kompics.network.grizzly.GrizzlyNetwork;
 import se.sics.kompics.network.grizzly.GrizzlyNetworkInit;
 import se.sics.kompics.network.grizzly.kryo.KryoMessage;
+import se.sics.kompics.timer.Timer;
+import se.sics.kompics.timer.java.JavaTimer;
 
 /**
  *
@@ -37,16 +47,12 @@ public class HostManager extends ComponentDefinition {
     private static final Logger log = LoggerFactory.getLogger(HostManager.class);
     private HostSharedComponents sharedComponents;
     public final Configuration config;
-    private Positive<Network> networkPort;
+    private Positive<Network> net;
+    private Positive<Timer> timer;
     private ComponentProxy proxy = new ComponentProxy() {
         @Override
         public <P extends PortType> void trigger(Event e, Port<P> p) {
             HostManager.this.trigger(e, p);
-        }
-
-        @Override
-        public Component create(Class<? extends ComponentDefinition> definition) {
-            return HostManager.this.create(definition);
         }
 
         @Override
@@ -78,29 +84,36 @@ public class HostManager extends ComponentDefinition {
         public Negative<ControlPort> getControlPort() {
             return HostManager.this.control;
         }
+
+        @Override
+        public <T extends ComponentDefinition> Component create(Class<T> definition, Init<T> initEvent) {
+            return HostManager.this.create(definition, initEvent);
+        }
+
+        @Override
+        public <T extends ComponentDefinition> Component create(Class<T> definition, None initEvent) {
+            return HostManager.this.create(definition, initEvent);
+        }
     };
     private Address netSelf;
+    private Component bootstrapClient;
 
-    static {
-        KryoMessage.register(StartVNode.class);
-    }
 
-    public HostManager() throws UnknownHostException {
-        config = Launcher.getCurrentConfig();
+    public HostManager(HostManagerInit init) throws UnknownHostException {
+        config = init.config;
+        netSelf = init.netSelf;
 
-        networkPort = requires(Network.class);
+        net = requires(Network.class);
+        timer = requires(Timer.class);
 
 
         sharedComponents = new HostSharedComponents();
-        Component network = create(GrizzlyNetwork.class);
-        netSelf = new Address(config.getIp(), config.getPort(), null);
         sharedComponents.setSelf(netSelf);
-        trigger(new GrizzlyNetworkInit(netSelf, 8, 0, 0, 2 * 1024, 16 * 1024,
-                Runtime.getRuntime().availableProcessors(),
-                Runtime.getRuntime().availableProcessors(),
-                new ConstantQuotaAllocator(5)), network.control());
-        VirtualNetworkChannel vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
+        
+        
+        VirtualNetworkChannel vnc = init.vnc;
         sharedComponents.setNetwork(vnc);
+        sharedComponents.setTimer(timer);
         sharedComponents.connectNetwork(this.getComponentCore());
 
         for (ComponentHook hook : config.getComponentHooks()) {
@@ -109,7 +122,15 @@ public class HostManager extends ComponentDefinition {
 
 
         subscribe(stoppedHandler, control);
-        subscribe(startNodeHandler, networkPort);
+        subscribe(startNodeHandler, net);
+
+        if (config.isBoot()) {
+            if (netSelf.equals(config.getBootstrapServer())) {
+                startBootstrapServer();
+            } else {
+                startBootstrapClient();
+            }
+        }
     }
     private Handler<StartVNode> startNodeHandler = new Handler<StartVNode>() {
         @Override
@@ -122,21 +143,46 @@ public class HostManager extends ComponentDefinition {
             vsc.setSelf(nodeAddr);
             vsc.setNetwork(sharedComponents.getNet());
 
-            Component nodeMan = create(NodeManager.class);
-            
+            Component nodeMan = create(NodeManager.class, new NodeManagerInit(vsc, config));
+
             vsc.connectNetwork(nodeMan);
-            
-            trigger(new NodeManagerInit(vsc, config), nodeMan.control());
+
             trigger(Start.event, nodeMan.control());
         }
     };
-    
     private Handler<Stopped> stoppedHandler = new Handler<Stopped>() {
         @Override
         public void handle(Stopped event) {
             destroy(event.component);
         }
     };
+
+    private void startBootstrapClient() {
+        bootstrapClient = create(BootstrapClient.class, new BootstrapCInit(netSelf, config));
+        connect(bootstrapClient.getNegative(Timer.class), sharedComponents.getTimer());
+        sharedComponents.connectNetwork(bootstrapClient);
+    }
+
+    private void startBootstrapServer() {
+        final Component bootstrapServer = create(BootstrapServer.class, new BootstrapSInit(netSelf, config));
+        connect(bootstrapServer.getNegative(Timer.class), sharedComponents.getTimer());
+        sharedComponents.connectNetwork(bootstrapServer);
+        final Positive<Bootstrap> bootPort = requires(Bootstrap.class);
+        connect(bootPort.getPair(), bootstrapServer.getPositive(Bootstrap.class));
+
+        Handler<BootUp> bootHandler = new Handler<BootUp>() {
+            @Override
+            public void handle(BootUp event) {
+                //TODO send stuff to ConfigManager
+                trigger(Stop.event, bootstrapServer.control());
+                sharedComponents.disconnectNetwork(bootstrapServer);
+                disconnect(bootPort.getPair(), bootstrapServer.getPositive(Bootstrap.class));
+                disconnect(bootstrapServer.getNegative(Timer.class), sharedComponents.getTimer());
+                unsubscribe(this, bootPort);
+            }
+        };
+        subscribe(bootHandler, bootPort);
+    }
 
     @Override
     public void tearDown() {
