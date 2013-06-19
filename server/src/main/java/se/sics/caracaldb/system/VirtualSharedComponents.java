@@ -4,7 +4,9 @@
  */
 package se.sics.caracaldb.system;
 
+import se.sics.caracaldb.global.LookupService;
 import se.sics.kompics.Component;
+import se.sics.kompics.Positive;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.VirtualNetworkChannel;
@@ -18,6 +20,7 @@ public class VirtualSharedComponents {
     private VirtualNetworkChannel net;
     private byte[] id;
     private Address self;
+    private Positive<LookupService> lookup;
 
     public VirtualSharedComponents(byte[] id) {
         this.id = id;
@@ -45,5 +48,13 @@ public class VirtualSharedComponents {
 
     public byte[] getId() {
         return id;
+    }
+    
+    public void setLookup(Positive<LookupService> lookup) {
+        this.lookup = lookup;
+    }
+    
+    public Positive<LookupService> getLookup() {
+        return lookup;
     }
 }

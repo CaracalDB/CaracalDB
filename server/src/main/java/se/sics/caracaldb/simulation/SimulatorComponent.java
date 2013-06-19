@@ -90,7 +90,7 @@ public class SimulatorComponent extends ComponentDefinition {
         @Override
         public void handle(TerminateExperiment event) {
             LOG.info("Terminating Experiment.");
-            Kompics.shutdown();
+            Kompics.forceShutdown();
         }
     };
     

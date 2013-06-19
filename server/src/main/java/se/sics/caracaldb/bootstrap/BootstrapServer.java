@@ -10,6 +10,7 @@ import com.google.common.collect.Sets.SetView;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,7 @@ import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
+import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
 import se.sics.kompics.timer.Timer;
 
@@ -52,12 +54,16 @@ public class BootstrapServer extends ComponentDefinition {
     private Set<Address> readySet;
     private LookupTable lut;
     private byte[] lutData;
+    
+    private UUID timeoutId;
 
     public BootstrapServer(BootstrapSInit init) {
 
         final Handler<Start> startHandler = new Handler<Start>() {
             @Override
             public void handle(Start event) {
+                
+                log.info("Starting up bootstrap server on {}", self);
 
                 long keepAliveTimeout = config.getKeepAlivePeriod() * 2;
                 SchedulePeriodicTimeout spt =
@@ -98,6 +104,10 @@ public class BootstrapServer extends ComponentDefinition {
         final Handler<ClearTimeout> timeoutHandler = new Handler<ClearTimeout>() {
             @Override
             public void handle(ClearTimeout event) {
+                if (timeoutId == null) {
+                    timeoutId = event.getTimeoutId();
+                }
+                
                 if (state == State.COLLECTING) {
                     active.clear();
                     active.addAll(fresh);
@@ -164,5 +174,6 @@ public class BootstrapServer extends ComponentDefinition {
         SetView<Address> failed = Sets.difference(bootSet, readySet);
         SetView<Address> joined = Sets.difference(active, bootSet);
         trigger(new Bootstrapped(lut, failed.immutableCopy(), joined.immutableCopy()), bootstrap);
+        trigger(new CancelPeriodicTimeout(timeoutId), timer);
     }
 }

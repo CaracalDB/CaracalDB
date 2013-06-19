@@ -45,7 +45,7 @@ public class LUTTest {
     }
 
     @Test
-    public void lutSerialisationtest() {
+    public void lutSerialisationTest() {
         try {
             final int n = 5;
             Set<Address> addrs = generateAddresses(n);
@@ -69,7 +69,7 @@ public class LUTTest {
     }
 
     @Test
-    public void lookupGroupSerialisationtest() {
+    public void lookupGroupSerialisationTest() {
         try {
             LookupGroup lg = new LookupGroup((byte) 0);
             final int n = 100;
@@ -90,6 +90,18 @@ public class LUTTest {
             ex.printStackTrace();
             fail(ex.getMessage());
         }
+    }
+    
+    @Test
+    public void keyTest() {
+        Key k = new Key(new byte[]{0, 1, 2, 3});
+        assertEquals("00 01 02 03", k.toString());
+        
+        k = new Key(1);
+        assertEquals("00 00 00 01", k.toString());
+        
+        k = new Key("AB");
+        assertEquals("41 42", k.toString());
     }
 
     private Set<Address> generateAddresses(int n) {

@@ -5,6 +5,7 @@
 package se.sics.caracaldb.global;
 
 import java.util.Set;
+import se.sics.caracaldb.bootstrap.Bootstrapped;
 import se.sics.kompics.Init;
 import se.sics.kompics.address.Address;
 
@@ -12,12 +13,14 @@ import se.sics.kompics.address.Address;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class CatHerderInit extends Init {
+public class CatHerderInit extends Init<CatHerder> {
     
-    public final LookupTable lut;
+    public final Bootstrapped bootEvent;
+    public final Address self;
     
-    public CatHerderInit(LookupTable lut) {
-        this.lut = lut;
+    public CatHerderInit(Bootstrapped bootr, Address self) {
+        bootEvent = bootr;
+        this.self = self;
     }
 
 }

@@ -4,6 +4,7 @@
  */
 package se.sics.caracaldb.global;
 
+import se.sics.caracaldb.Key;
 import se.sics.kompics.Request;
 import se.sics.kompics.network.Message;
 
@@ -13,10 +14,10 @@ import se.sics.kompics.network.Message;
  */
 public class LookupRequest extends Request {
 
-    public final byte[] key;
+    public final Key key;
     public final long reqId;
 
-    public LookupRequest(byte[] key, long reqId) {
+    public LookupRequest(Key key, long reqId) {
         this.key = key;
         this.reqId = reqId;
     }

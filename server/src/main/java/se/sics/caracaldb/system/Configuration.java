@@ -24,6 +24,9 @@ public class Configuration implements Cloneable {
     private Address bootstrapServer;
     private int bootThreshold = 3;
     private long keepAlivePeriod = 1000;
+    private int messageBufferSizeMax = 16 * 1024;
+    private int messageBufferSize = messageBufferSizeMax/8;
+    private int dataMessageSize = messageBufferSize;
     
     public void setIp(InetAddress ip) {
         this.ip = ip;
@@ -93,6 +96,30 @@ public class Configuration implements Cloneable {
         }
         
         return boot;
+    }
+    
+    public void setMessageBufferSizeMax(int val) {
+        this.messageBufferSizeMax = val;
+    }
+    
+    public int getMessageBufferSizeMax() {
+        return this.messageBufferSizeMax;
+    }
+    
+    public void setMessageBufferSize(int val) {
+        this.messageBufferSize = val;
+    }
+    
+    public int getMessageBufferSize() {
+        return this.messageBufferSize;
+    }
+    
+    public void setDataMessageSize(int val) {
+        this.dataMessageSize = val;
+    }
+    
+    public int getDataMessageSize() {
+        return this.dataMessageSize;
     }
     
     @Override

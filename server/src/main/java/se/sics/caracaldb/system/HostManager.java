@@ -13,6 +13,10 @@ import se.sics.caracaldb.bootstrap.BootstrapCInit;
 import se.sics.caracaldb.bootstrap.BootstrapClient;
 import se.sics.caracaldb.bootstrap.BootstrapSInit;
 import se.sics.caracaldb.bootstrap.BootstrapServer;
+import se.sics.caracaldb.bootstrap.Bootstrapped;
+import se.sics.caracaldb.global.CatHerder;
+import se.sics.caracaldb.global.CatHerderInit;
+import se.sics.caracaldb.global.LookupService;
 import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
@@ -49,6 +53,7 @@ public class HostManager extends ComponentDefinition {
     public final Configuration config;
     private Positive<Network> net;
     private Positive<Timer> timer;
+    private Positive<Bootstrap> bootPort;
     private ComponentProxy proxy = new ComponentProxy() {
         @Override
         public <P extends PortType> void trigger(Event e, Port<P> p) {
@@ -96,8 +101,8 @@ public class HostManager extends ComponentDefinition {
         }
     };
     private Address netSelf;
-    private Component bootstrapClient;
-
+    private boolean bootstrapped = false;
+    private Component catHerder;
 
     public HostManager(HostManagerInit init) throws UnknownHostException {
         config = init.config;
@@ -105,12 +110,13 @@ public class HostManager extends ComponentDefinition {
 
         net = requires(Network.class);
         timer = requires(Timer.class);
+        bootPort = requires(Bootstrap.class);
 
 
         sharedComponents = new HostSharedComponents();
         sharedComponents.setSelf(netSelf);
-        
-        
+
+
         VirtualNetworkChannel vnc = init.vnc;
         sharedComponents.setNetwork(vnc);
         sharedComponents.setTimer(timer);
@@ -142,6 +148,9 @@ public class HostManager extends ComponentDefinition {
 
             vsc.setSelf(nodeAddr);
             vsc.setNetwork(sharedComponents.getNet());
+            if (bootstrapped) {
+                vsc.setLookup(catHerder.getPositive(LookupService.class));
+            }
 
             Component nodeMan = create(NodeManager.class, new NodeManagerInit(vsc, config));
 
@@ -158,30 +167,70 @@ public class HostManager extends ComponentDefinition {
     };
 
     private void startBootstrapClient() {
-        bootstrapClient = create(BootstrapClient.class, new BootstrapCInit(netSelf, config));
+        final Component bootstrapClient = create(BootstrapClient.class, new BootstrapCInit(netSelf, config));
         connect(bootstrapClient.getNegative(Timer.class), sharedComponents.getTimer());
         sharedComponents.connectNetwork(bootstrapClient);
+        connect(bootPort.getPair(), bootstrapClient.getPositive(Bootstrap.class));
+
+        Handler<Bootstrapped> bootHandler = new Handler<Bootstrapped>() {
+            @Override
+            public void handle(Bootstrapped event) {
+
+                trigger(Stop.event, bootstrapClient.control());
+                sharedComponents.disconnectNetwork(bootstrapClient);
+                disconnect(bootPort.getPair(), bootstrapClient.getPositive(Bootstrap.class));
+                disconnect(bootstrapClient.getNegative(Timer.class), sharedComponents.getTimer());
+                unsubscribe(this, bootPort);
+
+                log.debug("{} is bootstrapped", netSelf);
+
+                startCatHerder(event);
+            }
+        };
+        subscribe(bootHandler, bootPort);
     }
 
     private void startBootstrapServer() {
         final Component bootstrapServer = create(BootstrapServer.class, new BootstrapSInit(netSelf, config));
         connect(bootstrapServer.getNegative(Timer.class), sharedComponents.getTimer());
         sharedComponents.connectNetwork(bootstrapServer);
-        final Positive<Bootstrap> bootPort = requires(Bootstrap.class);
         connect(bootPort.getPair(), bootstrapServer.getPositive(Bootstrap.class));
 
-        Handler<BootUp> bootHandler = new Handler<BootUp>() {
+        Handler<Bootstrapped> bootHandler = new Handler<Bootstrapped>() {
             @Override
-            public void handle(BootUp event) {
+            public void handle(Bootstrapped event) {
+
+
+
                 //TODO send stuff to ConfigManager
                 trigger(Stop.event, bootstrapServer.control());
                 sharedComponents.disconnectNetwork(bootstrapServer);
                 disconnect(bootPort.getPair(), bootstrapServer.getPositive(Bootstrap.class));
                 disconnect(bootstrapServer.getNegative(Timer.class), sharedComponents.getTimer());
                 unsubscribe(this, bootPort);
+
+                log.debug("{} is bootstrapped", netSelf);
+
+                startCatHerder(event);
             }
         };
         subscribe(bootHandler, bootPort);
+    }
+
+    private void startCatHerder(Bootstrapped event) {
+        catHerder = create(CatHerder.class, new CatHerderInit(event, netSelf));
+        sharedComponents.connectNetwork(catHerder);
+
+        trigger(Start.event, catHerder.control());
+
+        log.debug("{} starting CatHerder", netSelf);
+        
+//        StringBuilder sb = new StringBuilder();
+//        event.lut.printFormat(sb);
+//        System.out.println(sb.toString());
+
+        // might not be the most obvious place...but at least I only have to write it once
+        bootstrapped = true;
     }
 
     @Override

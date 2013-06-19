@@ -54,7 +54,7 @@ public class SimulatorMain extends ComponentDefinition {
         public void handle(Fault event) {
             LOG.error("Fault: {}", event.getFault());
             event.getFault().printStackTrace();
-            Kompics.shutdown();
+            Kompics.forceShutdown();
         }
     };
 }

@@ -35,8 +35,11 @@ import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.PortType;
 import se.sics.kompics.Start;
+import se.sics.kompics.network.ClearToSend;
+import se.sics.kompics.network.DataMessage;
 import se.sics.kompics.network.Message;
 import se.sics.kompics.network.Network;
+import se.sics.kompics.network.RequestToSend;
 import se.sics.kompics.virtual.networkmodel.NetworkModel;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 import se.sics.kompics.p2p.experiment.dsl.events.KompicsSimulatorEvent;
@@ -359,6 +362,37 @@ public final class VirtualSimulator extends ComponentDefinition implements
             } else {
                 // we just echo the message on the network port
                 trigger(event, network);
+            }
+        }
+    };
+    Handler<RequestToSend> handleRTS = new Handler<RequestToSend>() {
+        @Override
+        public void handle(RequestToSend event) {
+            LOG.debug("Handling local RTS event from {}", event.getSource());
+            
+            // just allow unlimited flows in simulation for now
+            
+            ClearToSend cts = event.getEvent();
+            cts.setFlowId(-1);
+            cts.setQuota(Integer.MAX_VALUE);
+            cts.setRequestId(-1);
+            trigger(cts, network);
+        }
+    };
+    Handler<DataMessage> handleData = new Handler<DataMessage>() {
+
+        @Override
+        public void handle(DataMessage event) {
+            random.nextInt();
+            LOG.debug("DataMessage send: {}", event.getMessage());
+
+            if (networkModel != null) {
+                long latency = networkModel.getLatencyMs(event.getMessage());
+                futureEventList.scheduleFutureEvent(CLOCK,
+                        new KompicsSimulatorEvent(event, CLOCK + latency));
+            } else {
+                // we just echo the message on the network port
+                trigger(event.getMessage(), network);
             }
         }
     };

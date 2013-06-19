@@ -18,11 +18,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import se.sics.caracaldb.Key;
 import se.sics.kompics.address.Address;
 
@@ -34,6 +37,7 @@ public class LookupTable {
 
     public static final int INIT_REP_FACTOR = 3;
     public static final int NUM_VIRT_GROUPS = 256;
+    private static final String EMPTY_TXT = "<EMPTY>";
     private static final Random RAND = new Random();
     private static LookupTable INSTANCE = null; // Don't tell anyone about this! (static fields and simulations oO)
     private ArrayList<Address> hosts;
@@ -70,6 +74,139 @@ public class LookupTable {
             hostAddrs[i] = getHost(i);
         }
         return hostAddrs;
+    }
+    
+    public Address[] getResponsibles(Key k) {
+        Integer rgId = virtualHostsGetResponsible(k);
+        if (rgId == null) {
+            return null;
+        }
+        return getHosts(rgId);
+    }
+
+    /**
+     * Find all the virtual nodes at a host.
+     *
+     * More exactly, find the ids of all virtual nodes that are supposed to be
+     * at the given host according to the state of the LUT.
+     *
+     * This is a horribly slow operation. It's meant for bootup, use it later at
+     * your own risk.
+     *
+     * @param host
+     * @return
+     */
+    public Set<Key> getVirtualNodesAt(Address host) {
+        // find host id
+        int hostId = -1;
+        for (ListIterator<Address> it = hosts.listIterator(); it.hasNext();) {
+            int pos = it.nextIndex();
+            Address adr = it.next();
+            if (adr.equals(host)) {
+                hostId = pos;
+                break;
+            }
+        }
+        if (hostId < 0) {
+            return null; // could also throw an exeception...not sure what is nicer
+        }
+        // find all replication groups for hostId
+        TreeSet<Integer> repGroupIds = new TreeSet<Integer>();
+        for (ListIterator<Integer[]> it = replicationGroups.listIterator(); it.hasNext();) {
+            int pos = it.nextIndex();
+            Integer[] group = it.next();
+            for (int i = 0; i < group.length; i++) {
+                if (hostId == group[i]) {
+                    repGroupIds.add(pos);
+                    break;
+                }
+            }
+        }
+        if (repGroupIds.isEmpty()) {
+            // just return an empty set.
+            // if the host is not part of any replication groups
+            // clearly there won't be any VNodes on it
+            return new HashSet<Key>();
+        }
+
+        // now find all the occurences in the lookup groups
+        // this is the most horribly inefficient part^^
+        HashSet<Key> nodeSet = new HashSet<Key>();
+        for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
+            if (!virtualHostGroups[i].isEmpty()) {
+                nodeSet.addAll(virtualHostGroups[i].getVirtualNodesIn(i));
+            }
+        }
+        return nodeSet;
+    }
+
+    /**
+     * Builds a readable format of the LUT.
+     *
+     * This is probably not a good idea for large tables. Use for debugging of
+     * small sets only.
+     *
+     * @param sb
+     */
+    public void printFormat(StringBuilder sb) {
+        sb.append("### LookupTable (v");
+        sb.append(versionId);
+        sb.append(") ### \n \n");
+
+        sb.append("## Hosts ## \n");
+        for (ListIterator<Address> it = hosts.listIterator(); it.hasNext();) {
+            int pos = it.nextIndex();
+            Address adr = it.next();
+            sb.append(pos);
+            sb.append(". ");
+            if (adr == null) {
+                sb.append(EMPTY_TXT);
+            } else {
+                sb.append(adr);
+            }
+            sb.append('\n');
+        }
+        sb.append('\n');
+
+        sb.append("## Replication Groups ## \n");
+        for (ListIterator<Integer[]> it = replicationGroups.listIterator(); it.hasNext();) {
+            int pos = it.nextIndex();
+            Integer[] group = it.next();
+            sb.append(pos);
+            sb.append(". ");
+            if (group == null) {
+                sb.append(EMPTY_TXT);
+            } else {
+                sb.append('{');
+                for (int i = 0; i < group.length; i++) {
+                    sb.append(group[i]);
+                    if (i < (group.length - 1)) {
+                        sb.append(',');
+                    }
+                }
+                sb.append('}');
+                sb.append('\n');
+            }
+        }
+        sb.append('\n');
+        
+        sb.append("## Virtual Node Groups ## \n");
+        for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
+            sb.append("# Group ");
+            sb.append(i);
+            sb.append(" (v");
+            sb.append(virtualHostGroupVersions[i]);
+            sb.append(") # \n");
+            if (!virtualHostGroups[i].isEmpty()) {
+                virtualHostGroups[i].printFormat(sb);
+            } else {
+                sb.append(EMPTY_TXT);
+            }
+            sb.append('\n');
+        }
+        
+        sb.append('\n');
+        sb.append('\n');
     }
 
     public byte[] serialise() throws IOException {

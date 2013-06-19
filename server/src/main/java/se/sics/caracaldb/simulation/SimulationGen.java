@@ -35,7 +35,7 @@ public class SimulationGen {
                     }
                 };
 
-                StochasticProcess termProc = new SimulationScenario.StochasticProcess() {
+                StochasticProcess termProc = new StochasticProcess() {
                     {
                         eventInterArrivalTime(constant(500));
                         raise(Integer.MAX_VALUE, opTerminate()); // can never send enough terminate commands ;)
@@ -43,8 +43,9 @@ public class SimulationGen {
                 };
 
                 bootProc.start();
+                //termProc.start();
                 termProc.startAfterTerminationOf(5000, bootProc);
-                terminateAfterTerminationOf(300 * 1000, termProc);
+                terminateAfterTerminationOf(33 * 1000, termProc);
             }
         };
         

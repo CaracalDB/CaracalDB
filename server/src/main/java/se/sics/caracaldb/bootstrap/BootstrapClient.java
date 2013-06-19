@@ -5,6 +5,7 @@
 package se.sics.caracaldb.bootstrap;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,8 @@ public class BootstrapClient extends ComponentDefinition {
     private RequestTimeout timeoutEvent;
     private State state;
     private LookupTable lut;
+    
+    private UUID timeoutId;
 
     public BootstrapClient(BootstrapCInit init) {
         final Negative<Bootstrap> bootstrap = provides(Bootstrap.class);
@@ -50,8 +53,10 @@ public class BootstrapClient extends ComponentDefinition {
             @Override
             public void handle(Start event) {
 
+                log.debug("Starting bootstrap client on {}", self);
+                
                 SchedulePeriodicTimeout spt =
-                        new SchedulePeriodicTimeout(config.getKeepAlivePeriod(), 0);
+                        new SchedulePeriodicTimeout(0, config.getKeepAlivePeriod());
                 timeoutEvent = new RequestTimeout(spt);
                 spt.setTimeoutEvent(timeoutEvent);
                 trigger(spt, timer);
@@ -62,6 +67,10 @@ public class BootstrapClient extends ComponentDefinition {
         final Handler<RequestTimeout> timeoutHandler = new Handler<RequestTimeout>() {
             @Override
             public void handle(RequestTimeout event) {
+                if (timeoutId == null) {
+                    timeoutId = event.getTimeoutId();
+                }
+                
                 if (state == State.WAITING) {
                     trigger(new BootstrapRequest(self, config.getBootstrapServer()), net);
                 } else if (state == State.READY) {
@@ -113,6 +122,7 @@ public class BootstrapClient extends ComponentDefinition {
                 if (state == State.READY) {
                     log.info("{} Booting up.", self);
                     trigger(new Bootstrapped(lut), bootstrap);
+                    trigger(new CancelPeriodicTimeout(timeoutId), timer);
                 } else {
                     state = State.STARTED;
                 }

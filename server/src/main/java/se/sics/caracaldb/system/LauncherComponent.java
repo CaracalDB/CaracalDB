@@ -34,7 +34,8 @@ public class LauncherComponent extends ComponentDefinition {
     {
         Configuration config = Launcher.getCurrentConfig();
         Address netSelf = new Address(config.getIp(), config.getPort(), null);
-        network = create(GrizzlyNetwork.class, new GrizzlyNetworkInit(netSelf, 8, 0, 0, 2 * 1024, 16 * 1024,
+        network = create(GrizzlyNetwork.class, new GrizzlyNetworkInit(netSelf, 8, 0, 0, 
+                config.getMessageBufferSize(), config.getMessageBufferSizeMax(),
                 Runtime.getRuntime().availableProcessors(),
                 Runtime.getRuntime().availableProcessors(),
                 new ConstantQuotaAllocator(5)));
