@@ -10,6 +10,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.View;
 import se.sics.caracaldb.system.StartVNode;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -25,19 +27,18 @@ import se.sics.kompics.network.Network;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class CatHerder extends ComponentDefinition {
-
+    
     private static final Logger LOG = LoggerFactory.getLogger(CatHerder.class);
     private static final Random RAND = new Random();
-    
     // ports
     Negative<LookupService> lookup = provides(LookupService.class);
+    Negative<MaintenanceService> maintenance = provides(MaintenanceService.class);
     Positive<Network> net = requires(Network.class);
-    
     // instance
     private LookupTable lut;
     private Address self;
     private boolean master;
-
+    
     public CatHerder(CatHerderInit init) {
         lut = init.bootEvent.lut;
         self = init.self;
@@ -49,19 +50,17 @@ public class CatHerder extends ComponentDefinition {
         subscribe(startHandler, control);
         subscribe(lookupRHandler, lookup);
         subscribe(forwardHandler, lookup);
+        subscribe(bootedHandler, maintenance);
+        subscribe(forwardMsgHandler, net);
     }
-    
     Handler<Start> startHandler = new Handler<Start>() {
-
         @Override
         public void handle(Start event) {
             LOG.debug("{} starting initial nodes", self);
             startInitialVNodes();
         }
     };
-    
     Handler<LookupRequest> lookupRHandler = new Handler<LookupRequest>() {
-
         @Override
         public void handle(LookupRequest event) {
             Address[] repGroup = lut.getResponsibles(event.key);
@@ -76,9 +75,7 @@ public class CatHerder extends ComponentDefinition {
             
         }
     };
-    
     Handler<ForwardToAny> forwardHandler = new Handler<ForwardToAny>() {
-
         @Override
         public void handle(ForwardToAny event) {
             Address[] repGroup = lut.getResponsibles(event.key);
@@ -88,9 +85,36 @@ public class CatHerder extends ComponentDefinition {
             }
             int nodePos = RAND.nextInt(repGroup.length);
             Address dest = repGroup[nodePos];
-            Message msg = event.insertDestination(dest);
+            Message msg = event.msg.insertDestination(dest);
             trigger(msg, net);
+            LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
             //TODO rewrite to check at destination and foward until reached right node
+        }
+    };
+    Handler<ForwardMessage> forwardMsgHandler = new Handler<ForwardMessage>() {
+        @Override
+        public void handle(ForwardMessage event) {
+            Address[] repGroup = lut.getResponsibles(event.forwardTo);
+            if (repGroup == null) {
+                LOG.warn("No Node found reponsible for key {}! Dropping messsage.", event.forwardTo);
+                return;
+            }
+            int nodePos = RAND.nextInt(repGroup.length);
+            Address dest = repGroup[nodePos];
+            Message msg = event.msg.insertDestination(dest);
+            trigger(msg, net);
+            LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
+        }
+    };
+    Handler<NodeBooted> bootedHandler = new Handler<NodeBooted>() {
+        @Override
+        public void handle(NodeBooted event) {
+            Key nodeId = new Key(event.node.getId());
+            View view = lut.getView(nodeId);
+            KeyRange responsibility = lut.getResponsibility(nodeId);
+            int quorum = view.members.size() / 2 + 1;
+            NodeJoin join = new NodeJoin(view, quorum,responsibility, (view.id != 0));
+            trigger(new MaintenanceMsg(self, event.node, join), net);
         }
     };
     
@@ -107,6 +131,7 @@ public class CatHerder extends ComponentDefinition {
         for (Key k : localNodes) {
             trigger(new StartVNode(self, self, k.getArray()), net);
         }
+        LOG.debug("{}: Initial nodes are {}", self, localNodes);
     }
     
     private boolean checkMaster() {
@@ -120,6 +145,4 @@ public class CatHerder extends ComponentDefinition {
         master = false;
         return master;
     }
-    
-    
 }

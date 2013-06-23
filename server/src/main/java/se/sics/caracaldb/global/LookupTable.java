@@ -4,6 +4,7 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.io.Closer;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.UnsignedBytes;
@@ -14,19 +15,19 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
+import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.View;
 import se.sics.kompics.address.Address;
 
 /**
@@ -42,6 +43,7 @@ public class LookupTable {
     private static LookupTable INSTANCE = null; // Don't tell anyone about this! (static fields and simulations oO)
     private ArrayList<Address> hosts;
     private ArrayList<Integer[]> replicationGroups;
+    private ArrayList<Integer> replicationGroupVersions;
     private LookupGroup[] virtualHostGroups;
     private Long[] virtualHostGroupVersions;
     long versionId = 0;
@@ -75,13 +77,52 @@ public class LookupTable {
         }
         return hostAddrs;
     }
-    
+
     public Address[] getResponsibles(Key k) {
-        Integer rgId = virtualHostsGetResponsible(k);
+        Pair<Key, Integer> rg = virtualHostsGetResponsible(k);
+        Integer rgId = rg.getValue1();
         if (rgId == null) {
             return null;
         }
-        return getHosts(rgId);
+
+        Integer rgVersion = replicationGroupVersions.get(rgId);
+        Address[] group = getVirtualHosts(rgId, rg.getValue0());
+        return group;
+    }
+
+    public View getView(Key nodeId) {
+        Integer rgId = virtualHostsGet(nodeId);
+        if (rgId == null) {
+            return null;
+        }
+
+        Integer rgVersion = replicationGroupVersions.get(rgId);
+        Address[] group = getVirtualHosts(rgId, nodeId);
+        View view = new View(ImmutableSortedSet.copyOf(group), rgVersion);
+        return view;
+    }
+
+    public Address[] getVirtualHosts(int replicationGroupId, Key nodeId) {
+        Integer[] rGroup = replicationGroups.get(replicationGroupId);
+        if (rGroup == null) {
+            return null;
+        }
+
+        Address[] group = new Address[rGroup.length];
+        for (int i = 0; i < rGroup.length; i++) {
+            Address hostAdr = getHost(rGroup[i]);
+            group[i] = hostAdr.newVirtual(nodeId.getArray());
+        }
+        return group;
+    }
+
+    public KeyRange getResponsibility(Key nodeId) {
+        Key succ = virtualHostsGetSuccessor(nodeId);
+        if (succ == null) {
+            return KeyRange.closed(nodeId).open(Key.INF);
+        }
+        KeyRange range = KeyRange.closed(nodeId).open(succ);
+        return range;
     }
 
     /**
@@ -122,6 +163,7 @@ public class LookupTable {
                 }
             }
         }
+        System.out.println(host + " is in repGroups " + repGroupIds);
         if (repGroupIds.isEmpty()) {
             // just return an empty set.
             // if the host is not part of any replication groups
@@ -134,7 +176,9 @@ public class LookupTable {
         HashSet<Key> nodeSet = new HashSet<Key>();
         for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
             if (!virtualHostGroups[i].isEmpty()) {
-                nodeSet.addAll(virtualHostGroups[i].getVirtualNodesIn(i));
+                for (Integer rgId : repGroupIds) {
+                    nodeSet.addAll(virtualHostGroups[i].getVirtualNodesIn(rgId));
+                }
             }
         }
         return nodeSet;
@@ -174,6 +218,9 @@ public class LookupTable {
             Integer[] group = it.next();
             sb.append(pos);
             sb.append(". ");
+            sb.append("(v");
+            sb.append(replicationGroupVersions.get(pos));
+            sb.append(") ");
             if (group == null) {
                 sb.append(EMPTY_TXT);
             } else {
@@ -189,22 +236,25 @@ public class LookupTable {
             }
         }
         sb.append('\n');
-        
+
         sb.append("## Virtual Node Groups ## \n");
         for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
-            sb.append("# Group ");
-            sb.append(i);
-            sb.append(" (v");
-            sb.append(virtualHostGroupVersions[i]);
-            sb.append(") # \n");
+
             if (!virtualHostGroups[i].isEmpty()) {
+                sb.append("# Group ");
+                sb.append(i);
+                sb.append(" (v");
+                sb.append(virtualHostGroupVersions[i]);
+                sb.append(") # \n");
                 virtualHostGroups[i].printFormat(sb);
-            } else {
-                sb.append(EMPTY_TXT);
+                sb.append('\n');
             }
-            sb.append('\n');
+//            else {
+//                sb.append(EMPTY_TXT);
+//            }
+
         }
-        
+
         sb.append('\n');
         sb.append('\n');
     }
@@ -225,8 +275,11 @@ public class LookupTable {
 
             // replicationgroups
             w.writeInt(replicationGroups.size());
-            for (Integer[] group : replicationGroups) {
-                serialiseReplicationGroup(group, w);
+            for (ListIterator<Integer[]> it = replicationGroups.listIterator(); it.hasNext();) {
+                int pos = it.nextIndex();
+                Integer[] group = it.next();
+                Integer version = replicationGroupVersions.get(pos);
+                serialiseReplicationGroup(version, group, w);
             }
 
             // virtualHostGroups
@@ -267,8 +320,11 @@ public class LookupTable {
             // replicationgroups
             int numRGs = r.readInt();
             INSTANCE.replicationGroups = new ArrayList<Integer[]>(numRGs);
+            INSTANCE.replicationGroupVersions = new ArrayList<Integer>(numRGs);
             for (int i = 0; i < numRGs; i++) {
-                INSTANCE.replicationGroups.add(deserialiseReplicationGroup(r));
+                Pair<Integer, Integer[]> group = deserialiseReplicationGroup(r);
+                INSTANCE.replicationGroups.add(group.getValue1());
+                INSTANCE.replicationGroupVersions.add(group.getValue0());
             }
 
             // virtualHostGroups
@@ -291,7 +347,8 @@ public class LookupTable {
         }
     }
 
-    private static void serialiseReplicationGroup(Integer[] group, DataOutputStream w) throws IOException {
+    private static void serialiseReplicationGroup(Integer version, Integer[] group, DataOutputStream w) throws IOException {
+        w.writeInt(version);
         byte groupSize = UnsignedBytes.checkedCast(group.length);
         w.writeByte(groupSize);
         for (Integer i : group) {
@@ -299,13 +356,14 @@ public class LookupTable {
         }
     }
 
-    private static Integer[] deserialiseReplicationGroup(DataInputStream r) throws IOException {
+    private static Pair<Integer, Integer[]> deserialiseReplicationGroup(DataInputStream r) throws IOException {
+        int version = r.readInt();
         int groupSize = UnsignedBytes.toInt(r.readByte());
         Integer[] group = new Integer[groupSize];
         for (int i = 0; i < groupSize; i++) {
             group[i] = r.readInt();
         }
-        return group;
+        return Pair.with(version, group);
     }
 
     /*
@@ -370,11 +428,11 @@ public class LookupTable {
         return new Address(ip, port, id);
     }
 
-    public static LookupTable generateInitial(Set<Address> hosts) {
+    public static LookupTable generateInitial(Set<Address> hosts, int vNodesPerHost) {
         LookupTable lut = new LookupTable();
         lut.generateHosts(hosts);
         lut.generateReplicationGroups(hosts);
-        lut.generateInitialVirtuals();
+        lut.generateInitialVirtuals(vNodesPerHost);
 
         INSTANCE = lut;
 
@@ -393,6 +451,7 @@ public class LookupTable {
         dup3 = new ArrayList<Integer>(nats);
 
         replicationGroups = new ArrayList<Integer[]>(INIT_REP_FACTOR * hosts.size());
+        replicationGroupVersions = new ArrayList<Integer>(INIT_REP_FACTOR * hosts.size());
 
         for (int n = 0; n < INIT_REP_FACTOR; n++) {
             Collections.shuffle(dup1, RAND);
@@ -412,11 +471,12 @@ public class LookupTable {
                 Integer[] group = new Integer[]{h1, h2, h3};
                 int pos = n * hosts.size() + i;
                 replicationGroups.add(pos, group);
+                replicationGroupVersions.add(pos, 0);
             }
         }
     }
 
-    private void generateInitialVirtuals() {
+    private void generateInitialVirtuals(int vNodesPerHost) {
         Arrays.fill(virtualHostGroupVersions, 0l);
         for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
             virtualHostGroups[i] = new LookupGroup(Ints.toByteArray(i)[3]);
@@ -427,7 +487,8 @@ public class LookupTable {
         // Place as many virtual nodes as there are hosts in the system
         // for random (non-schema-aligned) writes (more or less evenly distributed)
         virtualHostsPut(new Key(1), RAND.nextInt(replicationGroups.size()));
-        UnsignedInteger incr = (UnsignedInteger.MAX_VALUE.minus(UnsignedInteger.ONE)).dividedBy(UnsignedInteger.fromIntBits(hosts.size()));
+        int numVNodes = hosts.size()*vNodesPerHost;
+        UnsignedInteger incr = (UnsignedInteger.MAX_VALUE.minus(UnsignedInteger.ONE)).dividedBy(UnsignedInteger.fromIntBits(numVNodes));
         UnsignedInteger last = UnsignedInteger.ONE;
         UnsignedInteger ceiling = UnsignedInteger.MAX_VALUE.minus(incr);
         while (last.compareTo(ceiling) <= 0) {
@@ -447,19 +508,36 @@ public class LookupTable {
         return group.get(key);
     }
 
-    Integer virtualHostsGetResponsible(Key key) {
+    Pair<Key, Integer> virtualHostsGetResponsible(Key key) {
         int groupId = key.getFirstByte();
         LookupGroup keyGroup = virtualHostGroups[groupId];
         while (true) {
             try {
-                Integer i = keyGroup.getResponsible(key);
+                Pair<Key, Integer> i = keyGroup.getResponsible(key);
                 return i;
             } catch (NoResponsibleInGroup e) {
-                groupId = groupId - 1;
-                keyGroup = virtualHostGroups[groupId];
+                groupId--;
                 if (groupId < 0) {
                     return null;
                 }
+                keyGroup = virtualHostGroups[groupId];
+            }
+        }
+    }
+
+    Key virtualHostsGetSuccessor(Key key) {
+        int groupId = key.getFirstByte();
+        LookupGroup keyGroup = virtualHostGroups[groupId];
+        while (true) {
+            try {
+                Key k = keyGroup.getSuccessor(key);
+                return k;
+            } catch (NoResponsibleInGroup e) {
+                groupId++;
+                if (groupId >= virtualHostGroups.length) {
+                    return null;
+                }
+                keyGroup = virtualHostGroups[groupId];
             }
         }
     }

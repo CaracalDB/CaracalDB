@@ -4,7 +4,6 @@
  */
 package se.sics.caracaldb.datatransfer;
 
-import se.sics.caracaldb.datatransfer.DataTransferComponent.TransferMessage;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Message;
 

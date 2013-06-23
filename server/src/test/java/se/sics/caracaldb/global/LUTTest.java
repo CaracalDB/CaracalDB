@@ -4,6 +4,8 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -34,7 +36,7 @@ public class LUTTest {
     @Test
     public void generationTest() {
         Set<Address> addrs = generateAddresses(5);
-        LookupTable lut = LookupTable.generateInitial(addrs);
+        LookupTable lut = LookupTable.generateInitial(addrs, 2);
 
         assertEquals(addrs.size(), lut.numHosts());
         assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationGroups());
@@ -43,13 +45,35 @@ public class LUTTest {
             assertNotNull("Should find responsible for any Key", lut.virtualHostsGetResponsible(randomKey(4)));
         }
     }
+    
+    @Test
+    public void localNodesTest() {
+        Set<Address> addrs = generateAddresses(3);
+        LookupTable lut = LookupTable.generateInitial(addrs, 1);
+
+        StringBuilder sb = new StringBuilder();
+        lut.printFormat(sb);
+        System.out.println(sb.toString());
+        
+        ImmutableSet<Key> expected = ImmutableSet.of(Key.fromHex("00 00 00 00"),
+                Key.fromHex("00 00 00 01"),
+                Key.fromHex("55 55 55 55"),
+                Key.fromHex("AA AA AA A9"),
+                Key.fromHex("FF FF FF FD"));
+        
+        for (Address adr : addrs) {
+            Set<Key> localNodes = lut.getVirtualNodesAt(adr);
+            System.out.println("Nodes for " + adr + " are " + localNodes);
+            assertTrue(Sets.symmetricDifference(localNodes, expected).isEmpty());
+        }
+    }
 
     @Test
     public void lutSerialisationTest() {
         try {
             final int n = 5;
             Set<Address> addrs = generateAddresses(n);
-            LookupTable lut = LookupTable.generateInitial(addrs);
+            LookupTable lut = LookupTable.generateInitial(addrs, 2);
 
             byte[] lutbytes = lut.serialise();
 
@@ -102,6 +126,9 @@ public class LUTTest {
         
         k = new Key("AB");
         assertEquals("41 42", k.toString());
+        
+        k = Key.fromHex("FF FF FF FD");
+        assertEquals("FF FF FF FD", k.toString());
     }
 
     private Set<Address> generateAddresses(int n) {

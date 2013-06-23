@@ -12,7 +12,7 @@ import se.sics.kompics.Response;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class RangeResp extends Response {
+public class RangeResp extends StorageResponse {
     
     public final SortedMap<Key, byte[]> result;
     public final RangeReq req;

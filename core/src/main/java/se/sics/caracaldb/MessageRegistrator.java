@@ -4,7 +4,6 @@
  */
 package se.sics.caracaldb;
 
-import se.sics.caracaldb.system.StartVNode;
 import se.sics.kompics.network.grizzly.kryo.KryoMessage;
 
 /**
@@ -14,6 +13,17 @@ import se.sics.kompics.network.grizzly.kryo.KryoMessage;
  */
 public class MessageRegistrator {
     public static void register() {
-        KryoMessage.register(StartVNode.class);
+        KryoMessage.register(se.sics.caracaldb.system.StartVNode.class);
+        
+        KryoMessage.register(se.sics.caracaldb.operations.CaracalMsg.class);
+        
+        KryoMessage.register(se.sics.caracaldb.datatransfer.TransferMessage.class);
+        
+        KryoMessage.register(se.sics.caracaldb.global.ForwardMessage.class);
+        KryoMessage.register(se.sics.caracaldb.global.SampleRequest.class);
+        KryoMessage.register(se.sics.caracaldb.global.Sample.class);
+        
+        KryoMessage.register(se.sics.caracaldb.paxos.Paxos.PaxosMsg.class);
+        KryoMessage.register(se.sics.caracaldb.paxos.leader.Omega.Heartbeat.class);
     }
 }

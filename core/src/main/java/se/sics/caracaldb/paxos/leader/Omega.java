@@ -99,6 +99,18 @@ public class Omega extends ComponentDefinition {
             if (event.id != currentId) {
                 return; // ignore old timeouts
             }
+            if (!event.getTimeoutId().equals(timerId)) {
+                LOG.warn("{}: Got wrong timeout {} - expected {}", new Object[] {self, event.getTimeoutId(), timerId});
+                return;
+            }
+            if (candidates.isEmpty()) {
+                timeout = timeout + delta;
+                changeTimer();
+                if (!leader.equals(self)) {
+                    trigger(new Trust(self), eld);
+                }
+                return;
+            }
             Address newLeader = select();
             if (!leader.equals(newLeader) && newLeader != null) {
                 timeout = timeout + delta;
@@ -113,6 +125,7 @@ public class Omega extends ComponentDefinition {
     Handler<Heartbeat> heartbeatHandler = new Handler<Heartbeat>() {
         @Override
         public void handle(Heartbeat event) {
+            //LOG.debug("{}: Got Heartbeat from {}", self, event.getSource());
             if (!nodes.contains(event.getSource())) {
                 return; // ignore foreign heatbeats
             }
@@ -147,12 +160,18 @@ public class Omega extends ComponentDefinition {
         OmegaTimeout ot = new OmegaTimeout(spt, currentId);
         spt.setTimeoutEvent(ot);
         trigger(spt, timer);
+        timerId = ot.getTimeoutId();
     }
 
     public static class Heartbeat extends Message {
 
         public Heartbeat(Address src, Address dst) {
             super(src, dst);
+        }
+
+        @Override
+        public String toString() {
+            return "HB(" + this.getSource().toString() + ", " + this.getDestination().toString() + ")";
         }
     }
 

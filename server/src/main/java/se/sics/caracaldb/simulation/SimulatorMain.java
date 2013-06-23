@@ -37,7 +37,7 @@ public class SimulatorMain extends ComponentDefinition {
         // create
         Component simulator = create(VirtualSimulator.class,
                 new VirtualSimulatorInit((SimulatorScheduler) Launcher.getScheduler(),
-                scenario, new UniformRandomModel(5, 90)));
+                scenario, new UniformRandomModel(1, 10)));
         Component simulationComponent = create(SimulatorComponent.class,
                 new SimulatorComponentInit(Launcher.getCurrentConfig()));
 

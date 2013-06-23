@@ -13,5 +13,5 @@ import se.sics.kompics.Response;
  */
 public class Store extends PortType {{
     request(StorageRequest.class);
-    indication(Response.class);
+    indication(StorageResponse.class);
 }}

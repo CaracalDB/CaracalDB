@@ -11,7 +11,7 @@ import se.sics.kompics.Response;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class GetResp extends Response {
+public class GetResp extends StorageResponse {
     
     public final Key key;
     public final byte[] value;

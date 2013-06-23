@@ -16,6 +16,8 @@ public class Experiment extends PortType {
     {
         indication(BootCmd.class);
         indication(TerminateCmd.class);
+        indication(ValidateCmd.class);
+        indication(OpCmd.class);
         
         positive(TerminateExperiment.class);
         negative(TerminateExperiment.class);

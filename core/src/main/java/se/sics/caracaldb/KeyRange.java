@@ -116,4 +116,13 @@ public class KeyRange {
         return new KRBuilder(kr.beginBound, kr.begin);
     }
     
+    @Override
+    public String toString() {
+        String str = (beginBound == OPEN) ? "(" : "[";
+        str += begin.toString() + ", ";
+        str += end.toString();
+        str += (endBound == OPEN) ? ")" : "]";
+        return str;
+    }
+    
 }

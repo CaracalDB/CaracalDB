@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 
 /**
@@ -44,19 +45,30 @@ public class LookupGroup {
         return virtualHosts.get(key);
     }
 
-    public Integer getResponsible(Key key) throws LookupTable.NoResponsibleInGroup {
+    public Pair<Key, Integer> getResponsible(Key key) throws LookupTable.NoResponsibleInGroup {
         Map.Entry<Key, Integer> e = virtualHosts.floorEntry(key);
         if (e == null) {
             throw LookupTable.NoResponsibleInGroup.exception;
         } else {
-            return e.getValue();
+            return Pair.with(e.getKey(), e.getValue());
         }
+    }
+    
+    public Key getSuccessor(Key key) throws LookupTable.NoResponsibleInGroup {
+        Key succ = virtualHosts.ceilingKey(key);
+        if (succ == null) {
+            throw LookupTable.NoResponsibleInGroup.exception;
+        }
+        if (succ.equals(key)) {
+            throw LookupTable.NoResponsibleInGroup.exception;
+        }
+        return succ;
     }
 
     public Set<Key> getVirtualNodesIn(Integer replicationGroup) {
         Set<Key> nodeSet = new HashSet<Key>();
         for (Entry<Key, Integer> e : virtualHosts.entrySet()) {
-            if (e.getValue() == replicationGroup) {
+            if (e.getValue().equals(replicationGroup)) {
                 nodeSet.add(e.getKey());
             }
         }

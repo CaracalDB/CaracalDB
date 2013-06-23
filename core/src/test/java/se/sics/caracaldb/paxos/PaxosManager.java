@@ -26,7 +26,6 @@ import se.sics.kompics.timer.Timer;
 public class PaxosManager extends ComponentDefinition {
 
     private static final Logger LOG = LoggerFactory.getLogger(PaxosManager.class);
-    
     Positive<PaxosManagerPort> pm = requires(PaxosManagerPort.class);
     Positive<Network> net = requires(Network.class);
     Positive<Timer> timer = requires(Timer.class);
@@ -68,13 +67,16 @@ public class PaxosManager extends ComponentDefinition {
     Handler<PaxosOp> decideHandler = new Handler<PaxosOp>() {
         @Override
         public void handle(PaxosOp event) {
-            LOG.debug("{}: Got Decide({}) in epoch {}", new Object[] {self, event.id, view.id});
+            LOG.debug("{}: Got Decide({}) in epoch {}", new Object[]{self, event.id, view.id});
             store.decided(view.id, self, event.id);
         }
     };
     Handler<Reconfigure> reconfigHandler = new Handler<Reconfigure>() {
         @Override
         public void handle(Reconfigure event) {
+            if (view == null) {
+                store.joined(self);
+            }
             view = event.view;
             LOG.debug("{}: Got Reconfigure, going to epoch {}", self, view.id);
         }
@@ -103,10 +105,10 @@ public class PaxosManager extends ComponentDefinition {
             }
             return super.baseCompareTo(o);
         }
-        
+
         @Override
         public String toString() {
-            return "PaxosOp("+id+")";
+            return "PaxosOp(" + id + ")";
         }
     }
 }

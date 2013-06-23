@@ -36,7 +36,7 @@ public class PaxosTest {
     public static final int SEED = 0;
     private static final int BOOT_NUM = 3;
     private static final int OP_NUM = 500;
-    private static final int CHURN_NUM = 20;
+    private static final int CHURN_NUM = 4;
     
     private static SimulationScenario scenario;
     private static Scheduler scheduler;
@@ -197,7 +197,7 @@ public class PaxosTest {
                 
                 SimulationScenario.StochasticProcess churnProc = new SimulationScenario.StochasticProcess() {
                     {
-                        eventInterArrivalTime(uniform(1000, 10000));
+                        eventInterArrivalTime(uniform(20000, 30000));
                         raise(CHURN_NUM, opChurn());
                     }
                 };

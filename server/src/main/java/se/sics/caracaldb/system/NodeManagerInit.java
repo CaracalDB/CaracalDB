@@ -5,6 +5,7 @@
 package se.sics.caracaldb.system;
 
 import se.sics.kompics.Init;
+import se.sics.kompics.address.Address;
 
 /**
  *

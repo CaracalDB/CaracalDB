@@ -73,31 +73,8 @@ abstract class DataTransferComponent extends ComponentDefinition {
         }
     };
 
-    public abstract static class TransferMessage extends Message {
-
-        public final long id;
-
-        public TransferMessage(Address src, Address dst, long id) {
-            super(src, dst);
-            this.id = id;
-        }
-    }
-    
-    
     
     // internal messages and events
-
-    public static class TransferFilter extends ChannelFilter<TransferMessage, Long> {
-
-        public TransferFilter(Long val) {
-            super(TransferMessage.class, val, true);
-        }
-
-        @Override
-        public Long getValue(TransferMessage event) {
-            return event.id;
-        }
-    }
 
     public static class RetryTimeout extends Timeout {
 

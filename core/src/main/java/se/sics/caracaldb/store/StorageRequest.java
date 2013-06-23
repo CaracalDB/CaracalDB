@@ -15,6 +15,8 @@ import se.sics.kompics.Response;
  */
 public abstract class StorageRequest extends Request {
     
+    private long id;
+    
     /**
      * Custom interface for local storage queries.
      * 
@@ -31,5 +33,23 @@ public abstract class StorageRequest extends Request {
      * @return either a response or null if no response is required
      */
     public abstract Response execute(Persistence store);
+    
+    /**
+     * Set optional id to match up requests
+     * 
+     * @param val 
+     */
+    public void setId(long val) {
+        this.id = val;
+    }
+    
+    /**
+     * Set optional id to match up requests
+     * 
+     * @param val 
+     */
+    public long getId() {
+        return id;
+    }
     
 }

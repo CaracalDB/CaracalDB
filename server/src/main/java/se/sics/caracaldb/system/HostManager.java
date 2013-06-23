@@ -7,7 +7,6 @@ package se.sics.caracaldb.system;
 import java.net.UnknownHostException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sics.caracaldb.bootstrap.BootUp;
 import se.sics.caracaldb.bootstrap.Bootstrap;
 import se.sics.caracaldb.bootstrap.BootstrapCInit;
 import se.sics.caracaldb.bootstrap.BootstrapClient;
@@ -17,6 +16,10 @@ import se.sics.caracaldb.bootstrap.Bootstrapped;
 import se.sics.caracaldb.global.CatHerder;
 import se.sics.caracaldb.global.CatHerderInit;
 import se.sics.caracaldb.global.LookupService;
+import se.sics.caracaldb.global.MaintenanceService;
+import se.sics.caracaldb.store.PersistentStore;
+import se.sics.caracaldb.store.PersistentStoreInit;
+import se.sics.caracaldb.store.Store;
 import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
@@ -35,12 +38,7 @@ import se.sics.kompics.Stopped;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.VirtualNetworkChannel;
-import se.sics.kompics.network.grizzly.ConstantQuotaAllocator;
-import se.sics.kompics.network.grizzly.GrizzlyNetwork;
-import se.sics.kompics.network.grizzly.GrizzlyNetworkInit;
-import se.sics.kompics.network.grizzly.kryo.KryoMessage;
 import se.sics.kompics.timer.Timer;
-import se.sics.kompics.timer.java.JavaTimer;
 
 /**
  *
@@ -103,6 +101,7 @@ public class HostManager extends ComponentDefinition {
     private Address netSelf;
     private boolean bootstrapped = false;
     private Component catHerder;
+    private Component store;
 
     public HostManager(HostManagerInit init) throws UnknownHostException {
         config = init.config;
@@ -111,6 +110,8 @@ public class HostManager extends ComponentDefinition {
         net = requires(Network.class);
         timer = requires(Timer.class);
         bootPort = requires(Bootstrap.class);
+
+        store = create(PersistentStore.class, new PersistentStoreInit(config.getDB()));
 
 
         sharedComponents = new HostSharedComponents();
@@ -148,13 +149,19 @@ public class HostManager extends ComponentDefinition {
 
             vsc.setSelf(nodeAddr);
             vsc.setNetwork(sharedComponents.getNet());
+            vsc.setTimer(timer);
             if (bootstrapped) {
                 vsc.setLookup(catHerder.getPositive(LookupService.class));
+                vsc.setStore(store.getPositive(Store.class));
+                vsc.setMaintenance(catHerder.getPositive(MaintenanceService.class));
             }
 
             Component nodeMan = create(NodeManager.class, new NodeManagerInit(vsc, config));
 
             vsc.connectNetwork(nodeMan);
+            if (bootstrapped) {
+                connect(nodeMan.getNegative(MaintenanceService.class), vsc.getMaintenance());
+            }
 
             trigger(Start.event, nodeMan.control());
         }
@@ -224,7 +231,7 @@ public class HostManager extends ComponentDefinition {
         trigger(Start.event, catHerder.control());
 
         log.debug("{} starting CatHerder", netSelf);
-        
+
 //        StringBuilder sb = new StringBuilder();
 //        event.lut.printFormat(sb);
 //        System.out.println(sb.toString());

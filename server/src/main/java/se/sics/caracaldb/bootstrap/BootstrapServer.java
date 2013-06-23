@@ -63,7 +63,7 @@ public class BootstrapServer extends ComponentDefinition {
             @Override
             public void handle(Start event) {
                 
-                log.info("Starting up bootstrap server on {}", self);
+                log.info("Starting up bootstrap server on {}, waiting for {} nodes", self, config.getBootThreshold());
 
                 long keepAliveTimeout = config.getKeepAlivePeriod() * 2;
                 SchedulePeriodicTimeout spt =
@@ -94,6 +94,7 @@ public class BootstrapServer extends ComponentDefinition {
         final Handler<Ready> readyHandler = new Handler<Ready>() {
             @Override
             public void handle(Ready event) {
+                fresh.add(event.getSource());
                 if (state == State.SEEDING) {
                     readySet.add(event.getSource());
                 }
@@ -145,7 +146,10 @@ public class BootstrapServer extends ComponentDefinition {
         log.info("Threshold reached. Seeding LUT.");
         bootSet = ImmutableSet.copyOf(active);
         waitSet = ImmutableSet.copyOf(active);
-        lut = LookupTable.generateInitial(bootSet);
+        lut = LookupTable.generateInitial(bootSet, config.getBootVNodes());
+        StringBuilder sb = new StringBuilder();
+        lut.printFormat(sb);
+        System.out.println(sb.toString());
         try {
             lutData = lut.serialise();
         } catch (IOException ex) {
@@ -167,6 +171,7 @@ public class BootstrapServer extends ComponentDefinition {
         log.info("Everyone of consequence is ready. Booting Up.");
         for (Address adr : active) {
             if (!adr.equals(self)) {
+                
                 trigger(new BootUp(self, adr), net);
             }
         }

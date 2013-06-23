@@ -23,6 +23,7 @@ import se.sics.kompics.timer.java.JavaTimer;
  */
 public class LauncherComponent extends ComponentDefinition {
     private Component network;
+    private Component deads;
     private Component timer;
     private Component manager;
     VirtualNetworkChannel vnc;
@@ -40,7 +41,8 @@ public class LauncherComponent extends ComponentDefinition {
                 Runtime.getRuntime().availableProcessors(),
                 new ConstantQuotaAllocator(5)));
         timer = create(JavaTimer.class, Init.NONE);
-        vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
+        deads = create(DeadLetterBox.class, new DeadLetterBoxInit(netSelf));
+        vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class), deads.getNegative(Network.class));
         manager = create(HostManager.class, new HostManagerInit(config, netSelf, vnc));
         
         connect(manager.getNegative(Timer.class), timer.getPositive(Timer.class));

@@ -13,19 +13,18 @@ import se.sics.kompics.network.Message;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public abstract class ForwardToAny extends Event {
+public class ForwardToAny extends Event {
     
     public final Key key;
+    public final Forwardable msg;
     
-    /**
-     * Return a message with desired contents and with the given address as dest.
-     * 
-     * @param dest Address where message is forwarded to
-     * @return Message to be forwarded
-     */
-    abstract public Message insertDestination(Address dest);
-    
-    public ForwardToAny(Key dest) {
+    public ForwardToAny(Key dest, Forwardable msg) {
         this.key = dest;
+        this.msg = msg;
+    }
+    
+    @Override
+    public String toString() {
+        return "ForwardToAny(" + key.toString() + ", " + msg.toString() + ")";
     }
 }

@@ -111,8 +111,8 @@ public class Paxos extends ComponentDefinition {
 
     private void goActive() {
         state = State.ACTIVE;
-        
-        
+
+
         subscribe(startHandler, control);
 
         subscribe(proposeHandler, consensus);
@@ -130,8 +130,8 @@ public class Paxos extends ComponentDefinition {
     Handler<Install> installHandler = new Handler<Install>() {
         @Override
         public void handle(Install event) {
-            LOG.info("{}: Got install for {} and ({}, {})", 
-                    new Object[] {self, event.event, event.ballot, event.highestDecided});
+            LOG.info("{}: Got install for {} and ({}, {})",
+                    new Object[]{self, event.event, event.ballot, event.highestDecided});
             Reconfigure rconf = event.event;
             view = rconf.view;
             quorum = rconf.quorum;
@@ -291,9 +291,8 @@ public class Paxos extends ComponentDefinition {
 //                phase2a(max);
 //                lastInstance++;
 //            }
-            if (lastProposedId < lastInstance) {
-                lastProposedId = lastInstance;
-            }
+            lastProposedId = lastInstance;
+
             LOG.debug("{}: Proposing new values.", self);
             // Propose new values on free instances
             //ImmutableSet<Decide> props = ImmutableSet.copyOf(proposals);
@@ -568,12 +567,13 @@ public class Paxos extends ComponentDefinition {
 
     public static class Promise extends PaxosMsg {
 
-        public final ImmutableSet<Instance> maxInstances;
+        // Should be Immutable, but tell that to Kryo -.-
+        public final Set<Instance> maxInstances;
         public final View view;
 
         public Promise(Address src, Address dst, int ballot, ImmutableSet<Instance> maxInstances, View v) {
             super(src, dst, ballot);
-            this.maxInstances = maxInstances;
+            this.maxInstances = new HashSet<Instance>(maxInstances);
             this.view = v;
         }
     }

@@ -7,6 +7,8 @@ package se.sics.caracaldb.system;
 import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Set;
+import se.sics.caracaldb.persistence.Database;
+import se.sics.caracaldb.persistence.memory.InMemoryDB;
 import se.sics.kompics.address.Address;
 
 /**
@@ -23,10 +25,18 @@ public class Configuration implements Cloneable {
     private Set<VirtualComponentHook> virtualHooks = new HashSet<VirtualComponentHook>();
     private Address bootstrapServer;
     private int bootThreshold = 3;
+    private int bootVNodes = 1;
     private long keepAlivePeriod = 1000;
     private int messageBufferSizeMax = 16 * 1024;
     private int messageBufferSize = messageBufferSizeMax/8;
     private int dataMessageSize = messageBufferSize;
+    // Store
+    private Database db;
+    
+    {
+        // Use in memory as default
+        db = new InMemoryDB();
+    }
     
     public void setIp(InetAddress ip) {
         this.ip = ip;
@@ -133,7 +143,37 @@ public class Configuration implements Cloneable {
         that.ip = this.ip;
         that.port = this.port;
         that.keepAlivePeriod = this.keepAlivePeriod;
+        // copying the store is not the smartest thing to do
+        //that.db = this.db;
         
         return that;
+    }
+
+    /**
+     * @return the db
+     */
+    public Database getDB() {
+        return db;
+    }
+
+    /**
+     * @param db the db to set
+     */
+    public void setDB(Database db) {
+        this.db = db;
+    }
+
+    /**
+     * @return the bootVNodes
+     */
+    public int getBootVNodes() {
+        return bootVNodes;
+    }
+
+    /**
+     * @param bootVNodes the bootVNodes to set
+     */
+    public void setBootVNodes(int bootVNodes) {
+        this.bootVNodes = bootVNodes;
     }
 }

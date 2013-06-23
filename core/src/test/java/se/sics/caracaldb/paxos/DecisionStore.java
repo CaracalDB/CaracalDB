@@ -36,8 +36,10 @@ public class DecisionStore {
     private final ReadWriteLock rwlock = new ReentrantReadWriteLock();
     private Set<Address> failed = new HashSet<Address>();
     private Set<Long> decided = new TreeSet<Long>();
+    private Set<Address> currentGroup = new HashSet<Address>();
 
     public DecisionStore(ImmutableSet<Address> group) {
+        currentGroup.addAll(group);
         stores.put(0, new EpochStore(0, group));
     }
 
@@ -81,10 +83,15 @@ public class DecisionStore {
         }
 
     }
+    
+    public void joined(Address node) {
+        currentGroup.add(node);
+    }
 
     public void fail(int epoch, Address node) {
         rwlock.readLock().lock();
         try {
+            currentGroup.remove(node);
             EpochStore store = stores.get(epoch);
             store.decided(node, -1l);
             failed.add(node);
