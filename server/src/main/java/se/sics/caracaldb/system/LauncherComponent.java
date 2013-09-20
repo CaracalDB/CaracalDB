@@ -4,7 +4,6 @@
  */
 package se.sics.caracaldb.system;
 
-import se.sics.caracaldb.MessageRegistrator;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Init;
@@ -29,14 +28,15 @@ public class LauncherComponent extends ComponentDefinition {
     VirtualNetworkChannel vnc;
     
     static {
-        MessageRegistrator.register();
+        ServerMessageRegistrator.register();
     }
     
     {
-        Configuration config = Launcher.getCurrentConfig();
-        Address netSelf = new Address(config.getIp(), config.getPort(), null);
+        Configuration config = Launcher.getConfig();
+        Address netSelf = new Address(config.getIp(), config.getInt("server.address.port"), null);
         network = create(GrizzlyNetwork.class, new GrizzlyNetworkInit(netSelf, 8, 0, 0, 
-                config.getMessageBufferSize(), config.getMessageBufferSizeMax(),
+                config.getInt("caracal.network.messageBufferSize"), 
+                config.getInt("caracal.network.messageBufferSizeMax"),
                 Runtime.getRuntime().availableProcessors(),
                 Runtime.getRuntime().availableProcessors(),
                 new ConstantQuotaAllocator(5)));

@@ -9,6 +9,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.View;
+import se.sics.caracaldb.fd.EventualFailureDetector;
+import se.sics.caracaldb.fd.SimpleEFD;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -29,8 +31,10 @@ public class PaxosManager extends ComponentDefinition {
     Positive<PaxosManagerPort> pm = requires(PaxosManagerPort.class);
     Positive<Network> net = requires(Network.class);
     Positive<Timer> timer = requires(Timer.class);
+    Positive<EventualFailureDetector> fd = requires(EventualFailureDetector.class);
     Positive<Consensus> consensus = requires(Consensus.class);
     Component paxos;
+    Component fdComp;
     private Address self;
     private DecisionStore store;
     private View view;
@@ -45,11 +49,17 @@ public class PaxosManager extends ComponentDefinition {
         if (view != null) {
             quorum = view.members.size() / 2 + 1;
         }
+        fdComp = create(SimpleEFD.class, new SimpleEFD.Init(init.networkBound, self));
         paxos = create(Paxos.class, new PaxosInit(view, quorum, init.networkBound, self));
 
         connect(paxos.getPositive(Consensus.class), consensus.getPair());
+        connect(fdComp.getPositive(EventualFailureDetector.class), fd.getPair());
+        // neg
+        connect(fdComp.getNegative(Network.class), net);
+        connect(fdComp.getNegative(Timer.class), timer);
         connect(paxos.getNegative(Network.class), net);
-        connect(paxos.getNegative(Timer.class), timer);
+        //connect(paxos.getNegative(Timer.class), timer);
+        connect(paxos.getNegative(EventualFailureDetector.class), fd);
 
         // subscriptions
         subscribe(proposeHandler, pm);
@@ -88,6 +98,21 @@ public class PaxosManager extends ComponentDefinition {
             store.fail(view.id, self);
         }
     };
+    
+    @Override
+    public void tearDown() {
+        disconnect(paxos.getPositive(Consensus.class), consensus.getPair());
+        disconnect(fdComp.getPositive(EventualFailureDetector.class), fd.getPair());
+        // neg
+        disconnect(fdComp.getNegative(Network.class), net);
+        disconnect(fdComp.getNegative(Timer.class), timer);
+        disconnect(paxos.getNegative(Network.class), net);
+        //connect(paxos.getNegative(Timer.class), timer);
+        disconnect(paxos.getNegative(EventualFailureDetector.class), fd);
+        
+        destroy(fdComp);
+        destroy(paxos);
+    }
 
     public static class PaxosOp extends Decide {
 

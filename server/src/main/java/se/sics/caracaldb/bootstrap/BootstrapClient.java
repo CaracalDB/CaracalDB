@@ -56,7 +56,8 @@ public class BootstrapClient extends ComponentDefinition {
                 log.debug("Starting bootstrap client on {}", self);
                 
                 SchedulePeriodicTimeout spt =
-                        new SchedulePeriodicTimeout(0, config.getKeepAlivePeriod());
+                        new SchedulePeriodicTimeout(0, 
+                        config.getMilliseconds("caracal.network.keepAlivePeriod"));
                 timeoutEvent = new RequestTimeout(spt);
                 spt.setTimeoutEvent(timeoutEvent);
                 trigger(spt, timer);

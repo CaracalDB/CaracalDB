@@ -14,8 +14,9 @@ import se.sics.kompics.Response;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class GetReq extends StorageRequest {
+
     public final Key key;
-    
+
     public GetReq(Key k) {
         key = k;
     }
@@ -24,5 +25,10 @@ public class GetReq extends StorageRequest {
     public Response execute(Persistence store) {
         byte[] val = store.get(key.getArray());
         return new GetResp(this, key, val);
+    }
+
+    @Override
+    public String toString() {
+        return "GetReq(" + key.toString() + ")";
     }
 }

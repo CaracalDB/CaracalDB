@@ -14,6 +14,7 @@ import se.sics.caracaldb.View;
 import se.sics.caracaldb.global.ForwardToAny;
 import se.sics.caracaldb.global.LookupService;
 import se.sics.caracaldb.global.MaintenanceMsg;
+import se.sics.caracaldb.global.NodeSynced;
 import se.sics.caracaldb.global.Reconfiguration;
 import se.sics.caracaldb.replication.Replication;
 import se.sics.caracaldb.replication.Synced;
@@ -80,6 +81,7 @@ public class MethCat extends ComponentDefinition {
         @Override
         public void handle(Synced event) {
             goToActive();
+            trigger(new MaintenanceMsg(self, self, new NodeSynced(view, responsibility)), net);
         }
     };
     // ACTIVE

@@ -22,7 +22,8 @@ import se.sics.kompics.simulation.SimulatorScheduler;
  */
 public abstract class Launcher {
 
-    private static Configuration currentConfig;
+    private static Configuration.Builder configBuilder;
+    private static Configuration config;
     private static Scheduler scheduler;
     private static boolean simulation = false;
     private static SimulationScenario scenario;
@@ -30,28 +31,6 @@ public abstract class Launcher {
 
     public static void main(String[] args) {
         reset();
-        Config conf = ConfigFactory.load();
-        currentConfig.setMessageBufferSizeMax(conf.getInt("caracal.messageBufferSizeMax") * 1024);
-        currentConfig.setMessageBufferSizeMax(conf.getInt("caracal.messageBufferSize") * 1024);
-        currentConfig.setKeepAlivePeriod(conf.getLong("caracal.keepAlivePeriod"));
-        currentConfig.setBootThreshold(conf.getInt("caracal.bootThreshold"));
-        currentConfig.setBootVNodes(conf.getInt("caracal.bootVNodes"));
-        String ipStr = conf.getString("bootstrap.address.hostname");
-        String localHost = conf.getString("server.address.hostname");
-        int bootPort = conf.getInt("bootstrap.address.port");
-        int localPort = conf.getInt("server.address.port");
-        InetAddress localIp = null;
-        InetAddress bootIp = null;
-        try {
-            bootIp = InetAddress.getByName(ipStr);
-            localIp = InetAddress.getByName(localHost);
-        } catch (UnknownHostException ex) {
-            throw new RuntimeException(ex.getMessage());
-        }
-        Address bootstrapServer = new Address(bootIp, bootPort, null);
-        currentConfig.setBootstrapServer(bootstrapServer);
-        currentConfig.setIp(localIp);
-        currentConfig.setPort(localPort);
         start();
         try {
             Kompics.waitForTermination();
@@ -64,18 +43,23 @@ public abstract class Launcher {
         if (Kompics.isOn()) {
             Kompics.shutdown();
         }
-        currentConfig = new Configuration();
+        configBuilder = Configuration.Factory.load();
+        config = null;
         simulation = false;
         scheduler = null;
         scenario = null;
         validator = null;
     }
 
-    public static Configuration getCurrentConfig() {
-        if (currentConfig == null) {
-            reset();
+    public static Configuration getConfig() {
+        if (config == null) {
+            throw new RuntimeException("Don't access the config before starting!");
         }
-        return currentConfig;
+        return config;
+    }
+    
+    public static Configuration.Builder config() {
+        return configBuilder;
     }
 
     public static Scheduler getScheduler() {
@@ -91,6 +75,7 @@ public abstract class Launcher {
     }
 
     public static void start() {
+        config = configBuilder.finalise();
         Kompics.createAndStart(LauncherComponent.class, Runtime.getRuntime().availableProcessors(), 20); // Yes 20 is totally arbitrary
     }
 
@@ -100,6 +85,7 @@ public abstract class Launcher {
 
     public static void simulate(SimulationScenario scenario) {
         simulation = true;
+        config = configBuilder.finalise();
         scheduler = new SimulatorScheduler();
         Launcher.scenario = scenario;
         Kompics.setScheduler(scheduler);

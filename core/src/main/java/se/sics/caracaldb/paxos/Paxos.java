@@ -11,24 +11,21 @@ import com.google.common.collect.TreeMultimap;
 import com.google.common.primitives.Ints;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.NavigableSet;
-import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.View;
-import se.sics.caracaldb.paxos.leader.LeaderDetector;
-import se.sics.caracaldb.paxos.leader.Omega;
-import se.sics.caracaldb.paxos.leader.OmegaInit;
-import se.sics.caracaldb.paxos.leader.Trust;
+import se.sics.caracaldb.fd.EventualFailureDetector;
+import se.sics.caracaldb.leader.LeaderDetector;
+import se.sics.caracaldb.leader.Omega;
+import se.sics.caracaldb.leader.OmegaInit;
+import se.sics.caracaldb.leader.Trust;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -39,9 +36,6 @@ import se.sics.kompics.Stopped;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Message;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.timer.CancelPeriodicTimeout;
-import se.sics.kompics.timer.SchedulePeriodicTimeout;
-import se.sics.kompics.timer.Timeout;
 import se.sics.kompics.timer.Timer;
 
 /**
@@ -60,7 +54,8 @@ public class Paxos extends ComponentDefinition {
     Negative<Consensus> consensus = provides(Consensus.class);
     Positive<LeaderDetector> eld = requires(LeaderDetector.class);
     Positive<Network> net = requires(Network.class);
-    Positive<Timer> timer = requires(Timer.class);
+    Positive<EventualFailureDetector> fd = requires(EventualFailureDetector.class);
+    //Positive<Timer> timer = requires(Timer.class); //TODO check if necessary, connections
     Component omega;
     private final Address self;
     // Instance
@@ -94,10 +89,9 @@ public class Paxos extends ComponentDefinition {
 
 
 
-        omega = create(Omega.class, new OmegaInit(init.networkBound / 10, init.networkBound, self));
+        omega = create(Omega.class, new OmegaInit(self));
         connect(omega.getPositive(LeaderDetector.class), eld.getPair());
-        connect(omega.getNegative(Network.class), net);
-        connect(omega.getNegative(Timer.class), timer);
+        connect(omega.getNegative(EventualFailureDetector.class), fd);
 
         // Subscriptions
         subscribe(stoppedHandler, control);
@@ -155,8 +149,7 @@ public class Paxos extends ComponentDefinition {
         public void handle(Stopped event) {
 
             disconnect(omega.getPositive(LeaderDetector.class), eld.getPair());
-            disconnect(omega.getNegative(Network.class), net);
-            disconnect(omega.getNegative(Timer.class), timer);
+            disconnect(omega.getNegative(EventualFailureDetector.class), fd);
             destroy(omega);
         }
     };

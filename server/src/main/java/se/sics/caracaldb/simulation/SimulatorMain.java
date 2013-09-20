@@ -39,7 +39,7 @@ public class SimulatorMain extends ComponentDefinition {
                 new VirtualSimulatorInit((SimulatorScheduler) Launcher.getScheduler(),
                 scenario, new UniformRandomModel(1, 10)));
         Component simulationComponent = create(SimulatorComponent.class,
-                new SimulatorComponentInit(Launcher.getCurrentConfig()));
+                new SimulatorComponentInit(Launcher.getConfig()));
 
         // connect
         connect(simulationComponent.getNegative(Network.class),

@@ -6,6 +6,7 @@ package se.sics.caracaldb;
 
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Sets;
+import com.google.common.collect.Sets.SetView;
 import java.util.Iterator;
 import java.util.NavigableSet;
 import java.util.TreeSet;
@@ -93,5 +94,17 @@ public class View implements Comparable<View> {
         }
         sb.append("}");
         return sb.toString();
+    }
+    
+    public View copy() {
+        return new View(ImmutableSortedSet.copyOf(members), id);
+    }
+    
+    public SetView<Address> addedSince(View oldView) {
+        return Sets.difference(members, oldView.members);
+    }
+    
+    public SetView<Address> removedSince(View oldView) {
+        return Sets.difference(oldView.members, members);
     }
 }

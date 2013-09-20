@@ -13,6 +13,7 @@ import static org.junit.Assert.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.simulation.SimulationGen;
+import se.sics.caracaldb.system.Configuration.NodePhase;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -46,9 +47,7 @@ public class BootTest {
     public void basic() {
         SimulationScenario bootScen = SimulationGen.bootN(BOOT_NUM);
         
-        Configuration config = Launcher.getCurrentConfig();
-        
-        config.addVirtualHook(new VirtualComponentHook(){
+        Launcher.config().addVirtualHook(NodePhase.INIT, new VirtualComponentHook(){
 
             @Override
             public void setUp(VirtualSharedComponents shared, ComponentProxy parent) {

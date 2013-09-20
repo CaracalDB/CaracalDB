@@ -96,7 +96,9 @@ public class SimulatorComponent extends ComponentDefinition {
             int n = event.nodeCount - 1;
 
             int bootstrapPort = getFreePort();
-            baseConfig.setBootstrapServer(new Address(localIP, bootstrapPort, null));
+            baseConfig = Configuration.Factory.modify(baseConfig)
+                    .setBootstrapServer(new Address(localIP, bootstrapPort, null))
+                    .finalise();
             bootBootstrapNode();
 
             for (int i = 0; i < n; i++) {
@@ -164,9 +166,10 @@ public class SimulatorComponent extends ComponentDefinition {
     };
 
     private void bootBootstrapNode() {
-        Configuration myConf = (Configuration) baseConfig.clone();
-        myConf.setIp(baseConfig.getBootstrapServer().getIp());
-        myConf.setPort(baseConfig.getBootstrapServer().getPort());
+        Configuration myConf = Configuration.Factory.modify(baseConfig)
+                .setIp(baseConfig.getBootstrapServer().getIp())
+                .setPort(baseConfig.getBootstrapServer().getPort())
+                .finalise();
 
         Address netSelf = new Address(myConf.getIp(), myConf.getPort(), null);
 
@@ -181,9 +184,10 @@ public class SimulatorComponent extends ComponentDefinition {
     }
 
     private void bootNode(int port) {
-        Configuration myConf = (Configuration) baseConfig.clone();
-        myConf.setIp(baseConfig.getBootstrapServer().getIp());
-        myConf.setPort(port);
+        Configuration myConf = Configuration.Factory.modify(baseConfig)
+                .setIp(baseConfig.getBootstrapServer().getIp())
+                .setPort(port)
+                .finalise();
 
         Address netSelf = new Address(myConf.getIp(), myConf.getPort(), null);
 

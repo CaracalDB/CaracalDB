@@ -29,4 +29,8 @@ public class Put extends StorageRequest {
         return null;
     }
     
+    @Override
+    public String toString() {
+        return "PutReq("+key+", "+value+")";
+    }
 }

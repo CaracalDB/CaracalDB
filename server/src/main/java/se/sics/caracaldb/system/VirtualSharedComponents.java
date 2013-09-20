@@ -4,6 +4,7 @@
  */
 package se.sics.caracaldb.system;
 
+import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.global.LookupService;
 import se.sics.caracaldb.global.MaintenanceService;
 import se.sics.caracaldb.store.Store;
@@ -18,19 +19,16 @@ import se.sics.kompics.timer.Timer;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class VirtualSharedComponents {
-
-    private VirtualNetworkChannel net;
-    private byte[] id;
-    private Address self;
-    private Positive<LookupService> lookup;
-    private Positive<Store> store;
-    private Positive<MaintenanceService> maintenance;
-    private Positive<Timer> timer;
+public class VirtualSharedComponents extends ServiceRegistry {
 
     public VirtualSharedComponents(byte[] id) {
         this.id = id;
     }
+    /*
+     * Address
+     */
+    private byte[] id;
+    private Address self;
 
     void setSelf(Address self) {
         this.self = self;
@@ -40,8 +38,25 @@ public class VirtualSharedComponents {
         return self;
     }
 
+    public byte[] getId() {
+        return id;
+    }
+    /*
+     * Core Services
+     */
+    private VirtualNetworkChannel net;
+    private Positive<LookupService> lookup;
+    private Positive<Store> store;
+    private Positive<MaintenanceService> maintenance;
+    private Positive<Timer> timer;
+    private Positive<EventualFailureDetector> fd;
+
     void setNetwork(VirtualNetworkChannel vnc) {
         this.net = vnc;
+    }
+    
+    void setFailureDetector(Positive<EventualFailureDetector> fd) {
+        this.fd = fd;
     }
 
     public void connectNetwork(Component c) {
@@ -52,22 +67,18 @@ public class VirtualSharedComponents {
         net.removeConnection(id, c.getNegative(Network.class));
     }
 
-    public byte[] getId() {
-        return id;
-    }
-    
     public void setLookup(Positive<LookupService> lookup) {
         this.lookup = lookup;
     }
-    
+
     public Positive<LookupService> getLookup() {
         return lookup;
     }
-    
+
     public void setStore(Positive<Store> store) {
         this.store = store;
     }
-    
+
     public Positive<Store> getStore() {
         return store;
     }
@@ -98,5 +109,9 @@ public class VirtualSharedComponents {
      */
     public void setTimer(Positive<Timer> timer) {
         this.timer = timer;
+    }
+    
+    public Positive<EventualFailureDetector> getFailureDetector() {
+        return this.fd;
     }
 }

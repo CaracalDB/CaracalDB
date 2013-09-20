@@ -128,7 +128,7 @@ public class SimulatorComponent extends ComponentDefinition {
             Address adr = new Address(localIP, port, null);
             group.put(port, adr);
             int epoch = store.join(adr);
-            LOG.debug("Node {} joining in epoch {} with new group {}", new Object[]{adr, epoch, group.toString()});
+            LOG.info("Node {} joining in epoch {} with new group {}", new Object[]{adr, epoch, group.toString()});
             //ImmutableSet<Address> emptyGroup = ImmutableSet.of();
             View v = new View(ImmutableSortedSet.copyOf(group.values()), epoch + 1);
             bootNode(adr, null);
@@ -139,8 +139,8 @@ public class SimulatorComponent extends ComponentDefinition {
     Handler<Commands.Fail> failHandler = new Handler<Commands.Fail>() {
         @Override
         public void handle(Fail event) {
-            LOG.debug("Handing fail event.");
-            LOG.info(null);
+            LOG.info("Handing fail event.");
+            //LOG.info(null);
             Component failC = null;
             // always let leader fail, since it's the only intereasting case
             int failP = group.firstKey();

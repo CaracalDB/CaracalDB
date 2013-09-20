@@ -48,7 +48,6 @@ public class OperationsTest {
     @Test
     public void basic() {
         SimulationScenario opScen = SimulationGen.putGet(BOOT_NUM, OP_NUM);
-        Configuration config = Launcher.getCurrentConfig();
 
 
         Launcher.simulate(opScen);

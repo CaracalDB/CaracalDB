@@ -13,6 +13,7 @@ import se.sics.caracaldb.bootstrap.BootstrapClient;
 import se.sics.caracaldb.bootstrap.BootstrapSInit;
 import se.sics.caracaldb.bootstrap.BootstrapServer;
 import se.sics.caracaldb.bootstrap.Bootstrapped;
+import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.global.CatHerder;
 import se.sics.caracaldb.global.CatHerderInit;
 import se.sics.caracaldb.global.LookupService;
@@ -20,6 +21,7 @@ import se.sics.caracaldb.global.MaintenanceService;
 import se.sics.caracaldb.store.PersistentStore;
 import se.sics.caracaldb.store.PersistentStoreInit;
 import se.sics.caracaldb.store.Store;
+import se.sics.caracaldb.system.Configuration.SystemPhase;
 import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
@@ -51,6 +53,7 @@ public class HostManager extends ComponentDefinition {
     public final Configuration config;
     private Positive<Network> net;
     private Positive<Timer> timer;
+    private Positive<EventualFailureDetector> fd;
     private Positive<Bootstrap> bootPort;
     private ComponentProxy proxy = new ComponentProxy() {
         @Override
@@ -109,6 +112,7 @@ public class HostManager extends ComponentDefinition {
 
         net = requires(Network.class);
         timer = requires(Timer.class);
+        fd = requires(EventualFailureDetector.class);
         bootPort = requires(Bootstrap.class);
 
         store = create(PersistentStore.class, new PersistentStoreInit(config.getDB()));
@@ -121,9 +125,11 @@ public class HostManager extends ComponentDefinition {
         VirtualNetworkChannel vnc = init.vnc;
         sharedComponents.setNetwork(vnc);
         sharedComponents.setTimer(timer);
+        sharedComponents.setFailureDetector(fd);
         sharedComponents.connectNetwork(this.getComponentCore());
 
-        for (ComponentHook hook : config.getComponentHooks()) {
+        // INIT phase
+        for (ComponentHook hook : config.getHostHooks(SystemPhase.INIT)) {
             hook.setUp(sharedComponents, proxy);
         }
 
@@ -149,6 +155,7 @@ public class HostManager extends ComponentDefinition {
 
             vsc.setSelf(nodeAddr);
             vsc.setNetwork(sharedComponents.getNet());
+            vsc.setFailureDetector(fd);
             vsc.setTimer(timer);
             if (bootstrapped) {
                 vsc.setLookup(catHerder.getPositive(LookupService.class));
@@ -195,6 +202,11 @@ public class HostManager extends ComponentDefinition {
             }
         };
         subscribe(bootHandler, bootPort);
+        
+        // CLIENT only
+        for (ComponentHook hook : config.getHostHooks(SystemPhase.BOOTSTRAP_CLIENT)) {
+            hook.setUp(sharedComponents, proxy);
+        }
     }
 
     private void startBootstrapServer() {
@@ -222,6 +234,11 @@ public class HostManager extends ComponentDefinition {
             }
         };
         subscribe(bootHandler, bootPort);
+        
+        // SERVER only
+        for (ComponentHook hook : config.getHostHooks(SystemPhase.BOOTSTRAP_SERVER)) {
+            hook.setUp(sharedComponents, proxy);
+        }
     }
 
     private void startCatHerder(Bootstrapped event) {
@@ -238,11 +255,16 @@ public class HostManager extends ComponentDefinition {
 
         // might not be the most obvious place...but at least I only have to write it once
         bootstrapped = true;
+        
+        // BOOTSTRAPPED phase
+        for (ComponentHook hook : config.getHostHooks(SystemPhase.BOOTSTRAPPED)) {
+            hook.setUp(sharedComponents, proxy);
+        }
     }
 
     @Override
     public void tearDown() {
-        for (ComponentHook hook : config.getComponentHooks()) {
+        for (ComponentHook hook : config.getHostHooks()) {
             hook.tearDown(sharedComponents, proxy);
         }
     }

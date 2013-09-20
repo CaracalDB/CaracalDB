@@ -211,6 +211,7 @@ public class PaxosSMR extends ComponentDefinition {
         public void initiate(GetRequest op) {
             GetReq request = new GetReq(op.key);
             request.setId(op.id);
+            //LOG.debug("{}: requesting {}", self, request);
             trigger(request, store);
         }
     };
@@ -219,6 +220,7 @@ public class PaxosSMR extends ComponentDefinition {
         public void initiate(PutRequest op) {
             Put request = new Put(op.key, op.data);
             trigger(request, store);
+            //LOG.debug("{}: requesting {}", self, request);
             trigger(new PutResponse(op.id, op.key), rep);
         }
     };

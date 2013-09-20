@@ -24,6 +24,6 @@ public class MessageRegistrator {
         KryoMessage.register(se.sics.caracaldb.global.Sample.class);
         
         KryoMessage.register(se.sics.caracaldb.paxos.Paxos.PaxosMsg.class);
-        KryoMessage.register(se.sics.caracaldb.paxos.leader.Omega.Heartbeat.class);
+        
     }
 }

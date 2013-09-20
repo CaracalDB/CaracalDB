@@ -9,11 +9,13 @@ import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
+import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.global.LookupService;
 import se.sics.caracaldb.global.MaintenanceMsg;
 import se.sics.caracaldb.global.MaintenanceService;
 import se.sics.caracaldb.global.NodeBooted;
 import se.sics.caracaldb.global.NodeJoin;
+import se.sics.caracaldb.global.NodeSynced;
 import se.sics.caracaldb.operations.Meth;
 import se.sics.caracaldb.operations.MethCat;
 import se.sics.caracaldb.paxos.Consensus;
@@ -23,6 +25,7 @@ import se.sics.caracaldb.replication.PaxosSMR;
 import se.sics.caracaldb.replication.PaxosSMRInit;
 import se.sics.caracaldb.replication.Replication;
 import se.sics.caracaldb.store.Store;
+import se.sics.caracaldb.system.Configuration.NodePhase;
 import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
@@ -114,22 +117,21 @@ public class NodeManager extends ComponentDefinition {
         self = vsc.getSelf();
 
         LOG.debug("Setting up VNode: " + self);
-        
 
-        for (VirtualComponentHook hook : config.getVirtualHooks()) {
+
+        for (VirtualComponentHook hook : config.getVirtualHooks(NodePhase.INIT)) {
             hook.setUp(vsc, proxy);
         }
-        
+
         // subscriptions
         subscribe(stopNodeHandler, networkPort);
         subscribe(startHandler, control);
         subscribe(maintenanceHandler, networkPort);
     }
     Handler<Start> startHandler = new Handler<Start>() {
-
         @Override
         public void handle(Start event) {
-           trigger(new NodeBooted(self), maintenancePort);
+            trigger(new NodeBooted(self), maintenancePort);
         }
     };
     Handler<StopVNode> stopNodeHandler = new Handler<StopVNode>() {
@@ -140,21 +142,23 @@ public class NodeManager extends ComponentDefinition {
         }
     };
     Handler<MaintenanceMsg> maintenanceHandler = new Handler<MaintenanceMsg>() {
-
         @Override
         public void handle(MaintenanceMsg event) {
             if (event.op instanceof NodeJoin) {
                 LOG.debug("{}: Joining: {}", self, event.op);
                 NodeJoin join = (NodeJoin) event.op;
-                Component methCat = create(MethCat.class, 
+                Component methCat = create(MethCat.class,
                         new Meth(self, join.responsibility, join.view));
                 View repView = join.dataTransfer ? null : join.view;
                 //LOG.debug("NODEJOIN {} - {}", join.dataTransfer, repView);
-                Component replication = create(PaxosSMR.class, 
-                        new PaxosSMRInit(repView, self, join.responsibility, 
-                        config.getKeepAlivePeriod(), config.getDataMessageSize()));
-                Component paxos = create(Paxos.class, 
-                        new PaxosInit(repView, join.quorum, config.getKeepAlivePeriod(), self));
+                Component replication = create(PaxosSMR.class,
+                        new PaxosSMRInit(repView, self,
+                        join.responsibility,
+                        config.getMilliseconds("caracal.network.keepAlivePeriod"),
+                        config.getInt("caracal.network.dataMessageSize")));
+                Component paxos = create(Paxos.class,
+                        new PaxosInit(repView, join.quorum, 
+                        config.getMilliseconds("caracal.network.keepAlivePeriod"), self));
                 // methcat
                 vsc.connectNetwork(methCat);
                 connect(methCat.getNegative(Replication.class), replication.getPositive(Replication.class));
@@ -166,12 +170,20 @@ public class NodeManager extends ComponentDefinition {
                 connect(replication.getNegative(Consensus.class), paxos.getPositive(Consensus.class));
                 // paxos
                 vsc.connectNetwork(paxos);
-                connect(paxos.getNegative(Timer.class), vsc.getTimer());
-                
+                connect(paxos.getNegative(EventualFailureDetector.class), vsc.getFailureDetector());
+
                 // Start!
                 trigger(Start.event, paxos.control());
                 trigger(Start.event, replication.control());
                 trigger(Start.event, methCat.control());
+
+                for (VirtualComponentHook hook : config.getVirtualHooks(NodePhase.JOIN)) {
+                    hook.setUp(vsc, proxy);
+                }
+            } else if (event.op instanceof NodeSynced) {
+                for (VirtualComponentHook hook : config.getVirtualHooks(NodePhase.SYNCED)) {
+                    hook.setUp(vsc, proxy);
+                }
             }
         }
     };

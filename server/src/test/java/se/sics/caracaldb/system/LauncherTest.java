@@ -13,6 +13,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import se.sics.caracaldb.TestUtil;
+import se.sics.caracaldb.system.Configuration.NodePhase;
+import se.sics.caracaldb.system.Configuration.SystemPhase;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -62,17 +64,16 @@ public class LauncherTest {
         virtAddr2 = netAddr.newVirtual((byte) 1);
 
         Launcher.reset();
-        Launcher.getCurrentConfig().toggleBoot(); // don't actually boot up
+        Launcher.config().setBoot(false); // don't actually boot up
 
     }
 
     @Test
     public void basic() {
-        Configuration config = Launcher.getCurrentConfig();
-
-        config.setIp(netAddr.getIp());
-        config.setPort(netAddr.getPort());
-        config.addHostHook(new ComponentHook() {
+        Launcher.config()
+                .setIp(netAddr.getIp())
+                .setPort(netAddr.getPort())
+                .addHostHook(SystemPhase.INIT, new ComponentHook() {
             @Override
             public void setUp(HostSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
@@ -101,12 +102,10 @@ public class LauncherTest {
 
     @Test
     public void virtualBasic() {
-        Configuration config = Launcher.getCurrentConfig();
-
-        config.setIp(netAddr.getIp());
-        config.setPort(netAddr.getPort());
-
-        config.addHostHook(new ComponentHook() {
+        Launcher.config()
+                .setIp(netAddr.getIp())
+                .setPort(netAddr.getPort())
+                .addHostHook(SystemPhase.INIT, new ComponentHook() {
             @Override
             public void setUp(HostSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
@@ -118,9 +117,8 @@ public class LauncherTest {
             public void tearDown(HostSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Tearing down.");
             }
-        });
-
-        config.addVirtualHook(new VirtualComponentHook() {
+        })
+                .addVirtualHook(NodePhase.INIT, new VirtualComponentHook() {
             @Override
             public void setUp(VirtualSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
@@ -154,12 +152,10 @@ public class LauncherTest {
 
     @Test
     public void startStop() {
-        Configuration config = Launcher.getCurrentConfig();
-
-        config.setIp(netAddr.getIp());
-        config.setPort(netAddr.getPort());
-
-        config.addHostHook(new ComponentHook() {
+        Launcher.config()
+                .setIp(netAddr.getIp())
+                .setPort(netAddr.getPort())
+                .addHostHook(SystemPhase.INIT, new ComponentHook() {
             @Override
             public void setUp(HostSharedComponents shared, ComponentProxy parent) {
                 System.out.println("Setting up (" + shared.getSelf() + ").");
@@ -172,9 +168,8 @@ public class LauncherTest {
                 System.out.println(SYSTEM_DOWN);
                 TestUtil.submit(SYSTEM_DOWN);
             }
-        });
-
-        config.addVirtualHook(new VirtualComponentHook() {
+        })
+                .addVirtualHook(NodePhase.INIT, new VirtualComponentHook() {
             private Component respawner;
 
             @Override
