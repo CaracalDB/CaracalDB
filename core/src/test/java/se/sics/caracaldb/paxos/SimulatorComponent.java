@@ -4,6 +4,8 @@
  */
 package se.sics.caracaldb.paxos;
 
+import se.sics.caracaldb.replication.log.Reconfigure;
+import se.sics.caracaldb.replication.log.Propose;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.LinkedListMultimap;
@@ -14,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.View;
@@ -115,7 +118,7 @@ public class SimulatorComponent extends ComponentDefinition {
             Component c = e.getValue();
             Address adr = group.get(e.getKey());
             PaxosManager.PaxosOp op = new PaxosManager.PaxosOp(opId);
-            trigger(new Propose(opId, op), c.getNegative(PaxosManagerPort.class));
+            trigger(new Propose(op), c.getNegative(PaxosManagerPort.class));
             store.proposed(adr, op);
             opId++;
         }
@@ -132,7 +135,7 @@ public class SimulatorComponent extends ComponentDefinition {
             //ImmutableSet<Address> emptyGroup = ImmutableSet.of();
             View v = new View(ImmutableSortedSet.copyOf(group.values()), epoch + 1);
             bootNode(adr, null);
-            trigger(new Propose(0, new Reconfigure(v, group.size() / 2 + 1)), oldC.getNegative(PaxosManagerPort.class));
+            trigger(new Propose(new Reconfigure(UUID.randomUUID().getLeastSignificantBits(), v, group.size() / 2 + 1)), oldC.getNegative(PaxosManagerPort.class));
 
         }
     };

@@ -25,7 +25,14 @@ import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.leader.LeaderDetector;
 import se.sics.caracaldb.leader.Omega;
 import se.sics.caracaldb.leader.OmegaInit;
+import se.sics.caracaldb.leader.ReconfigureGroup;
 import se.sics.caracaldb.leader.Trust;
+import se.sics.caracaldb.replication.log.Decide;
+import se.sics.caracaldb.replication.log.Noop;
+import se.sics.caracaldb.replication.log.Propose;
+import se.sics.caracaldb.replication.log.Reconfigure;
+import se.sics.caracaldb.replication.log.ReplicatedLog;
+import se.sics.caracaldb.replication.log.Value;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -36,7 +43,6 @@ import se.sics.kompics.Stopped;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Message;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.timer.Timer;
 
 /**
  *
@@ -51,7 +57,7 @@ public class Paxos extends ComponentDefinition {
     }
     private static final Logger LOG = LoggerFactory.getLogger(Paxos.class);
     // Ports & Components
-    Negative<Consensus> consensus = provides(Consensus.class);
+    Negative<ReplicatedLog> consensus = provides(ReplicatedLog.class);
     Positive<LeaderDetector> eld = requires(LeaderDetector.class);
     Positive<Network> net = requires(Network.class);
     Positive<EventualFailureDetector> fd = requires(EventualFailureDetector.class);
@@ -63,7 +69,8 @@ public class Paxos extends ComponentDefinition {
     private int quorum;
     private boolean leader = true;
     private View view;
-    private SortedSet<Decide> proposals = new TreeSet<Decide>();
+    private SortedSet<Value> proposals = new TreeSet<Value>();
+    private SortedMap<Long, Value> decidedLog = new TreeMap<Long, Value>();
     // ACCEPTOR
     // maintains maxbal(i) and maxvote(i) for each instance i
     private SortedMap<Long, Instance> votes = new TreeMap<Long, Instance>();
@@ -133,15 +140,15 @@ public class Paxos extends ComponentDefinition {
             highestDecidedId = event.highestDecided;
 
             goActive();
-            trigger(rconf, eld);
-            trigger(rconf, consensus);
+            trigger(toELDReconf(rconf), eld);
+            trigger(new Decide(highestDecidedId, rconf), consensus);
             unsubscribe(this, net);
         }
     };
     Handler<Start> startHandler = new Handler<Start>() {
         @Override
         public void handle(Start event) {
-            trigger(new Reconfigure(view, quorum), eld);
+            trigger(new ReconfigureGroup(view, quorum), eld);
         }
     };
     Handler<Stopped> stoppedHandler = new Handler<Stopped>() {
@@ -157,8 +164,8 @@ public class Paxos extends ComponentDefinition {
     Handler<Propose> proposeHandler = new Handler<Propose>() {
         @Override
         public void handle(Propose event) {
-            LOG.debug("Got Propose({}) for {}", event.id, event.event);
-            forwardPropose(event.event);
+            LOG.debug("Got Propose({})", event.value);
+            forwardPropose(event.value);
         }
     };
     Handler<Forward> forwardHandler = new Handler<Forward>() {
@@ -248,7 +255,7 @@ public class Paxos extends ComponentDefinition {
             //ImmutableSet<Long> instanceIds = ImmutableSet.copyOf(activeInstances.keySet());
             long lastInstance = highestDecidedId;
             SortedSet<Long> instanceIds = val2a.keySet();
-            Set<Decide> recentlyProposed = new HashSet<Decide>();
+            Set<Value> recentlyProposed = new HashSet<Value>();
             while (!instanceIds.isEmpty() && (lastInstance < instanceIds.last())) {
                 lastInstance++;
                 SortedSet<Instance> iS = val2a.removeAll(lastInstance);
@@ -258,7 +265,7 @@ public class Paxos extends ComponentDefinition {
                     recentlyProposed.add(i.value);
                 } else {
                     // fill gaps with noops
-                    phase2a(lastInstance, b, new Noop());
+                    phase2a(lastInstance, b, Noop.val);
                 }
             }
 
@@ -290,14 +297,14 @@ public class Paxos extends ComponentDefinition {
             // Propose new values on free instances
             //ImmutableSet<Decide> props = ImmutableSet.copyOf(proposals);
             // for the record: I hate concurrent modification exceptions -.-
-            for (Decide p : proposals) {
+            for (Value p : proposals) {
                 if (!recentlyProposed.contains(p)) {
                     lastProposedId++;
                     phase2a(lastProposedId, b, p);
                 } // simply avoid proposing the same thing twice in a row
             }
 //            while (!proposals.isEmpty()) {
-//                Decide p = proposals.first();
+//                Value p = proposals.first();
 //                lastProposedId++;
 //                phase2a(new Instance(lastProposedId, bal, p));
 //            }
@@ -366,7 +373,7 @@ public class Paxos extends ComponentDefinition {
         prepared = false;
     }
 
-    private void phase2a(long id, int ballot, Decide value) {
+    private void phase2a(long id, int ballot, Value value) {
         LOG.debug("{}: Executing Phase2A for Instance({}, {}, {})", new Object[]{self, id, ballot, value});
         Instance i = new Instance(id, ballot, value);
         for (Address adr : view.members) {
@@ -388,7 +395,7 @@ public class Paxos extends ComponentDefinition {
         trigger(new Rejected(self, src, bal, i), net);
     }
 
-    private void propose(Decide p) {
+    private void propose(Value p) {
         if (leader) {
             if (prepared) {
                 // steady state
@@ -398,7 +405,7 @@ public class Paxos extends ComponentDefinition {
         }
     }
 
-    private void forwardPropose(Decide p) {
+    private void forwardPropose(Value p) {
         //LOG.debug("Forwarding {} to {}", p, curLeader);
         LOG.debug("Forwarding {}", p);
         // Forward to everyone to avoid message losses when leader fails
@@ -430,18 +437,18 @@ public class Paxos extends ComponentDefinition {
     }
 
     private void decide(Instance i) {
-        Decide value = i.value;
+        Value value = i.value;
 
         highestDecidedId = i.id;
         acceptedInstances.removeAll(i.id);
         acceptedSet.removeAll(i);
         votes.remove(i.id);
-        if (value instanceof Noop) {
-            LOG.debug("{}: Decided instance {} with Noop", self, i);
-            // do nothing^^
-            return;
-        }
-        if (!proposals.remove(value)) {
+//        if (value instanceof Noop) {
+//            LOG.debug("{}: Decided instance {} with Noop", self, i);
+//            // do nothing^^
+//            return;
+//        }
+        if (!proposals.remove(value) && !(value instanceof Noop)) {
             LOG.warn("{}: Decided value was not in proposals: {}", self, value);
         }
         if (value instanceof Reconfigure) {
@@ -455,7 +462,7 @@ public class Paxos extends ComponentDefinition {
                 // for all newly added nodes
                 trigger(new Install(self, adr, b, rconf, highestDecidedId), net);
             }
-            trigger(rconf, eld);
+            trigger(toELDReconf(rconf), eld);
             view = rconf.view;
             quorum = rconf.quorum;
             if (view.members.size() < quorum) {
@@ -465,7 +472,7 @@ public class Paxos extends ComponentDefinition {
             }
 
         }
-        trigger(value, consensus);
+        trigger(new Decide(i.id, value), consensus);
         LOG.debug("{}: Decided {}", self, value);
     }
 
@@ -483,13 +490,17 @@ public class Paxos extends ComponentDefinition {
         }
         return null;
     }
+    
+    private ReconfigureGroup toELDReconf(Reconfigure r) {
+        return new ReconfigureGroup(r.view, r.quorum);
+    }
 
     // Other Classes
     public static class Forward extends Message {
 
-        public final Decide p;
+        public final Value p;
 
-        public Forward(Address src, Address dst, Decide p) {
+        public Forward(Address src, Address dst, Value p) {
             super(src, dst);
             this.p = p;
         }
@@ -499,9 +510,9 @@ public class Paxos extends ComponentDefinition {
 
         public final long id;
         public final int ballot;
-        public final Decide value;
+        public final Value value;
 
-        public Instance(long id, int ballot, Decide value) {
+        public Instance(long id, int ballot, Value value) {
             this.id = id;
             this.ballot = ballot;
             this.value = value;
@@ -525,18 +536,7 @@ public class Paxos extends ComponentDefinition {
         }
 
         public static Instance noop(long id, int ballot) {
-            return new Instance(id, ballot, new Noop());
-        }
-    }
-
-    public static class Noop extends Decide {
-
-        @Override
-        public int compareTo(Decide o) {
-            if (o instanceof Noop) {
-                return 0;
-            }
-            return super.baseCompareTo(o);
+            return new Instance(id, ballot, Noop.val);
         }
     }
 

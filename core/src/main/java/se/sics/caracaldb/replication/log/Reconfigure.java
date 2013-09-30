@@ -2,41 +2,40 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package se.sics.caracaldb.paxos;
+package se.sics.caracaldb.replication.log;
 
-import java.util.Iterator;
+import com.google.common.collect.ComparisonChain;
 import se.sics.caracaldb.View;
-import se.sics.kompics.address.Address;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class Reconfigure extends Decide {
+public class Reconfigure extends Value {
+
     public final View view;
     public final int quorum;
-    
-    public Reconfigure(View v, int quorum) {
+
+    public Reconfigure(long id, View v, int quorum) {
+        super(id);
         this.view = v;
         this.quorum = quorum;
     }
 
     @Override
-    public int compareTo(Decide o) {
-        if (o instanceof Reconfigure) {
-            Reconfigure that = (Reconfigure) o;
-            int diff = this.view.compareTo(that.view);
-            if (diff != 0) {
-                return diff;
-            }
-            if (quorum != that.quorum) {
-                return quorum - that.quorum;
-            }
-            return 0;
+    public int compareTo(Value o) {
+        int superRes = super.baseCompareTo(o);
+        if (superRes != 0) {
+            return superRes;
         }
-        return super.baseCompareTo(o);
+        // I can do this because baseCompareTo already checks for class equality
+        Reconfigure that = (Reconfigure) o; 
+        return ComparisonChain.start()
+                .compare(this.view, that.view)
+                .compare(this.quorum, that.quorum)
+                .result();
     }
-    
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package se.sics.caracaldb.replication;
+package se.sics.caracaldb.replication.linearisable;
 
 import com.google.common.primitives.Ints;
 import java.util.HashMap;
@@ -28,10 +28,11 @@ import se.sics.caracaldb.operations.GetResponse;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.PutResponse;
 import se.sics.caracaldb.operations.ResponseCode;
-import se.sics.caracaldb.paxos.Consensus;
-import se.sics.caracaldb.paxos.Decide;
-import se.sics.caracaldb.paxos.Propose;
-import se.sics.caracaldb.paxos.Reconfigure;
+import se.sics.caracaldb.replication.log.Decide;
+import se.sics.caracaldb.replication.log.ReplicatedLog;
+import se.sics.caracaldb.replication.log.Value;
+import se.sics.caracaldb.replication.log.Propose;
+import se.sics.caracaldb.replication.log.Reconfigure;
 import se.sics.caracaldb.store.GetReq;
 import se.sics.caracaldb.store.GetResp;
 import se.sics.caracaldb.store.Put;
@@ -52,7 +53,7 @@ import se.sics.kompics.timer.Timer;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class PaxosSMR extends ComponentDefinition {
+public class ExecutionEngine extends ComponentDefinition {
 
     public static enum State {
 
@@ -60,9 +61,9 @@ public class PaxosSMR extends ComponentDefinition {
         SYNCING, // transfer data in the background and handle incoming requests
         READY; // handle requests
     }
-    private static final Logger LOG = LoggerFactory.getLogger(PaxosSMR.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ExecutionEngine.class);
     Negative<Replication> rep = provides(Replication.class);
-    Positive<Consensus> consensus = requires(Consensus.class);
+    Positive<ReplicatedLog> consensus = requires(ReplicatedLog.class);
     Positive<Store> store = requires(Store.class);
     Positive<Network> net = requires(Network.class);
     Positive<Timer> timer = requires(Timer.class);
@@ -70,21 +71,22 @@ public class PaxosSMR extends ComponentDefinition {
     private State state;
     private View view;
     private Address self;
-    private PaxosSMRInit init;
+    private ExecutionEngineInit init;
     private Map<Class<? extends CaracalOp>, Action> actions = new HashMap<Class<? extends CaracalOp>, Action>();
+    private OperationsLog opLog = new InMemoryLog();
 
-    public PaxosSMR(PaxosSMRInit event) {
+    public ExecutionEngine(ExecutionEngineInit event) {
         this.init = event;
-        
+
         this.view = init.view;
         this.self = init.self;
 
         provideOp(GetRequest.class, getAction);
         provideOp(PutRequest.class, putAction);
 
-        
+
         state = State.PASSIVE;
-        
+
         if (view == null) {
             LOG.debug("{}: Starting in passive mode", self);
             subscribe(installHandler, consensus);
@@ -105,13 +107,17 @@ public class PaxosSMR extends ComponentDefinition {
         }
     };
     // Passive Handlers
-    Handler<Reconfigure> installHandler = new Handler<Reconfigure>() {
+    Handler<Decide> installHandler = new Handler<Decide>() {
         @Override
-        public void handle(Reconfigure event) {
-            unsubscribe(this, consensus);
-            view = event.view;
-            goToSyncing();
-
+        public void handle(Decide e) {
+            if (e.value instanceof Reconfigure) {
+                Reconfigure event = (Reconfigure) e.value;
+                unsubscribe(this, consensus);
+                view = event.view;
+                goToSyncing();
+            } else {
+                LOG.warn("{}: Got {} while waiting for initial reconfigure decision", self, e.value);
+            }
         }
     };
     // Syncing Handlers
@@ -156,25 +162,8 @@ public class PaxosSMR extends ComponentDefinition {
                         view, event.view);
                 return;
             }
-            Reconfigure reconf = new Reconfigure(event.view, event.quorum);
-            trigger(new Propose(0, reconf), consensus);
-        }
-    };
-    Handler<Reconfigure> reconfHandler = new Handler<Reconfigure>() {
-        @Override
-        public void handle(Reconfigure event) {
-            if ((view != null) && (view.id >= event.view.id)) {
-                LOG.warn("Ignoring reconfiguration from {} to {}: Local is at least as recent.",
-                        view, event.view);
-                return;
-            }
-
-            View oldView = view;
-            view = event.view;
-            LOG.info("Moved to view {}", view);
-
-            // transfer data
-            transferDataMaybe(oldView, view);
+            Reconfigure reconf = new Reconfigure(UUID.randomUUID().getLeastSignificantBits(), event.view, event.quorum);
+            trigger(new Propose(reconf), consensus);
         }
     };
     Handler<CaracalOp> opHandler = new Handler<CaracalOp>() {
@@ -184,19 +173,38 @@ public class PaxosSMR extends ComponentDefinition {
                 trigger(new CaracalResponse(event.id, ResponseCode.UNSUPPORTED_OP), rep);
                 return;
             }
-            trigger(new Propose(event.id, new SMROp(event)), consensus);
+            trigger(new Propose(new SMROp(event.id, event)), consensus);
         }
     };
-    Handler<SMROp> decideHandler = new Handler<SMROp>() {
+    Handler<Decide> decideHandler = new Handler<Decide>() {
         @Override
-        public void handle(SMROp event) {
-            LOG.debug("{}: Decided {}", self, event);
-            Action a = actions.get(event.op.getClass());
-            if (a == null) {
-                LOG.error("No action for {}. This is weird...", event.op);
+        public void handle(Decide e) {
+            if (e.value instanceof Reconfigure) {
+                Reconfigure event = (Reconfigure) e.value;
+                if ((view != null) && (view.id >= event.view.id)) {
+                    LOG.warn("Ignoring reconfiguration from {} to {}: Local is at least as recent.",
+                            view, event.view);
+                    return;
+                }
+
+                View oldView = view;
+                view = event.view;
+                LOG.info("Moved to view {}", view);
+
+                // transfer data
+                transferDataMaybe(oldView, view);
                 return;
             }
-            a.initiate(event.op);
+            if (e.value instanceof SMROp) {
+                SMROp event = (SMROp) e.value;
+                LOG.debug("{}: Decided {}", self, event);
+                Action a = actions.get(event.op.getClass());
+                if (a == null) {
+                    LOG.error("No action for {}. This is weird...", event.op);
+                    return;
+                }
+                a.initiate(event.op);
+            }
         }
     };
     Handler<GetResp> getHandler = new Handler<GetResp>() {
@@ -237,8 +245,7 @@ public class PaxosSMR extends ComponentDefinition {
         state = State.SYNCING;
 
         subscribe(transferHandler, net);
-
-        subscribe(reconfHandler, consensus);
+        
         subscribe(decideHandler, consensus);
         subscribe(viewChangeHandler, rep);
         subscribe(opHandler, rep);
@@ -271,9 +278,9 @@ public class PaxosSMR extends ComponentDefinition {
         for (Address adr : responsible) {
             final Address dst = adr;
             long id = UUID.randomUUID().getLeastSignificantBits(); // TODO there's certainly better ways...
-            final Component sender = create(DataSender.class, 
-                    new DataSenderInit(id, init.range, self, dst, 
-                    2*init.keepAlivePeriod, init.dataMessageSize));
+            final Component sender = create(DataSender.class,
+                    new DataSenderInit(id, init.range, self, dst,
+                    2 * init.keepAlivePeriod, init.dataMessageSize));
             connect(sender.getNegative(Network.class), net, new TransferFilter(id));
             connect(sender.getNegative(Timer.class), timer);
             connect(sender.getNegative(Store.class), store);
@@ -301,16 +308,17 @@ public class PaxosSMR extends ComponentDefinition {
 
     }
 
-    public static class SMROp extends Decide {
+    public static class SMROp extends Value {
 
         public final CaracalOp op;
 
-        public SMROp(CaracalOp op) {
+        public SMROp(long id, CaracalOp op) {
+            super(id);
             this.op = op;
         }
 
         @Override
-        public int compareTo(Decide o) {
+        public int compareTo(Value o) {
             if (o instanceof SMROp) {
                 SMROp that = (SMROp) o;
                 if (this.op.id != that.op.id) {

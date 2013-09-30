@@ -4,29 +4,19 @@
  */
 package se.sics.caracaldb.global;
 
-import se.sics.caracaldb.paxos.Decide;
-import se.sics.caracaldb.replication.ViewChange;
+import se.sics.caracaldb.replication.log.Value;
+import se.sics.caracaldb.replication.linearisable.ViewChange;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class Reconfiguration extends Decide implements Maintenance {
+public class Reconfiguration implements Maintenance {
     
     public final ViewChange change;
     
     public Reconfiguration(ViewChange change) {
         this.change = change;
-    }
-
-    @Override
-    public int compareTo(Decide o) {
-        if (o instanceof Reconfiguration) {
-            Reconfiguration that = (Reconfiguration) o;
-            int diff = this.change.compareTo(that.change);
-            return diff;
-        }
-        return super.baseCompareTo(o);
     }
     
     @Override

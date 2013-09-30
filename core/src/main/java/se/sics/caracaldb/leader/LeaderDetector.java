@@ -4,7 +4,6 @@
  */
 package se.sics.caracaldb.leader;
 
-import se.sics.caracaldb.paxos.Reconfigure;
 import se.sics.kompics.PortType;
 
 /**
@@ -13,7 +12,7 @@ import se.sics.kompics.PortType;
  */
 public class LeaderDetector extends PortType {
     {
-        request(Reconfigure.class);
+        request(ReconfigureGroup.class);
         indication(Trust.class);
     }
 }

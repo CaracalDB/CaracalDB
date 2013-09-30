@@ -18,12 +18,12 @@ import se.sics.caracaldb.global.NodeJoin;
 import se.sics.caracaldb.global.NodeSynced;
 import se.sics.caracaldb.operations.Meth;
 import se.sics.caracaldb.operations.MethCat;
-import se.sics.caracaldb.paxos.Consensus;
+import se.sics.caracaldb.replication.log.ReplicatedLog;
 import se.sics.caracaldb.paxos.Paxos;
 import se.sics.caracaldb.paxos.PaxosInit;
-import se.sics.caracaldb.replication.PaxosSMR;
-import se.sics.caracaldb.replication.PaxosSMRInit;
-import se.sics.caracaldb.replication.Replication;
+import se.sics.caracaldb.replication.linearisable.ExecutionEngine;
+import se.sics.caracaldb.replication.linearisable.ExecutionEngineInit;
+import se.sics.caracaldb.replication.linearisable.Replication;
 import se.sics.caracaldb.store.Store;
 import se.sics.caracaldb.system.Configuration.NodePhase;
 import se.sics.kompics.Channel;
@@ -151,8 +151,8 @@ public class NodeManager extends ComponentDefinition {
                         new Meth(self, join.responsibility, join.view));
                 View repView = join.dataTransfer ? null : join.view;
                 //LOG.debug("NODEJOIN {} - {}", join.dataTransfer, repView);
-                Component replication = create(PaxosSMR.class,
-                        new PaxosSMRInit(repView, self,
+                Component replication = create(ExecutionEngine.class,
+                        new ExecutionEngineInit(repView, self,
                         join.responsibility,
                         config.getMilliseconds("caracal.network.keepAlivePeriod"),
                         config.getInt("caracal.network.dataMessageSize")));
@@ -167,7 +167,7 @@ public class NodeManager extends ComponentDefinition {
                 vsc.connectNetwork(replication);
                 connect(replication.getNegative(Store.class), vsc.getStore());
                 connect(replication.getNegative(Timer.class), vsc.getTimer());
-                connect(replication.getNegative(Consensus.class), paxos.getPositive(Consensus.class));
+                connect(replication.getNegative(ReplicatedLog.class), paxos.getPositive(ReplicatedLog.class));
                 // paxos
                 vsc.connectNetwork(paxos);
                 connect(paxos.getNegative(EventualFailureDetector.class), vsc.getFailureDetector());

@@ -4,18 +4,14 @@
  */
 package se.sics.caracaldb.leader;
 
-import com.google.common.collect.Sets.SetView;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.View;
-import se.sics.caracaldb.paxos.Reconfigure;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.fd.Restore;
 import se.sics.caracaldb.fd.SubscribeNodeStatus;
@@ -27,12 +23,6 @@ import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Stop;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
-import se.sics.kompics.network.Network;
-import se.sics.kompics.timer.CancelPeriodicTimeout;
-import se.sics.kompics.timer.SchedulePeriodicTimeout;
-import se.sics.kompics.timer.Timeout;
-import se.sics.kompics.timer.Timer;
 
 /**
  *
@@ -68,9 +58,9 @@ public class Omega extends ComponentDefinition {
 //            
 //        }
 //    };
-    Handler<Reconfigure> reconfHandler = new Handler<Reconfigure>() {
+    Handler<ReconfigureGroup> reconfHandler = new Handler<ReconfigureGroup>() {
         @Override
-        public void handle(Reconfigure event) {
+        public void handle(ReconfigureGroup event) {
             if (event.view.members.size() == 0) {
                 LOG.info("Reconfiguring to an empty state!");
                 candidates.clear();

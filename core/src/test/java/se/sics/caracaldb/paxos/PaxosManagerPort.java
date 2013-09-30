@@ -4,6 +4,7 @@
  */
 package se.sics.caracaldb.paxos;
 
+import se.sics.caracaldb.replication.log.Propose;
 import se.sics.kompics.PortType;
 
 /**
