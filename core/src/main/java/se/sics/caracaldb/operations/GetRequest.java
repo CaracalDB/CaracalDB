@@ -23,4 +23,14 @@ public final class GetRequest extends CaracalOp {
     public String toString() {
         return "GetRequest(" + id + ", " + key + ")";
     }
+
+    @Override
+    public boolean affectedBy(CaracalOp op) {
+        // Remember to update this when adding new ops
+        if (op instanceof PutRequest) {
+            PutRequest req = (PutRequest) op;
+            return req.key.equals(this.key);
+        }
+        return false;
+    }
 }

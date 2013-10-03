@@ -17,4 +17,13 @@ public abstract class CaracalOp extends Event {
     public CaracalOp(long id) {
         this.id = id;
     }
+    
+    /**
+     * Return true if execution of op before this operation will affect this
+     * operations result.
+     * 
+     * @param op
+     * @return 
+     */
+    public abstract boolean affectedBy(CaracalOp op);
 }

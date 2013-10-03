@@ -4,6 +4,8 @@
  */
 package se.sics.caracaldb.store;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.persistence.Database;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -16,6 +18,9 @@ import se.sics.kompics.Stop;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class PersistentStore extends ComponentDefinition {
+    
+    private static final Logger LOG = LoggerFactory.getLogger(PersistentStore.class);
+    
     Negative<Store> store = provides(Store.class);
     
     private Database db;

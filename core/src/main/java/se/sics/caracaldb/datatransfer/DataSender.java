@@ -42,6 +42,7 @@ public class DataSender extends DataTransferComponent {
     private final Address destination;
     private final long retryTime;
     private final int maxSize;
+    private final Map<String, Object> metadata;
     private UUID timeoutId;
     private int remainingQuota = 0;
     private TransferClearToSend activeCTS;
@@ -54,7 +55,7 @@ public class DataSender extends DataTransferComponent {
         destination = init.destination;
         retryTime = init.retryTime;
         maxSize = init.maxSize;
-
+        metadata = init.metadata;
         // subscriptions
         subscribe(startHandler, control);
         subscribe(timeoutHandler, timer);
@@ -78,7 +79,7 @@ public class DataSender extends DataTransferComponent {
         @Override
         public void handle(RetryTimeout event) {
             if (state == State.INITIALISING) {
-                trigger(new InitiateTransfer(self, destination, id), net);
+                trigger(new InitiateTransfer(self, destination, id, metadata), net);
             }
         }
     };

@@ -14,7 +14,7 @@ public abstract class StorageResponse extends Response {
     
     private long id;
     
-    StorageResponse(StorageRequest req) {
+    public StorageResponse(StorageRequest req) {
         super(req);
         id = req.getId();
     }

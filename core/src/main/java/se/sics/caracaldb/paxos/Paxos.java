@@ -30,6 +30,7 @@ import se.sics.caracaldb.leader.Trust;
 import se.sics.caracaldb.replication.log.Decide;
 import se.sics.caracaldb.replication.log.Noop;
 import se.sics.caracaldb.replication.log.Propose;
+import se.sics.caracaldb.replication.log.Prune;
 import se.sics.caracaldb.replication.log.Reconfigure;
 import se.sics.caracaldb.replication.log.ReplicatedLog;
 import se.sics.caracaldb.replication.log.Value;
@@ -57,7 +58,7 @@ public class Paxos extends ComponentDefinition {
     }
     private static final Logger LOG = LoggerFactory.getLogger(Paxos.class);
     // Ports & Components
-    Negative<ReplicatedLog> consensus = provides(ReplicatedLog.class);
+    Negative<ReplicatedLog> rLog = provides(ReplicatedLog.class);
     Positive<LeaderDetector> eld = requires(LeaderDetector.class);
     Positive<Network> net = requires(Network.class);
     Positive<EventualFailureDetector> fd = requires(EventualFailureDetector.class);
@@ -70,7 +71,7 @@ public class Paxos extends ComponentDefinition {
     private boolean leader = true;
     private View view;
     private SortedSet<Value> proposals = new TreeSet<Value>();
-    private SortedMap<Long, Value> decidedLog = new TreeMap<Long, Value>();
+    private TreeMap<Long, Value> decidedLog = new TreeMap<Long, Value>();
     // ACCEPTOR
     // maintains maxbal(i) and maxvote(i) for each instance i
     private SortedMap<Long, Instance> votes = new TreeMap<Long, Instance>();
@@ -116,7 +117,7 @@ public class Paxos extends ComponentDefinition {
 
         subscribe(startHandler, control);
 
-        subscribe(proposeHandler, consensus);
+        subscribe(proposeHandler, rLog);
 
         subscribe(trustHandler, eld);
 
@@ -127,6 +128,7 @@ public class Paxos extends ComponentDefinition {
         subscribe(acceptedHandler, net);
         subscribe(rejectedHandler, net);
         subscribe(forwardHandler, net);
+        subscribe(pruneHandler, rLog);
     }
     Handler<Install> installHandler = new Handler<Install>() {
         @Override
@@ -141,7 +143,7 @@ public class Paxos extends ComponentDefinition {
 
             goActive();
             trigger(toELDReconf(rconf), eld);
-            trigger(new Decide(highestDecidedId, rconf), consensus);
+            trigger(new Decide(highestDecidedId, rconf), rLog);
             unsubscribe(this, net);
         }
     };
@@ -158,6 +160,14 @@ public class Paxos extends ComponentDefinition {
             disconnect(omega.getPositive(LeaderDetector.class), eld.getPair());
             disconnect(omega.getNegative(EventualFailureDetector.class), fd);
             destroy(omega);
+        }
+    };
+    Handler<Prune> pruneHandler = new Handler<Prune>() {
+
+        @Override
+        public void handle(Prune event) {
+            // TODO find a structure that supports this operation better
+            decidedLog = new TreeMap<Long, Value>(decidedLog.tailMap(lastProposedId, false));
         }
     };
     // ANY
@@ -460,7 +470,7 @@ public class Paxos extends ComponentDefinition {
             }
             for (Address adr : Sets.difference(rconf.view.members, view.members)) {
                 // for all newly added nodes
-                trigger(new Install(self, adr, b, rconf, highestDecidedId), net);
+                trigger(new Install(self, adr, b, rconf, highestDecidedId, decidedLog), net);
             }
             trigger(toELDReconf(rconf), eld);
             view = rconf.view;
@@ -472,7 +482,7 @@ public class Paxos extends ComponentDefinition {
             }
 
         }
-        trigger(new Decide(i.id, value), consensus);
+        trigger(new Decide(i.id, value), rLog);
         LOG.debug("{}: Decided {}", self, value);
     }
 
@@ -638,11 +648,13 @@ public class Paxos extends ComponentDefinition {
 
         public final Reconfigure event;
         public final long highestDecided;
+        public final SortedMap<Long, Value> log;
 
-        public Install(Address src, Address dst, int ballot, Reconfigure event, long highestDecided) {
+        public Install(Address src, Address dst, int ballot, Reconfigure event, long highestDecided, SortedMap<Long, Value> log) {
             super(src, dst, ballot);
             this.event = event;
             this.highestDecided = highestDecided;
+            this.log = new TreeMap<Long, Value>(log);
         }
     }
 }
