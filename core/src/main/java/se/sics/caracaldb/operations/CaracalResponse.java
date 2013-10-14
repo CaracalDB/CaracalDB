@@ -23,4 +23,9 @@ public class CaracalResponse extends CaracalOp {
     public String toString() {
         return "EmptyResponse(" + id + ", " + code.name() + ")";
     }
+
+    @Override
+    public boolean affectedBy(CaracalOp op) {
+        throw new UnsupportedOperationException("Not supported on Response");
+    }
 }

@@ -9,7 +9,7 @@
 
     <artifactId>caracaldb-core</artifactId>
     <packaging>jar</packaging>
-    <name>CaracalDB Core</name>
+    <name>CaracalDB Core old</name>
         
     <dependencies>
         <dependency>

@@ -26,4 +26,9 @@ public final class PutRequest extends CaracalOp {
     public String toString() {
         return "PutRequest(" + id + ", " + key + ", " + (new Key(data)).toString() + ")";
     }
+
+    @Override
+    public boolean affectedBy(CaracalOp op) {
+        return false; // Remember to update this when adding new ops
+    }
 }

@@ -12,12 +12,14 @@ import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueFactory;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import se.sics.caracaldb.persistence.Database;
+import se.sics.caracaldb.persistence.disk.LevelDBJNI;
 import se.sics.caracaldb.persistence.memory.InMemoryDB;
 import se.sics.kompics.address.Address;
 
@@ -71,7 +73,7 @@ public class Configuration {
      */
     private Configuration() {
     }
-    
+
     /*
      * Custom Methods
      */
@@ -102,7 +104,7 @@ public class Configuration {
     public boolean isBoot() {
         return boot;
     }
-    
+
     public int getPort() {
         return config.getInt("server.address.port");
     }
@@ -264,7 +266,23 @@ public class Configuration {
             c.bootstrapServer = bootstrapServer;
             c.ip = localIp;
 
-            c.db = new InMemoryDB(); // default
+            //persistence layer config
+            String dbType = config.getString("caracal.database.type");
+            String dbPath = config.getString("caracal.database.path");
+            int dbCache = config.getInt("caracal.database.cache");
+            if (dbType.equals("memory")) {
+                c.db = new InMemoryDB();
+            } else if (dbType.equals("leveldb")) {
+                try {
+                    c.db = new LevelDBJNI(dbPath, dbCache);
+                } catch (IOException e) {
+                    //TODO Alex RuntimeException?
+                    throw new RuntimeException(e);
+                }
+            } else {
+                //TODO Alex RuntimeException?
+                throw new RuntimeException("wrong database type");
+            }
 
             return new Builder(c);
         }
@@ -323,7 +341,7 @@ public class Configuration {
             conf.config = conf.config.withValue(path, value);
             return this;
         }
-        
+
         public Builder setValue(String path, Object value) {
             return setValue(path, ConfigValueFactory.fromAnyRef(value, "Builder modified"));
         }
@@ -332,7 +350,7 @@ public class Configuration {
             conf.config = conf.config.withoutPath(path);
             return this;
         }
-        
+
         public Builder setPort(int port) {
             return setValue("server.address.port", port);
         }

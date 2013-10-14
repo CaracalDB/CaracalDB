@@ -5,7 +5,7 @@
     <packaging>pom</packaging>
     <version>0.0.2-SNAPSHOT</version>
 
-    <name>CaracalDB</name>
+    <name>CaracalDB old</name>
     <!-- <url>http://kompics.sics.se</url> //-->
     <description>
         CaracalDB is distributed key-value store that is highly scalable, 

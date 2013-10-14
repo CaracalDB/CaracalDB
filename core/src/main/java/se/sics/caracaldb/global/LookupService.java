@@ -9,9 +9,14 @@ import se.sics.kompics.PortType;
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
-public class LookupService extends PortType {{
-    request(LookupRequest.class);
-    request(ForwardToAny.class);
-    indication(LookupResponse.class);
-}}
+public class LookupService extends PortType {
+
+    {
+        request(ForwardToAny.class);
+        request(ForwardToRange.class);
+        request(LookupRequest.class);
+        indication(LookupResponse.class);
+    }
+}

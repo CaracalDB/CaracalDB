@@ -5,6 +5,7 @@
 package se.sics.caracaldb.replication.linearisable;
 
 import se.sics.caracaldb.operations.CaracalOp;
+import se.sics.caracaldb.store.StorageRequest;
 
 /**
  *
@@ -12,5 +13,7 @@ import se.sics.caracaldb.operations.CaracalOp;
  */
 public interface Action<T extends CaracalOp> {
 
-    public void initiate(T op);
+    public void initiate(T op, long pos);
+    
+    public StorageRequest prepareSnapshot(T op);
 }

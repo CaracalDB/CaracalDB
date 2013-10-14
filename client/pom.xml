@@ -9,7 +9,7 @@
 
     <artifactId>caracaldb-client</artifactId>
     <packaging>jar</packaging>
-    <name>CaracalDB Client</name>
+    <name>CaracalDB Client old</name>
 
     <dependencies>
         <dependency>

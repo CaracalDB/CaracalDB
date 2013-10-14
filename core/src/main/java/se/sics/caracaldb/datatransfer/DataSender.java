@@ -18,6 +18,7 @@ import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
+import se.sics.caracaldb.store.TFFactory;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
@@ -42,6 +43,7 @@ public class DataSender extends DataTransferComponent {
     private final Address destination;
     private final long retryTime;
     private final int maxSize;
+    private final Map<String, Object> metadata;
     private UUID timeoutId;
     private int remainingQuota = 0;
     private TransferClearToSend activeCTS;
@@ -54,7 +56,7 @@ public class DataSender extends DataTransferComponent {
         destination = init.destination;
         retryTime = init.retryTime;
         maxSize = init.maxSize;
-
+        metadata = init.metadata;
         // subscriptions
         subscribe(startHandler, control);
         subscribe(timeoutHandler, timer);
@@ -78,7 +80,7 @@ public class DataSender extends DataTransferComponent {
         @Override
         public void handle(RetryTimeout event) {
             if (state == State.INITIALISING) {
-                trigger(new InitiateTransfer(self, destination, id), net);
+                trigger(new InitiateTransfer(self, destination, id, metadata), net);
             }
         }
     };
@@ -143,11 +145,11 @@ public class DataSender extends DataTransferComponent {
             return;
         }
         if (lastKey == null) {
-            trigger(new RangeReq(range, Limit.toBytes(maxSize), false), store);
+            trigger(new RangeReq(range, Limit.toBytes(maxSize), TFFactory.tombstoneFilter()), store);
             return;
         }
         
         KeyRange subRange = KeyRange.open(lastKey).endFrom(range);
-        trigger(new RangeReq(subRange, Limit.toBytes(maxSize), false), store);
+        trigger(new RangeReq(subRange, Limit.toBytes(maxSize), TFFactory.tombstoneFilter()), store);
     }
 }

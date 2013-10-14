@@ -15,13 +15,13 @@ import se.sics.kompics.network.Message;
 public class ForwardMessage extends Message {
     public final Key forwardTo;
     public final Forwardable msg;
-    
+
     public ForwardMessage(Address src, Address dst, Key forwardTo, Forwardable msg) {
         super(src, dst);
         this.forwardTo = forwardTo;
         this.msg = msg;
     }
-    
+
     @Override
     public String toString() {
         String str = "ForwardMessage(";

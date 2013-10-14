@@ -14,14 +14,16 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
 
 /**
- *
  * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
 public class LookupGroup {
 
@@ -53,7 +55,41 @@ public class LookupGroup {
             return Pair.with(e.getKey(), e.getValue());
         }
     }
-    
+
+    /**
+     *
+     * @param range
+     * @return <nodeMap, endRange> nodeMap can be empty but not null, endRange
+     * is a non null range. The pair itself cannot be null
+     */
+    public Pair<NavigableMap<Key, Integer>, KeyRange> getRangeResponsible(KeyRange range) {
+        NavigableMap<Key, Integer> respMap = new TreeMap<Key, Integer>();
+        KeyRange endRange;
+
+        Entry<Key, Integer> first = virtualHosts.floorEntry(range.begin);
+        if (first != null) {
+            respMap.put(first.getKey(), first.getValue());
+        }
+        NavigableMap<Key, Integer> subMap = virtualHosts.subMap(range.begin, true, range.end, range.endBound.equals(KeyRange.Bound.CLOSED));
+        respMap.putAll(subMap);
+
+        Key succ = virtualHosts.ceilingKey(range.end);
+        if (succ != null) {
+            endRange = KeyRange.EMPTY;
+        } else {
+            if (subMap.isEmpty()) {
+                if (first == null) {
+                    endRange = KeyRange.EMPTY;
+                } else {
+                    endRange = range;
+                }
+            } else {
+                endRange = new KeyRange.KRBuilder(KeyRange.Bound.CLOSED, subMap.lastEntry().getKey()).endFrom(range);
+            }
+        }
+        return Pair.with(subMap, endRange);
+    }
+
     public Key getSuccessor(Key key) throws LookupTable.NoResponsibleInGroup {
         Key succ = virtualHosts.ceilingKey(key);
         if (succ == null) {
@@ -133,7 +169,6 @@ public class LookupGroup {
                 Integer val = r.readInt();
                 lg.put(k, val);
             }
-
 
             return lg;
         } catch (Throwable e) {

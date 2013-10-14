@@ -7,35 +7,95 @@ package se.sics.caracaldb.store;
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
-public class Limit {
-    public static enum Type {
-        COUNT,
-        BYTES;
+public abstract class Limit {
+    public static LimitTracker noLimit() {
+        return new LimitTracker() {
+
+            @Override
+            public boolean read(byte[] value) {
+                return true;
+            }
+
+            @Override
+            public boolean canRead() {
+                return true;
+            }
+        };
     }
     
-    public final Type type;
-    public final int value;
-    
-    public Limit(Type t, int value) {
-        type = t;
-        this.value = value;
+    public static LimitTracker toBytes(int number) {
+        return new ByteSize(number);
     }
     
-    public static Limit toBytes(int number) {
-        return new Limit(Type.BYTES, number);
+    public static LimitTracker toKiloBytes(int number) {
+        return new ByteSize(number*1000);
     }
     
-    public static Limit toKiloBytes(int number) {
-        return new Limit(Type.BYTES, number*1000);
+    public static LimitTracker toMegaBytes(int number) {
+        return new ByteSize(number*1000*1000);
     }
     
-    public static Limit toMegaBytes(int number) {
-        return new Limit(Type.BYTES, number*1000*1000);
+    public static LimitTracker toItems(int number) {
+        return new ItemCount(number);
     }
     
-    public static Limit toItems(int number) {
-        return new Limit(Type.COUNT, number);
+    public interface LimitTracker {
+        /**
+         * @param value
+         * @return <canReanCurrent>
+         */
+        public boolean read(byte[] value);
+        
+        /**
+         * @return <canReadFurther>
+         */
+        public boolean canRead(); 
+    }
+    
+    private static class ItemCount implements LimitTracker {
+        private int itemCount;
+        
+        public ItemCount(int itemCount) {
+            this.itemCount = itemCount;
+        }
+        
+        @Override
+        public boolean read(byte[] value) {
+            if(itemCount >= 1) {
+                itemCount--;
+                return true;
+            }
+            return false;
+        }
+        
+        @Override
+        public boolean canRead() {
+            return itemCount >= 1;
+        }
+    }
+    
+    private static class ByteSize implements LimitTracker {
+        private int byteSize;
+        
+        public ByteSize(int byteSize) {
+            this.byteSize = byteSize;
+        }
+        
+        @Override 
+        public boolean read(byte[] value) {
+            if(byteSize >= value.length) {
+                byteSize = byteSize - value.length;
+                return true;
+            }
+            return false;
+        }
+        
+        @Override 
+        public boolean canRead() {
+            return byteSize > 0;
+        }
     }
 }
 

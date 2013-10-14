@@ -28,7 +28,7 @@ import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.Timer;
 
 /**
- *
+ * 
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class ClientWorker extends ComponentDefinition {

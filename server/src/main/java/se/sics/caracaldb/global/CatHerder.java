@@ -5,13 +5,18 @@
 package se.sics.caracaldb.global;
 
 import java.util.Arrays;
+import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
+import java.util.logging.Level;
+import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
+import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.system.StartVNode;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -27,7 +32,7 @@ import se.sics.kompics.network.Network;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class CatHerder extends ComponentDefinition {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(CatHerder.class);
     private static final Random RAND = new Random();
     // ports
@@ -38,7 +43,7 @@ public class CatHerder extends ComponentDefinition {
     private LookupTable lut;
     private Address self;
     private boolean master;
-    
+
     public CatHerder(CatHerderInit init) {
         lut = init.bootEvent.lut;
         self = init.self;
@@ -50,6 +55,7 @@ public class CatHerder extends ComponentDefinition {
         subscribe(startHandler, control);
         subscribe(lookupRHandler, lookup);
         subscribe(forwardHandler, lookup);
+        subscribe(forwardToRangeHandler, lookup);
         subscribe(bootedHandler, maintenance);
         subscribe(forwardMsgHandler, net);
     }
@@ -72,7 +78,7 @@ public class CatHerder extends ComponentDefinition {
                 rsp = new LookupResponse(event, event.key, event.reqId, Arrays.asList(repGroup));
             }
             trigger(rsp, lookup);
-            
+
         }
     };
     Handler<ForwardToAny> forwardHandler = new Handler<ForwardToAny>() {
@@ -89,6 +95,52 @@ public class CatHerder extends ComponentDefinition {
             trigger(msg, net);
             LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
             //TODO rewrite to check at destination and foward until reached right node
+        }
+    };
+    Handler<ForwardToRange> forwardToRangeHandler = new Handler<ForwardToRange>() {
+
+        @Override
+        public void handle(ForwardToRange event) {
+            if (event.execType.equals(RangeQuery.Type.SEQUENTIAL)) {
+                Pair<KeyRange, Address[]> repGroup;
+                try {
+                    repGroup = lut.getFirstResponsibles(event.range);
+                    if (repGroup == null) {
+                        LOG.warn("No responsible nodes for range");
+                        return;
+                    }
+                } catch (LookupTable.BrokenLut ex) {
+                    LOG.error("Broken lut");
+                    System.exit(1);
+                    return;
+                }
+
+                int nodePos = RAND.nextInt(repGroup.getValue1().length);
+                Address dest = repGroup.getValue1()[nodePos];
+                Message msg = event.getSubRangeMessage(repGroup.getValue0(), dest);
+                trigger(msg, net);
+                LOG.debug("{}: Forwarding {} to {}", new Object[]{self, msg, dest});
+            } else { //if(event.execType.equals(RangeQuery.Type.Parallel)
+                NavigableMap<KeyRange, Address[]> repGroups;
+                try {
+                    repGroups = lut.getAllResponsibles(event.range);
+                    if (repGroups.isEmpty()) {
+                        LOG.warn("No responsible nodes for range");
+                        return;
+                    }
+                } catch (LookupTable.BrokenLut ex) {
+                    LOG.error("Broken lut");
+                    System.exit(1);
+                    return;
+                }
+                for (Entry<KeyRange, Address[]> repGroup : repGroups.entrySet()) {
+                    int nodePos = RAND.nextInt(repGroup.getValue().length);
+                    Address dest = repGroup.getValue()[nodePos];
+                    Message msg = event.getSubRangeMessage(repGroup.getKey(), dest);
+                    trigger(msg, net);
+                    LOG.debug("{}: Forwarding {} to {}", new Object[]{self, msg, dest});
+                }
+            }
         }
     };
     Handler<ForwardMessage> forwardMsgHandler = new Handler<ForwardMessage>() {
@@ -113,19 +165,19 @@ public class CatHerder extends ComponentDefinition {
             View view = lut.getView(nodeId);
             KeyRange responsibility = lut.getResponsibility(nodeId);
             int quorum = view.members.size() / 2 + 1;
-            NodeJoin join = new NodeJoin(view, quorum,responsibility, (view.id != 0));
+            NodeJoin join = new NodeJoin(view, quorum, responsibility, (view.id != 0));
             trigger(new MaintenanceMsg(self, event.node, join), net);
         }
     };
-    
+
     private void connectMasterHandlers() {
-        
+
     }
-    
+
     private void connectSlaveHandlers() {
-        
+
     }
-    
+
     private void startInitialVNodes() {
         Set<Key> localNodes = lut.getVirtualNodesAt(self);
         for (Key k : localNodes) {
@@ -133,7 +185,7 @@ public class CatHerder extends ComponentDefinition {
         }
         LOG.debug("{}: Initial nodes are {}", self, localNodes);
     }
-    
+
     private boolean checkMaster() {
         Address[] masterGroup = lut.getHosts(0);
         for (Address adr : masterGroup) {

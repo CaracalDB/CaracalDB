@@ -9,7 +9,7 @@
 
     <artifactId>caracaldb-simulator</artifactId>
     <packaging>jar</packaging>
-    <name>CaracalDB Simulator</name>
+    <name>CaracalDB Simulator old</name>
         
     <dependencies>
         <dependency>

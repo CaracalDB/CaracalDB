@@ -10,7 +10,7 @@ import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Message;
 
 /**
- *
+ * 
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class ForwardToAny extends Event {

@@ -4,8 +4,8 @@
  */
 package se.sics.caracaldb.datatransfer;
 
+import java.util.Map;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
 
 /**
  *
@@ -13,7 +13,10 @@ import se.sics.kompics.network.Message;
  */
 public class InitiateTransfer extends TransferMessage {
     
-    public InitiateTransfer(Address src, Address dst, long id) {
+    public final Map<String, Object> metadata;
+    
+    public InitiateTransfer(Address src, Address dst, long id, Map<String, Object> metadata) {
         super(src, dst, id);
+        this.metadata = metadata;
     }
 }
