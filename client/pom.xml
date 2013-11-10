@@ -100,4 +100,7 @@
             </snapshots>
         </repository>
     </repositories>
+    <properties>
+        <netbeans.hint.license>header</netbeans.hint.license>
+    </properties>
 </project>
