@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedList;
 import se.sics.kompics.address.IdUtils;
 
 /**
@@ -40,10 +41,11 @@ public class Key implements Comparable<Key> {
     public static final int INT_BYTE_SIZE = Integer.SIZE / 8;
     public static final Comparator<byte[]> COMP = UnsignedBytes.lexicographicalComparator();
     private static final byte ZERO = 0;
-    public static final Key ZERO_KEY = new Key(new byte[0]);
+    public static final Key NULL_KEY = new Key(new byte[0]);
+    public static final Key ZERO_KEY = new Key(new byte[] {ZERO});
     public static final Key INF = new Inf();
     private static final Charset charset = Charset.forName("UTF-8");
-    private byte[] data;
+    private final byte[] data; // Don't write into it either! 
 
     public Key(byte key) {
         data = new byte[]{key};
@@ -79,6 +81,26 @@ public class Key implements Comparable<Key> {
     public ByteBuffer getWrapper() {
         return ByteBuffer.wrap(data);
     }
+    
+    public KeyBuilder append(Key k) {
+        return append(k.data);
+    }
+    
+    public KeyBuilder append(byte[] k) {
+        KeyBuilder kb = new KeyBuilder(data);
+        kb.append(k);
+        return kb;
+    }
+    
+    public KeyBuilder prepend(Key k) {
+        return prepend(k.data);
+    }
+    
+    public KeyBuilder prepend(byte[] k) {
+        KeyBuilder kb = new KeyBuilder(data);
+        kb.prepend(k);
+        return kb;
+    }
 
     public byte[] getArray() {
         return data;
@@ -98,6 +120,34 @@ public class Key implements Comparable<Key> {
 
     public boolean isByteLength() {
         return data.length <= BYTE_KEY_SIZE;
+    }
+    
+    /**
+     * Does constant key length increment.
+     * 
+     * That is (00 00 00 00).inc() = (00 00 00 01) and so on.
+     * 
+     * Exceptions: 
+     *      (FF FF FF FF).inc() = Inf for any key length.
+     *      ( ).inc() = (00)
+     * 
+     * @return The key that is an increment of the current one with constant length.
+     */
+    public Key inc() {
+        if (data.length == 0) {
+            return new Key((byte)0);
+        }
+        byte[] newData  = Arrays.copyOf(data, data.length);
+        for (int i = newData.length-1; i >= 0; i--) {
+            int oldVal = newData[i];
+            if (oldVal != UnsignedBytes.MAX_VALUE) {
+                newData[i] = UnsignedBytes.checkedCast(oldVal+1);
+                return new Key(newData);
+            } else {
+                newData[i] = 0;
+            }
+        }
+        return Key.INF;
     }
 
     @Override
@@ -135,6 +185,7 @@ public class Key implements Comparable<Key> {
     public String toString() {
         return IdUtils.printFormat(data);
     }
+    
 
     // wtb operator overrides in Java -.-
     public boolean leq(Key k) {
@@ -179,10 +230,66 @@ public class Key implements Comparable<Key> {
         private Inf() {
             super((byte[]) null);
         }
+        
+        @Override
+        public Key inc() {
+            return this; // Inf++ == Inf
+        }
 
         @Override
         public int compareTo(Key that) {
+            if (that instanceof Inf) {
+                return 0;
+            }
             return Integer.MAX_VALUE;
+        }
+        
+        @Override
+        public String toString() {
+            return "∞";
+        }
+    }
+    
+    public static class KeyBuilder {
+        private int numBytes;
+        private LinkedList<byte[]> bytes;
+        
+        public KeyBuilder(byte[] start) {
+            assert(start.length > 0);
+            bytes = new LinkedList<byte[]>();
+            bytes.push(start);
+            numBytes = start.length;
+        }
+        
+        public KeyBuilder append(byte[] k) {
+            bytes.add(k);
+            numBytes += k.length;
+            return this;
+        }
+        
+        public KeyBuilder append(Key k) {
+            return append(k.data);
+        }
+        
+        public KeyBuilder prepend(byte[] k) {
+            bytes.push(k);
+            numBytes += k.length;
+            return this;
+        }
+        
+        public KeyBuilder prepend(Key k) {
+            return prepend(k.data);
+        }
+        
+        public Key get() {
+            byte[] data = new byte[numBytes];
+            int pointer = 0;
+            while (!bytes.isEmpty()) {
+                byte[] k = bytes.pop();
+                System.arraycopy(k, 0, data, pointer, k.length);
+                pointer += k.length;
+            }
+            return new Key(data);
         }
     }
 }

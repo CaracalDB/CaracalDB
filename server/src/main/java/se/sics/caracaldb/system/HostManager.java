@@ -43,7 +43,6 @@ import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.ControlPort;
 import se.sics.kompics.Event;
-import se.sics.kompics.Fault;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Init.None;
@@ -144,6 +143,7 @@ public class HostManager extends ComponentDefinition {
         sharedComponents.setTimer(timer);
         sharedComponents.setFailureDetector(fd);
         sharedComponents.connectNetwork(this.getComponentCore());
+        sharedComponents.setStore(store.getPositive(Store.class));
 
         // INIT phase
         for (ComponentHook hook : config.getHostHooks(SystemPhase.INIT)) {
@@ -264,6 +264,7 @@ public class HostManager extends ComponentDefinition {
         sharedComponents.connectNetwork(catHerder);
         connect(catHerder.getNegative(EventualFailureDetector.class), fd);
         connect(catHerder.getNegative(Timer.class), timer);
+        connect(catHerder.getNegative(Store.class), sharedComponents.getStore());
         
         trigger(Start.event, catHerder.control());
 

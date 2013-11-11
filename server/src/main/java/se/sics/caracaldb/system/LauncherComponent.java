@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.system;
 
+import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Init;
@@ -50,6 +51,7 @@ public class LauncherComponent extends ComponentDefinition {
     {
         Configuration config = Launcher.getConfig();
         Address netSelf = new Address(config.getIp(), config.getInt("server.address.port"), null);
+        TimestampIdFactory.init(netSelf);
         network = create(GrizzlyNetwork.class, new GrizzlyNetworkInit(netSelf, 8, 0, 0, 
                 config.getInt("caracal.network.messageBufferSize"), 
                 config.getInt("caracal.network.messageBufferSizeMax"),

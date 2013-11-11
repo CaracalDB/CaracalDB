@@ -76,6 +76,7 @@ public class Paxos extends ComponentDefinition {
     // Ports & Components
     Negative<ReplicatedLog> rLog = provides(ReplicatedLog.class);
     Positive<LeaderDetector> eld = requires(LeaderDetector.class);
+    Negative<LeaderDetector> eldPass = provides(LeaderDetector.class);
     Positive<Network> net = requires(Network.class);
     Positive<EventualFailureDetector> fd = requires(EventualFailureDetector.class);
     //Positive<Timer> timer = requires(Timer.class); //TODO check if necessary, connections
@@ -115,6 +116,7 @@ public class Paxos extends ComponentDefinition {
 
         omega = create(Omega.class, new OmegaInit(self));
         connect(omega.getPositive(LeaderDetector.class), eld.getPair());
+        connect(omega.getPositive(LeaderDetector.class), eldPass);
         connect(omega.getNegative(EventualFailureDetector.class), fd);
 
         // Subscriptions

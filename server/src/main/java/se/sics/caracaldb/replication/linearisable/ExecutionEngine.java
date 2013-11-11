@@ -48,11 +48,11 @@ import se.sics.caracaldb.operations.PutResponse;
 import se.sics.caracaldb.operations.ResponseCode;
 import se.sics.caracaldb.replication.log.Decide;
 import se.sics.caracaldb.replication.log.Noop;
-import se.sics.caracaldb.replication.log.ReplicatedLog;
-import se.sics.caracaldb.replication.log.Value;
 import se.sics.caracaldb.replication.log.Propose;
 import se.sics.caracaldb.replication.log.Prune;
 import se.sics.caracaldb.replication.log.Reconfigure;
+import se.sics.caracaldb.replication.log.ReplicatedLog;
+import se.sics.caracaldb.replication.log.Value;
 import se.sics.caracaldb.store.GetReq;
 import se.sics.caracaldb.store.GetResp;
 import se.sics.caracaldb.store.Put;
@@ -283,6 +283,7 @@ public class ExecutionEngine extends ComponentDefinition {
         View oldView = view;
         view = rconf.view;
         LOG.info("Moved to view {}", view);
+        //TODO update MethCat view as well
 
         
 

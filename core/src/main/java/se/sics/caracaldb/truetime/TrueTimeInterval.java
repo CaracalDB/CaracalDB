@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,40 +18,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.paxos;
-
-import se.sics.kompics.Event;
+package se.sics.caracaldb.truetime;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author sario
  */
-public abstract class Commands {
+public class TrueTimeInterval {
 
-    public static class Start extends Event {
+    public final long earliest;
+    public final long latest;
 
-        public final int num;
+    TrueTimeInterval(long earliest, long latest) {
+        this.earliest = earliest;
+        this.latest = latest;
+    }
 
-        public Start(int num) {
-            this.num = num;
+    /**
+     * Compares TrueTimeIntervals.
+     * <p>
+     * Not quite as compareTo: If return 0 then the intervals overlap and
+     * neither is truly before of after the other. If the return is != 0 then
+     * the return is difference between the interval boundaries.
+     * <p>
+     * @param ival
+     * @return
+     */
+    public long compare(TrueTimeInterval ival) {
+        if (ival.earliest > latest) {
+            return ival.earliest - latest;
         }
-    }
-
-    public static class Verify extends Event {
-    }
-
-    public static class Operation extends Event {
-
-    }
-    
-    public static class ChurnEvent extends Event {
-    }
-    
-    public static class Join extends ChurnEvent {
-        
-    }
-    
-    public static class Fail extends ChurnEvent {
-        
+        if (earliest > ival.latest) {
+            return earliest - ival.latest;
+        }
+        return 0;
     }
 }

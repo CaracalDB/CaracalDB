@@ -21,6 +21,7 @@
 package se.sics.caracaldb.system;
 
 import se.sics.caracaldb.fd.EventualFailureDetector;
+import se.sics.caracaldb.store.Store;
 import se.sics.kompics.Component;
 import se.sics.kompics.Positive;
 import se.sics.kompics.address.Address;
@@ -52,6 +53,7 @@ public class HostSharedComponents extends ServiceRegistry {
     private Positive<Timer> timer;
     private VirtualNetworkChannel net;
     private Positive<EventualFailureDetector> fd;
+    private Positive<Store> store;
 
     void setNetwork(VirtualNetworkChannel vnc) {
         this.net = vnc;
@@ -85,4 +87,11 @@ public class HostSharedComponents extends ServiceRegistry {
         return this.fd;
     }
     
+    public void setStore(Positive<Store> store) {
+        this.store = store;
+    }
+
+    public Positive<Store> getStore() {
+        return store;
+    }
 }

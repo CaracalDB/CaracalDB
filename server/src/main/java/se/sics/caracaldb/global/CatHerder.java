@@ -20,7 +20,13 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.collect.ImmutableSortedSet;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
@@ -31,7 +37,22 @@ import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.fd.EventualFailureDetector;
+import se.sics.caracaldb.operations.CaracalMsg;
+import se.sics.caracaldb.operations.PutRequest;
+import se.sics.caracaldb.paxos.Paxos;
+import se.sics.caracaldb.paxos.PaxosInit;
+import se.sics.caracaldb.replication.log.Decide;
+import se.sics.caracaldb.replication.log.ReplicatedLog;
+import se.sics.caracaldb.store.RangeReq;
+import se.sics.caracaldb.store.RangeResp;
+import se.sics.caracaldb.store.Store;
+import se.sics.caracaldb.system.Configuration;
 import se.sics.caracaldb.system.StartVNode;
+import se.sics.caracaldb.system.Stats;
+import se.sics.caracaldb.system.Stats.Report;
+import se.sics.caracaldb.util.CustomSerialisers;
+import se.sics.caracaldb.utils.TimestampIdFactory;
+import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
@@ -60,21 +81,34 @@ public class CatHerder extends ComponentDefinition {
     Positive<Network> net = requires(Network.class);
     Positive<EventualFailureDetector> fd = requires(EventualFailureDetector.class);
     Positive<Timer> timer = requires(Timer.class);
+    Positive<Store> store = requires(Store.class);
     // finals
     private final long heartbeatInterval;
     private final long heartbeatTimeout;
     // instance
+    private Configuration config;
     private LookupTable lut;
     private Address self;
+    private Key heartBeatKey;
     private Set<Address> masterGroup = null;
     private UUID sendHeartbeatId = null;
     private UUID checkHeartbeatsId = null;
+    // master
+    private HashSet<Address> outstandingFailures = new HashSet<Address>();
+    private Component paxos;
+    private Positive<ReplicatedLog> rlog = requires(ReplicatedLog.class);
 
     public CatHerder(CatHerderInit init) {
-        heartbeatInterval = init.conf.getMilliseconds("caracal.heartbeatInterval");
+        config = init.conf;
+        heartbeatInterval = config.getMilliseconds("caracal.heartbeatInterval");
         heartbeatTimeout = 2 * heartbeatInterval;
         lut = init.bootEvent.lut;
         self = init.self;
+        try {
+            heartBeatKey = LookupTable.RESERVED_HEARTBEATS.append(CustomSerialisers.serialiseAddress(self)).get();
+        } catch (IOException ex) {
+            throw new RuntimeException(ex); // No idea what to do if this doesn't work.
+        }
         checkMasterGroup();
         if (checkMaster()) {
             connectMasterHandlers();
@@ -90,11 +124,12 @@ public class CatHerder extends ComponentDefinition {
         subscribe(sendHeartbeatHandler, timer);
     }
     Handler<Start> startHandler = new Handler<Start>() {
+
         @Override
         public void handle(Start event) {
             LOG.debug("{} starting initial nodes", self);
             /*
-             * Timeouts 
+             * Timeouts
              */
             SchedulePeriodicTimeout spt = new SchedulePeriodicTimeout(0, heartbeatInterval);
             SendHeartbeat shb = new SendHeartbeat(spt);
@@ -146,32 +181,28 @@ public class CatHerder extends ComponentDefinition {
     Handler<ForwardToAny> forwardHandler = new Handler<ForwardToAny>() {
         @Override
         public void handle(ForwardToAny event) {
-            Address[] repGroup = lut.getResponsibles(event.key);
-            if (repGroup == null) {
-                LOG.warn("No Node found reponsible for key {}! Dropping messsage.", event.key);
-                return;
+            try {
+                Address dest = findDest(event.key);
+                Message msg = event.msg.insertDestination(dest);
+                trigger(msg, net);
+                LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
+            } catch (NoResponsibleForKeyException ex) {
+                LOG.warn("Dropping message!", ex);
             }
-            int nodePos = RAND.nextInt(repGroup.length);
-            Address dest = repGroup[nodePos];
-            Message msg = event.msg.insertDestination(dest);
-            trigger(msg, net);
-            LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
             //TODO rewrite to check at destination and foward until reached right node
         }
     };
     Handler<ForwardMessage> forwardMsgHandler = new Handler<ForwardMessage>() {
         @Override
         public void handle(ForwardMessage event) {
-            Address[] repGroup = lut.getResponsibles(event.forwardTo);
-            if (repGroup == null) {
-                LOG.warn("No Node found reponsible for key {}! Dropping messsage.", event.forwardTo);
-                return;
+            try {
+                Address dest = findDest(event.forwardTo);
+                Message msg = event.msg.insertDestination(dest);
+                trigger(msg, net);
+                LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
+            } catch (NoResponsibleForKeyException ex) {
+                LOG.warn("Dropping message!", ex);
             }
-            int nodePos = RAND.nextInt(repGroup.length);
-            Address dest = repGroup[nodePos];
-            Message msg = event.msg.insertDestination(dest);
-            trigger(msg, net);
-            LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
         }
     };
     Handler<NodeBooted> bootedHandler = new Handler<NodeBooted>() {
@@ -189,15 +220,115 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(SendHeartbeat event) {
-            //throw new UnsupportedOperationException("Not supported yet.");
+            Report r = Stats.collect(self);
+            try {
+                PutRequest pr = new PutRequest(TimestampIdFactory.get().newId(), heartBeatKey, r.serialise());
+                Address dest = findDest(pr.key);
+                CaracalMsg msg = new CaracalMsg(self, dest, pr);
+                trigger(msg, net);
+                LOG.debug("Sending Heartbeat: {}", r);
+            } catch (IOException ex) {
+                LOG.error("Could not serialise Report. If this persists the node will be declared as dead due to lacking heartbeats.", ex);
+            } catch (NoResponsibleForKeyException ex) {
+                LOG.error("Dropping hearbeat. If this persists the node will be declared as dead due to lacking heartbeats", ex);
+            }
         }
-        
+
+    };
+    /*
+     * MASTER ONLY
+     */
+    Handler<CheckHeartbeats> checkHBHandler = new Handler<CheckHeartbeats>() {
+
+        private RangeReq rr = new RangeReq(KeyRange.prefix(heartBeatKey), null, false); // FIXME Limit.NONE after Alex' code merge
+
+        @Override
+        public void handle(CheckHeartbeats event) {
+            /*
+             * I suppose one can argue whether or not it's correct to do this
+             * directly on the storage, bypassing the replication. But consider
+             * this: If you involve the replication, then there is really no
+             * benefit to collocating the reserved range with the master group.
+             */
+            trigger(rr, store);
+        }
+    };
+    Handler<RangeResp> rangeHandler = new Handler<RangeResp>() {
+
+        @Override
+        public void handle(RangeResp event) {
+            HashMap<Address, Report> stats = new HashMap<Address, Report>();
+            for (Entry<Key, byte[]> e : event.result.entrySet()) {
+                Key k = e.getKey();
+                try {
+                    Report r = Report.deserialise(e.getValue());
+                    stats.put(r.atHost, r);
+                } catch (IOException ex) {
+                    LOG.error("Could not deserialise Statistics Report for key " + k, ex);
+                }
+            }
+            HashSet<Address> fails = new HashSet<Address>();
+            for (Iterator<Address> it = lut.hostIterator(); it.hasNext();) {
+                Address host = it.next();
+                if ((host != null) && !stats.containsKey(host)) {
+                    fails.add(host);
+                    LOG.info("{}: It appears that host {} has failed.", self, host);
+                }
+            }
+            // Can already be deallocated while failures are being handled
+            // Somtimes I wish I could just tell the JVM GC what to do -.-
+            stats.clear();
+            stats = null;
+            for (Address adr : fails) {
+
+            }
+        }
+    };
+    Handler<Decide> decideHandler = new Handler<Decide>() {
+
+        @Override
+        public void handle(Decide event) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
     };
 
+    private Address findDest(Key k) throws NoResponsibleForKeyException {
+        Address[] repGroup = lut.getResponsibles(k);
+        if (repGroup == null) {
+            throw new NoResponsibleForKeyException(k);
+        }
+        // Try to deliver locally
+        for (Address adr : repGroup) {
+            if (adr.sameHostAs(self)) {
+                return adr;
+            }
+        }
+        // Otherwise just pick at random
+        int nodePos = RAND.nextInt(repGroup.length);
+        Address dest = repGroup[nodePos];
+        return dest;
+    }
+
+    private void announceFailure(Address failedHost) {
+
+    }
+
     private void connectMasterHandlers() {
+        View v = new View(ImmutableSortedSet.copyOf(masterGroup), 0);
+        paxos = create(Paxos.class,
+                new PaxosInit(v, (int) Math.ceil(LookupTable.INIT_REP_FACTOR / 2.0),
+                        config.getMilliseconds("caracal.network.keepAlivePeriod"), self));
+        connect(rlog.getPair(), paxos.getPositive(ReplicatedLog.class));
+        connect(paxos.getNegative(Network.class), net);
+        connect(paxos.getNegative(EventualFailureDetector.class), fd);
+
+        subscribe(decideHandler, rlog);
+        subscribe(checkHBHandler, timer);
+        subscribe(rangeHandler, store);
     }
 
     private void connectSlaveHandlers() {
+
     }
 
     private void startInitialVNodes() {
@@ -230,5 +361,20 @@ public class CatHerder extends ComponentDefinition {
         public CheckHeartbeats(SchedulePeriodicTimeout spt) {
             super(spt);
         }
+    }
+
+    public static class NoResponsibleForKeyException extends Exception {
+
+        public final Key key;
+
+        public NoResponsibleForKeyException(Key k) {
+            key = k;
+        }
+
+        @Override
+        public String getMessage() {
+            return "No Node found reponsible for key " + key;
+        }
+
     }
 }

@@ -20,8 +20,10 @@
  */
 package se.sics.caracaldb.util;
 
+import com.google.common.io.Closer;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.UnsignedBytes;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,6 +39,7 @@ public abstract class CustomSerialisers {
     /*
      * Custom Address serialisation to save some space
      */
+
     public static void serialiseAddress(Address addr, DataOutputStream w) throws IOException {
         if (addr == null) {
             w.writeInt(0); //simply put four 0 bytes since 0.0.0.0 is not a valid host ip
@@ -63,6 +66,23 @@ public abstract class CustomSerialisers {
             w.writeByte(0);
         }
 
+    }
+
+    public static byte[] serialiseAddress(Address addr) throws IOException {
+        Closer closer = Closer.create();
+        try {
+            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
+            DataOutputStream w = closer.register(new DataOutputStream(baos));
+            
+            serialiseAddress(addr, w);
+            w.flush();
+            
+            return baos.toByteArray();
+        } catch (Throwable e) {
+            throw closer.rethrow(e);
+        } finally {
+            closer.close();
+        }
     }
 
     public static Address deserialiseAddress(DataInputStream r) throws IOException {

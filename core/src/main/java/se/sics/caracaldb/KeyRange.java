@@ -58,6 +58,10 @@ public class KeyRange {
         return new KRBuilder(CLOSED, begin);
     }
     
+    public static KeyRange prefix(Key prefix) {
+        return KeyRange.closed(prefix).open(prefix.inc());
+    }
+    
     
     
     public static class KRBuilder {

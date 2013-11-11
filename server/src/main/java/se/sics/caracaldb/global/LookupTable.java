@@ -30,11 +30,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
@@ -55,6 +55,10 @@ public class LookupTable {
 
     public static final int INIT_REP_FACTOR = 3;
     public static final int NUM_VIRT_GROUPS = 256;
+    public static final Key RESERVED_PREFIX = new Key(0); // (00 00 00 00)
+    public static final Key RESERVED_START = Key.ZERO_KEY; // ( )
+    public static final Key RESERVED_END = new Key(1); // (00 00 00 01)
+    public static final Key RESERVED_HEARTBEATS = RESERVED_PREFIX.append(new byte[]{0, 0, 0, 1}).get(); // (00 00 00 00 00 00 00 01)
     private static final String EMPTY_TXT = "<EMPTY>";
     private static final Random RAND = new Random();
     private static LookupTable INSTANCE = null; // Don't tell anyone about this! (static fields and simulations oO)
@@ -438,11 +442,11 @@ public class LookupTable {
             virtualHostGroups[i] = new LookupGroup(Ints.toByteArray(i)[3]);
         }
 
-        // Reserved range from 00 00 00 00 to 00 00 00 01
-        virtualHostsPut(new Key(0), 0);
+        // Reserved range from () to (00 00 00 01)
+        virtualHostsPut(RESERVED_START, 0);
         // Place as many virtual nodes as there are hosts in the system
         // for random (non-schema-aligned) writes (more or less evenly distributed)
-        virtualHostsPut(new Key(1), RAND.nextInt(replicationGroups.size()));
+        virtualHostsPut(RESERVED_END, RAND.nextInt(replicationGroups.size()));
         int numVNodes = hosts.size()*vNodesPerHost;
         UnsignedInteger incr = (UnsignedInteger.MAX_VALUE.minus(UnsignedInteger.ONE)).dividedBy(UnsignedInteger.fromIntBits(numVNodes));
         UnsignedInteger last = UnsignedInteger.ONE;
@@ -451,6 +455,10 @@ public class LookupTable {
             last = last.plus(incr);
             virtualHostsPut(new Key(last.intValue()), RAND.nextInt(replicationGroups.size()));
         }
+    }
+    
+    Iterator<Address> hostIterator() {
+        return hosts.iterator();
     }
 
     void virtualHostsPut(Key key, Integer value) {
