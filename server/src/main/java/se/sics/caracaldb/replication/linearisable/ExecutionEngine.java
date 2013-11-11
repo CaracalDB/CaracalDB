@@ -45,6 +45,7 @@ import se.sics.caracaldb.operations.GetRequest;
 import se.sics.caracaldb.operations.GetResponse;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.PutResponse;
+import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.operations.ResponseCode;
 import se.sics.caracaldb.replication.log.Decide;
 import se.sics.caracaldb.replication.log.Noop;
@@ -56,6 +57,8 @@ import se.sics.caracaldb.replication.log.Value;
 import se.sics.caracaldb.store.GetReq;
 import se.sics.caracaldb.store.GetResp;
 import se.sics.caracaldb.store.Put;
+import se.sics.caracaldb.store.RangeReq;
+import se.sics.caracaldb.store.RangeResp;
 import se.sics.caracaldb.store.StorageRequest;
 import se.sics.caracaldb.store.Store;
 import se.sics.kompics.Component;
@@ -149,6 +152,12 @@ public class ExecutionEngine extends ComponentDefinition {
             trigger(new GetResponse(event.getId(), event.key, event.value), rep);
         }
     };
+    Handler<RangeResp> rangeHandler = new Handler<RangeResp>() {
+        @Override
+        public void handle(RangeResp resp) {
+            trigger(new RangeQuery.Response(resp), rep);
+        }
+    };
     Handler<ViewChange> viewChangeHandler = new Handler<ViewChange>() {
         @Override
         public void handle(ViewChange event) {
@@ -239,7 +248,6 @@ public class ExecutionEngine extends ComponentDefinition {
                                 subscribe(cleanupHandler, dataTransfer.control());
 
                                 lastSnapshotId = snapshotId;
-                                
                                 trigger(new Propose(new SyncedUp()), rLog);
                                 trigger(Synced.EVENT, rep);
                             }
@@ -272,7 +280,7 @@ public class ExecutionEngine extends ComponentDefinition {
         trigger(req, store);
         lastSnapshotId = diff.getValue0();
     }
-
+    
     private void doReconf(Reconfigure rconf) {
         if ((view != null) && (view.id >= rconf.view.id)) {
             LOG.warn("Ignoring reconfiguration from {} to {}: Local is at least as recent.",
@@ -285,10 +293,8 @@ public class ExecutionEngine extends ComponentDefinition {
         LOG.info("Moved to view {}", view);
         //TODO update MethCat view as well
 
-        
-
         state = State.BUFFERING;
-        
+
         // transfer data
         transferDataMaybe(oldView, view);
     }
@@ -394,6 +400,20 @@ public class ExecutionEngine extends ComponentDefinition {
                     return null;
                 }
             });
+            buffering.put(RangeQuery.Request.class, new Action<RangeQuery.Request>() {
+                @Override
+                public void initiate(RangeQuery.Request op, long pos) {
+                    List<CaracalOp> prefix = opLog.getApplicableForOp(pos, op, lastSnapshotId);
+                    ReplayRangeReq replayReq = new ReplayRangeReq(op.subRange, op.limitTracker, op.transFilter, prefix);
+                    replayReq.setId(op.id);
+                    trigger(replayReq, store);
+                }
+
+                @Override
+                public StorageRequest prepareSnapshot(RangeQuery.Request op) {
+                    return null;
+                }
+            });
             /*
              * CATCHING_UP
              */
@@ -423,6 +443,21 @@ public class ExecutionEngine extends ComponentDefinition {
                     return null;
                 }
             });
+            catchingUp.put(RangeQuery.Request.class, new Action<RangeQuery.Request>() {
+                @Override
+                public void initiate(RangeQuery.Request op, long pos) {
+                    /*
+                     * Can't answer this during catch-up.
+                     * Simply ignore it and let another replica reply.
+                     */
+                }
+
+                @Override
+                public StorageRequest prepareSnapshot(RangeQuery.Request op) {
+                    return null;
+                }
+            });
+
             /*
              * ACTIVE
              */
@@ -452,6 +487,20 @@ public class ExecutionEngine extends ComponentDefinition {
                 @Override
                 public StorageRequest prepareSnapshot(PutRequest op) {
                     return new Put(op.key, op.data);
+                }
+            });
+            active.put(RangeQuery.Request.class, new Action<RangeQuery.Request>() {
+                @Override
+                public void initiate(RangeQuery.Request op, long pos) {
+                    RangeReq request = new RangeReq(op.subRange, op.limitTracker, op.transFilter);
+                    request.setId(op.id);
+                    trigger(request, store);
+                }
+
+                @Override
+                public StorageRequest prepareSnapshot(RangeQuery.Request op) {
+                    // Nothing to store for a RangeReq
+                    return null;
                 }
             });
         }

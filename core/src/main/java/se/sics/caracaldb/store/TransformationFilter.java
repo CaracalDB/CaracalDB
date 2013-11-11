@@ -18,21 +18,20 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.global;
+package se.sics.caracaldb.store;
 
-import se.sics.kompics.PortType;
+import org.javatuples.Pair;
 
 /**
- *
- * @author Lars Kroll <lkroll@sics.se>
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class LookupService extends PortType {
+public interface TransformationFilter {
 
-    {
-        request(ForwardToAny.class);
-        request(ForwardToRange.class);
-        request(LookupRequest.class);
-        indication(LookupResponse.class);
-    }
+    /**
+     * @param value serialized item
+     * @return <filtered,value> where filtered is true if the value is supposed
+     * to be filtered out and false otherwise and value is the transformed final
+     * value as byte array
+     */
+    public Pair<Boolean, byte[]> execute(byte[] serializedValue);
 }

@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.replication.linearisable;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import se.sics.caracaldb.persistence.Persistence;
@@ -27,8 +28,8 @@ import se.sics.caracaldb.store.StorageRequest;
 import se.sics.kompics.Response;
 
 /**
- *
  * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
 public class SnapshotReq extends StorageRequest {
     
@@ -44,7 +45,7 @@ public class SnapshotReq extends StorageRequest {
     }
 
     @Override
-    public Response execute(Persistence store) {
+    public Response execute(Persistence store) throws IOException {
         for (StorageRequest req : reqs) {
             req.execute(store);
         }

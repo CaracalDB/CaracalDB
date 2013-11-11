@@ -34,6 +34,7 @@ import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
+import se.sics.caracaldb.store.TFFactory;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
@@ -160,11 +161,11 @@ public class DataSender extends DataTransferComponent {
             return;
         }
         if (lastKey == null) {
-            trigger(new RangeReq(range, Limit.toBytes(maxSize), false), store);
+            trigger(new RangeReq(range, Limit.toBytes(maxSize), TFFactory.tombstoneFilter()), store);
             return;
         }
         
         KeyRange subRange = KeyRange.open(lastKey).endFrom(range);
-        trigger(new RangeReq(subRange, Limit.toBytes(maxSize), false), store);
+        trigger(new RangeReq(subRange, Limit.toBytes(maxSize), TFFactory.tombstoneFilter()), store);
     }
 }

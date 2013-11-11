@@ -23,7 +23,6 @@ package se.sics.caracaldb.global;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashSet;
@@ -31,8 +30,10 @@ import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import static org.junit.Assert.*;
-import org.junit.Before;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -71,7 +72,7 @@ public class LUTTest {
         lut.printFormat(sb);
         System.out.println(sb.toString());
         
-        ImmutableSet<Key> expected = ImmutableSet.of(Key.fromHex("00 00 00 00"),
+        ImmutableSet<Key> expected = ImmutableSet.of(Key.fromHex("00"),
                 Key.fromHex("00 00 00 01"),
                 Key.fromHex("55 55 55 55"),
                 Key.fromHex("AA AA AA A9"),
@@ -80,6 +81,7 @@ public class LUTTest {
         for (Address adr : addrs) {
             Set<Key> localNodes = lut.getVirtualNodesAt(adr);
             System.out.println("Nodes for " + adr + " are " + localNodes);
+            System.out.println("Expected: " + expected);
             assertTrue(Sets.symmetricDifference(localNodes, expected).isEmpty());
         }
     }

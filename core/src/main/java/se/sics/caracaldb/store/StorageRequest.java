@@ -20,14 +20,14 @@
  */
 package se.sics.caracaldb.store;
 
+import java.io.IOException;
 import se.sics.caracaldb.persistence.Persistence;
-import se.sics.kompics.Event;
 import se.sics.kompics.Request;
 import se.sics.kompics.Response;
 
 /**
- *
  * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
 public abstract class StorageRequest extends Request {
     
@@ -48,7 +48,7 @@ public abstract class StorageRequest extends Request {
      * @param store a reference to the backing store
      * @return either a response or null if no response is required
      */
-    public abstract Response execute(Persistence store);
+    public abstract Response execute(Persistence store) throws IOException;
     
     /**
      * Set optional id to match up requests
@@ -67,5 +67,4 @@ public abstract class StorageRequest extends Request {
     public long getId() {
         return id;
     }
-    
 }

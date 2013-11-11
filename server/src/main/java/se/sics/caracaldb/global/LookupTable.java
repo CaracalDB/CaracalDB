@@ -37,8 +37,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
@@ -48,8 +51,8 @@ import se.sics.caracaldb.util.CustomSerialisers;
 import se.sics.kompics.address.Address;
 
 /**
- *
  * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
 public class LookupTable {
 
@@ -72,7 +75,6 @@ public class LookupTable {
     private LookupTable() {
         virtualHostGroups = new LookupGroup[NUM_VIRT_GROUPS];
         virtualHostGroupVersions = new Long[NUM_VIRT_GROUPS];
-
     }
 
     public int numHosts() {
@@ -109,6 +111,81 @@ public class LookupTable {
         Integer rgVersion = replicationGroupVersions.get(rgId);
         Address[] group = getVirtualHosts(rgId, rg.getValue0());
         return group;
+    }
+
+    /**
+     * 
+     * @param range
+     * @return a map of sub-keyRanges and their respective replication group. 
+     * this map cannot be null, but it can be empty if the range itself is emptyRange 
+     * else it should contain at least one replicationGroup
+     * @throws se.sics.caracaldb.global.LookupTable.BrokenLut 
+     */
+    public NavigableMap<KeyRange, Address[]> getAllResponsibles(KeyRange range) throws BrokenLut {
+        TreeMap<KeyRange, Address[]> result = new TreeMap<KeyRange, Address[]>();
+        if (range.equals(KeyRange.EMPTY)) {
+            return result;
+        }
+         
+        Pair<Integer, Pair<Key, Integer>> rangeInfo = virtualHostsGetResponsibleWithGid(range.begin);
+        if (rangeInfo == null) {
+            throw BrokenLut.exception;
+        }
+
+        Integer lgId = rangeInfo.getValue0();
+        NavigableMap<Key, Integer> keyMap = new TreeMap<Key, Integer>();
+        KeyRange endRange = range;
+        do {
+            LookupGroup lg = virtualHostGroups[lgId];
+            Pair<NavigableMap<Key, Integer>, KeyRange> subSpace = lg.getRangeResponsible(endRange);
+            keyMap.putAll(subSpace.getValue0());
+            endRange = subSpace.getValue1();
+        } while (!endRange.equals(KeyRange.EMPTY));
+
+        KeyRange.KRBuilder krb;
+        Address[] group;
+        Iterator<Entry<Key, Integer>> it = keyMap.entrySet().iterator();
+        if (it.hasNext()) {
+            KeyRange subRange;
+            Entry<Key, Integer> entry = it.next();
+            krb = new KeyRange.KRBuilder(range.beginBound, range.begin);
+            group = getVirtualHosts(entry.getValue(), entry.getKey());
+
+            while (it.hasNext()) {
+                entry = it.next();
+                subRange = krb.open(entry.getKey());
+                result.put(subRange, group);
+
+                krb = new KeyRange.KRBuilder(KeyRange.Bound.CLOSED, entry.getKey());
+                group = getVirtualHosts(entry.getValue(), entry.getKey());
+            }
+
+            subRange = krb.endFrom(range);
+            result.put(subRange, group);
+        }
+        return result;
+    }
+    
+    
+    public Pair<KeyRange, Address[]> getFirstResponsibles(KeyRange range) throws BrokenLut {
+        if (range.equals(KeyRange.EMPTY)) {
+            return null;
+        }
+         
+        Pair<Integer, Pair<Key, Integer>> rangeInfo = virtualHostsGetResponsibleWithGid(range.begin);
+        Key rgKey = rangeInfo.getValue1().getValue0();
+        Integer rgId = rangeInfo.getValue1().getValue1();
+        if (rangeInfo == null) {
+            throw BrokenLut.exception;
+        }
+        Key endR = virtualHostsGetSuccessor(rgKey);
+        if(endR == null) {
+            throw BrokenLut.exception;
+        }
+        KeyRange firstRange = KeyRange.startFrom(range).open(endR);
+        
+        Address[] group = getVirtualHosts(rgId, rgKey);
+        return Pair.with(firstRange, group);
     }
 
     public View getView(Key nodeId) {
@@ -359,7 +436,6 @@ public class LookupTable {
                 INSTANCE.virtualHostGroups[i] = LookupGroup.deserialise(groupBytes);
             }
 
-
             return INSTANCE;
         } catch (Throwable e) {
             throw closer.rethrow(e);
@@ -386,7 +462,6 @@ public class LookupTable {
         }
         return Pair.with(version, group);
     }
-
 
     public static LookupTable generateInitial(Set<Address> hosts, int vNodesPerHost) {
         LookupTable lut = new LookupTable();
@@ -472,13 +547,17 @@ public class LookupTable {
         return group.get(key);
     }
 
-    Pair<Key, Integer> virtualHostsGetResponsible(Key key) {
+    /**
+     * @param key
+     * @return <hostGroupId, <replicationGroupKey, replicationGroupId>>
+     */
+    private Pair<Integer, Pair<Key, Integer>> virtualHostsGetResponsibleWithGid(Key key) {
         int groupId = key.getFirstByte();
         LookupGroup keyGroup = virtualHostGroups[groupId];
         while (true) {
             try {
                 Pair<Key, Integer> i = keyGroup.getResponsible(key);
-                return i;
+                return Pair.with(groupId, i);
             } catch (NoResponsibleInGroup e) {
                 groupId--;
                 if (groupId < 0) {
@@ -487,6 +566,15 @@ public class LookupTable {
                 keyGroup = virtualHostGroups[groupId];
             }
         }
+    }
+
+    /**
+     * @param key
+     * @return <replicationGroupKey, replicationGroupId>
+     */
+    Pair<Key, Integer> virtualHostsGetResponsible(Key key) {
+        Pair<Integer, Pair<Key, Integer>> result = virtualHostsGetResponsibleWithGid(key);
+        return result == null ? null : result.getValue1();
     }
 
     Key virtualHostsGetSuccessor(Key key) {
@@ -517,5 +605,9 @@ public class LookupTable {
     public static class NoResponsibleInGroup extends Throwable {
 
         public static final NoResponsibleInGroup exception = new NoResponsibleInGroup();
+    }
+    
+    public static class BrokenLut extends Throwable {
+        public static final BrokenLut exception = new BrokenLut();
     }
 }

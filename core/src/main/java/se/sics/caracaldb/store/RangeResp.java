@@ -22,7 +22,6 @@ package se.sics.caracaldb.store;
 
 import java.util.SortedMap;
 import se.sics.caracaldb.Key;
-import se.sics.kompics.Response;
 
 /**
  *
@@ -30,13 +29,14 @@ import se.sics.kompics.Response;
  */
 public class RangeResp extends StorageResponse {
     
-    public final SortedMap<Key, byte[]> result;
     public final RangeReq req;
+    public final SortedMap<Key, byte[]> result;
+    public final boolean readLimit;
     
-    public RangeResp(RangeReq req, SortedMap<Key, byte[]> result) {
+    public RangeResp(RangeReq req, SortedMap<Key, byte[]> result, boolean readAll) {
         super(req);
         this.req = req;
         this.result = result;
+        this.readLimit = readAll;
     }
-    
 }

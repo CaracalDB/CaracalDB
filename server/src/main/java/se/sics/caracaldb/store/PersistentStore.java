@@ -30,8 +30,8 @@ import se.sics.kompics.Response;
 import se.sics.kompics.Stop;
 
 /**
- *
  * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
 public class PersistentStore extends ComponentDefinition {
     
@@ -53,9 +53,13 @@ public class PersistentStore extends ComponentDefinition {
     Handler<StorageRequest> requestHandler = new Handler<StorageRequest>() {
         @Override
         public void handle(StorageRequest event) {
-            Response resp = event.execute(db);
-            if (resp != null) {
-                trigger(resp, store);
+            try {
+                Response resp = event.execute(db);
+                if (resp != null) {
+                    trigger(resp, store);
+                }
+            } catch (Throwable ex) {
+                LOG.error("Exception during process", ex);
             }
         }        
     };
@@ -65,5 +69,4 @@ public class PersistentStore extends ComponentDefinition {
             db.close();
         }        
     };
-    
 }

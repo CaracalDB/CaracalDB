@@ -20,54 +20,75 @@
  */
 package se.sics.caracaldb.store;
 
+import com.google.common.io.Closer;
+import java.io.IOException;
 import java.util.TreeMap;
+import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.persistence.StoreIterator;
+import se.sics.caracaldb.store.Limit.LimitTracker;
 import se.sics.kompics.Response;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
 public class RangeReq extends StorageRequest {
 
     public final KeyRange range;
-    public final Limit limit;
-    public final boolean tombstones;
+    private final TransformationFilter transFilter;
+    private final LimitTracker limit;
 
-    public RangeReq(KeyRange range, Limit limit, boolean tombstones) {
+    public RangeReq(KeyRange range, LimitTracker limit, TransformationFilter transFilter) {
         this.range = range;
-        this.limit = limit;
-        this.tombstones = tombstones;
+        if (limit != null) {
+            this.limit = limit;
+        } else {
+            this.limit = Limit.noLimit();
+        }
+        if (transFilter != null) {
+            this.transFilter = transFilter;
+        } else {
+            this.transFilter = TFFactory.noTF();
+        }
     }
 
     @Override
-    public Response execute(Persistence store) {
+    public Response execute(Persistence store) throws IOException {
         TreeMap<Key, byte[]> results = new TreeMap<Key, byte[]>();
-        int counter = 0;
-        boolean first = true;
-        StoreIterator it = null;
+
+        Closer closer = Closer.create();
         try {
-            for (it = store.iterator(range.begin.getArray()); it.hasNext(); it.next()) {
+            byte[] begin = range.begin.getArray();
+            for (StoreIterator it = closer.register(store.iterator(begin)); it.hasNext(); it.next()) {
                 byte[] key = it.peekKey();
                 if (range.contains(key)) {
-                    results.put(new Key(key), it.peekValue());
+                    Pair<Boolean, byte[]> res = transFilter.execute(it.peekValue());
+                    if (!res.getValue0()) {
+                        if (limit.read(res.getValue1())) {
+                            results.put(new Key(key), res.getValue1());
+                            if (!limit.canRead()) {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
                 } else {
-                    if (!first) {
+                    //special case (a,b) and key is a
+                    if (Key.compare(begin, key) != 0) {
                         break; // reached end of range
                     }
                 }
-                if (first) {
-                    first = false;
-                }
             }
+        } catch (Throwable e) {
+            closer.rethrow(e);
         } finally {
-            if (it != null) {
-                it.close();
-            }
+            closer.close();
         }
-        return new RangeResp(this, results);
+        return new RangeResp(this, results, !limit.canRead());
     }
 }

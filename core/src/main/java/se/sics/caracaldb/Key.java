@@ -23,7 +23,6 @@ package se.sics.caracaldb;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.common.primitives.UnsignedInteger;
-import com.google.common.primitives.UnsignedInts;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -162,11 +161,17 @@ public class Key implements Comparable<Key> {
         return COMP.compare(key1, key2);
     }
 
+    /**
+     * @param that can be Key or byte[] representation of a key
+     */
     @Override
     public boolean equals(Object that) {
         if (that instanceof Key) {
             Key k = (Key) that;
             return this.compareTo(k) == 0;
+        } else if (that instanceof byte[]) {
+            byte[] k = (byte[]) that;
+            return COMP.compare(k,this.getArray()) == 0;
         }
         return false;
 
@@ -191,17 +196,33 @@ public class Key implements Comparable<Key> {
     public boolean leq(Key k) {
         return compareTo(k) <= 0;
     }
+    
+    public boolean leq(byte[] k) {
+        return COMP.compare(data, k) <= 0;
+    }
 
     public boolean less(Key k) {
         return compareTo(k) < 0;
+    }
+    
+    public boolean less(byte[] k) {
+        return COMP.compare(data, k) < 0;
     }
 
     public boolean geq(Key k) {
         return compareTo(k) >= 0;
     }
+    
+    public boolean geq(byte[] k) {
+        return COMP.compare(data, k) >= 0;
+    }
 
     public boolean greater(Key k) {
         return compareTo(k) > 0;
+    }
+    
+    public boolean greater(byte[] k) {
+        return COMP.compare(data,k) > 0;
     }
 
     public static boolean leq(byte[] k1, byte[] k2) {
@@ -221,8 +242,12 @@ public class Key implements Comparable<Key> {
     }
 
     public static Key fromHex(String hex) {
-        int num = UnsignedInts.parseUnsignedInt(hex.replaceAll("\\s", ""), 16);
-        return new Key(num);
+        String[] byteBlocks = hex.split("\\s");
+        byte[] bytes = new byte[byteBlocks.length];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = UnsignedBytes.parseUnsignedByte(byteBlocks[i], 16);
+        }
+        return new Key(bytes);
     }
 
     public static class Inf extends Key {

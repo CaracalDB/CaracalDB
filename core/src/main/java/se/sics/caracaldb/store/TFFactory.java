@@ -18,21 +18,29 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.global;
+package se.sics.caracaldb.store;
 
-import se.sics.kompics.PortType;
+import org.javatuples.Pair;
 
 /**
- *
- * @author Lars Kroll <lkroll@sics.se>
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class LookupService extends PortType {
-
-    {
-        request(ForwardToAny.class);
-        request(ForwardToRange.class);
-        request(LookupRequest.class);
-        indication(LookupResponse.class);
+public class TFFactory {
+    public static TransformationFilter tombstoneFilter() {
+        return new TransformationFilter() {
+            @Override
+            public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
+                return new Pair<Boolean, byte[]>(serializedValue == null, serializedValue);
+            }
+        };
+    }
+    
+    public static TransformationFilter noTF() {
+        return new TransformationFilter() {
+            @Override
+            public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
+                return new Pair<Boolean, byte[]>(Boolean.TRUE, serializedValue);
+            }
+        };
     }
 }

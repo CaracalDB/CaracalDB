@@ -63,6 +63,11 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
+            <groupId>org.fusesource.leveldbjni</groupId>
+            <artifactId>leveldbjni-all</artifactId>
+            <version>1.1</version>
+        </dependency>
+        <dependency>
             <groupId>org.hyperic</groupId>
             <artifactId>sigar</artifactId>
             <version>${sigar.version}</version>
@@ -196,6 +201,11 @@
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
+        </repository>
+        <repository>
+            <id>fusesource.nexus.snapshot</id>
+            <name>FuseSource Community Snapshot Repository</name>
+            <url>http://repo.fusesource.com/nexus/content/groups/public-snapshots</url>
         </repository>
         <repository>
             <id>JBoss Thirdparty Uploads</id>

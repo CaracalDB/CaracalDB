@@ -20,19 +20,32 @@
  */
 package se.sics.caracaldb.global;
 
-import se.sics.kompics.PortType;
+import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.operations.CaracalMsg;
+import se.sics.caracaldb.operations.RangeQuery;
+import se.sics.kompics.Event;
+import se.sics.kompics.address.Address;
+import se.sics.kompics.network.Message;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class LookupService extends PortType {
+public class ForwardToRange extends Event {
 
-    {
-        request(ForwardToAny.class);
-        request(ForwardToRange.class);
-        request(LookupRequest.class);
-        indication(LookupResponse.class);
+    private final RangeQuery.Request rangeReq;
+    public final Address src;
+    public final RangeQuery.Type execType;
+    public final KeyRange range;
+
+    public ForwardToRange(RangeQuery.Request rangeReq, KeyRange range, Address src) {
+        this.rangeReq = rangeReq;
+        this.src = src;
+        this.execType = rangeReq.execType;
+        this.range = range;
+    }
+
+    public Message getSubRangeMessage(KeyRange subRange, Address dst) {
+        return new CaracalMsg(src, dst, rangeReq.subRange(subRange));
     }
 }
