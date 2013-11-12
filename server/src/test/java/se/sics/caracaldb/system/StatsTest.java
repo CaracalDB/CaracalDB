@@ -22,15 +22,17 @@ package se.sics.caracaldb.system;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import se.sics.kompics.address.Address;
-import static org.junit.Assert.*;
 import se.sics.caracaldb.system.Stats.Report;
+import se.sics.kompics.address.Address;
 
 /**
  *
@@ -63,12 +65,13 @@ public class StatsTest {
         for (int i = 0; i < NUM; i++) {
             Report r = Stats.collect(self);
             assertNotNull(r);
+            assertThat(r.cpuUsage, not(equalTo(Double.NaN)));
             System.out.println(r);
-            try {
-                Thread.sleep(TIME);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(StatsTest.class.getName()).log(Level.SEVERE, null, ex);
-            }
+//            try {
+//                Thread.sleep(TIME);
+//            } catch (InterruptedException ex) {
+//                Logger.getLogger(StatsTest.class.getName()).log(Level.SEVERE, null, ex);
+//            }
         }
 
     }
