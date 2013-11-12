@@ -22,7 +22,6 @@ package se.sics.caracaldb.simulation;
 
 import se.sics.caracaldb.simulation.command.BootCmd;
 import se.sics.caracaldb.simulation.command.GetCmd;
-import se.sics.caracaldb.simulation.command.OpCmd;
 import se.sics.caracaldb.simulation.command.PutCmd;
 import se.sics.caracaldb.simulation.command.TerminateCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;

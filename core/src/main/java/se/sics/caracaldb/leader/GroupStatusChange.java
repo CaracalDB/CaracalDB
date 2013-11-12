@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,18 +18,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+
 package se.sics.caracaldb.leader;
 
-import se.sics.kompics.PortType;
+import se.sics.kompics.Event;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author sario
  */
-public class LeaderDetector extends PortType {
-    {
-        request(ReconfigureGroup.class);
-        indication(Trust.class);
-        indication(GroupStatusChange.class); // This is just an optimisation an can be ignored if only classical LD is required
+public class GroupStatusChange extends Event {
+    public static GroupStatusChange EVENT = new GroupStatusChange();
+    
+    private GroupStatusChange() {
+        
     }
 }

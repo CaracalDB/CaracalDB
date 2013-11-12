@@ -277,7 +277,7 @@ public class CatHerder extends ComponentDefinition {
                 PutRequest pr = new PutRequest(TimestampIdFactory.get().newId(), heartBeatKey, r.serialise());
                 Address dest = findDest(pr.key);
                 CaracalMsg msg = new CaracalMsg(self, dest, pr);
-                trigger(msg, net);
+                trigger(msg, net); 
                 LOG.debug("Sending Heartbeat: {}", r);
             } catch (IOException ex) {
                 LOG.error("Could not serialise Report. If this persists the node will be declared as dead due to lacking heartbeats.", ex);
@@ -335,7 +335,7 @@ public class CatHerder extends ComponentDefinition {
             stats.clear();
             stats = null;
             for (Address adr : fails) {
-
+                //TODO something
             }
         }
     };

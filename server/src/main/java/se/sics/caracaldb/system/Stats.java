@@ -26,7 +26,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import org.hyperic.sigar.CpuPerc;
 import org.hyperic.sigar.Mem;
 import org.hyperic.sigar.Sigar;
 import org.hyperic.sigar.SigarException;
@@ -44,6 +43,7 @@ public class Stats {
     private static final Logger LOG = LoggerFactory.getLogger(Stats.class);
 
     private final static Sigar sigar = new Sigar();
+    private static double previousCpuUsage = 0.0;
     
     public static Report collect(Address atHost) {
         Mem mem;
@@ -53,14 +53,17 @@ public class Stats {
             LOG.error("Sigar Mem Error: ", se);
             return null;
         }
-        CpuPerc cpu;
         try {
-            cpu = sigar.getCpuPerc();
+            double[] cpuLoadAvgs = sigar.getLoadAverage();
+            double cpuLoad = cpuLoadAvgs[0];
+            if (cpuLoad != Double.NaN) { // This can happen if you request stats too frequently like in simulation
+                previousCpuUsage = cpuLoad;
+            }
         } catch (SigarException se) {
             LOG.error("Sigar Cpu Error: ", se);
             return null;
         }
-        return new Report(atHost, mem.getUsedPercent(), cpu.getIdle());
+        return new Report(atHost, mem.getUsedPercent(), previousCpuUsage);
     }
 
     public static class Report {

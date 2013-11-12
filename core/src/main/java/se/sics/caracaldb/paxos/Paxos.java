@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.fd.EventualFailureDetector;
+import se.sics.caracaldb.leader.GroupStatusChange;
 import se.sics.caracaldb.leader.LeaderDetector;
 import se.sics.caracaldb.leader.Omega;
 import se.sics.caracaldb.leader.OmegaInit;
@@ -112,8 +113,6 @@ public class Paxos extends ComponentDefinition {
         bal = 0;
         b = 0;
 
-
-
         omega = create(Omega.class, new OmegaInit(self));
         connect(omega.getPositive(LeaderDetector.class), eld.getPair());
         connect(omega.getPositive(LeaderDetector.class), eldPass);
@@ -132,12 +131,12 @@ public class Paxos extends ComponentDefinition {
     private void goActive() {
         state = State.ACTIVE;
 
-
         subscribe(startHandler, control);
 
         subscribe(proposeHandler, rLog);
 
         subscribe(trustHandler, eld);
+        subscribe(gsChangeHandler, eld);
 
         subscribe(prepareHandler, net);
         subscribe(promiseHandler, net);
@@ -199,6 +198,7 @@ public class Paxos extends ComponentDefinition {
     Handler<Forward> forwardHandler = new Handler<Forward>() {
         @Override
         public void handle(Forward event) {
+            LOG.debug("{}: Got Forward {}", self, event.p);
             proposals.add(event.p);
             propose(event.p);
         }
@@ -212,11 +212,22 @@ public class Paxos extends ComponentDefinition {
             collision(bal, false); // cheat and use acceptor ballot
         }
     };
+    Handler<GroupStatusChange> gsChangeHandler = new Handler<GroupStatusChange>() {
+
+        @Override
+        public void handle(GroupStatusChange event) {
+            LOG.debug("{}: Got GSC event.", self);
+            if (leader && !prepared) {
+                collision(bal, false); // try to prepare again and hope to get a majority this time
+            }
+        }
+    };
     // ACCEPTOR
     Handler<Prepare> prepareHandler = new Handler<Prepare>() {
         @Override
         public void handle(Prepare event) {
             if (!view.members.contains(event.getSource())) {
+                LOG.debug("{}: Ignoring Prepare({}) from {}. View is {}", new Object[]{self, event.ballot, event.getSource(), view});
                 return; // ignore prepares from outsiders
             }
             LOG.debug("{}: Got Prepare({}) from {}",
@@ -429,6 +440,9 @@ public class Paxos extends ComponentDefinition {
                 // steady state
                 lastProposedId++;
                 phase2a(lastProposedId, b, p);
+            } else {
+                LOG.debug("{}: Is leader, but not prepared. Set: {}", self, prepareSet);
+                collision(bal, false); // FIXME this is very risky...at high op rates steady state might never be reached
             }
         }
     }
@@ -518,7 +532,7 @@ public class Paxos extends ComponentDefinition {
         }
         return null;
     }
-    
+
     private ReconfigureGroup toELDReconf(Reconfigure r) {
         return new ReconfigureGroup(r.view, r.quorum);
     }

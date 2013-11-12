@@ -39,7 +39,7 @@ public class TimestampIdFactory implements IdFactory {
         byte[] millis = Longs.toByteArray(System.currentTimeMillis());
         byte[] nanos = Longs.toByteArray(System.nanoTime());
         return Longs.fromBytes(address[0], address[1], address[2], address[3], 
-                millis[2], millis[1], millis[0], nanos[0]);
+                millis[5], millis[6], millis[7], nanos[7]);
     }
     
     private TimestampIdFactory(Address adr) {

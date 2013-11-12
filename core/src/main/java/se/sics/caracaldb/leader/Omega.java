@@ -91,7 +91,7 @@ public class Omega extends ComponentDefinition {
                 view = event.view;
                 return;
             }
-            LOG.debug("{}: Reconfiguring from {} to {}", new Object[] {self, view, event.view});
+            LOG.debug("{}: Reconfiguring from {} to {}", new Object[]{self, view, event.view});
             candidates.clear();
             candidates.addAll(event.view.members);
             // remove old probes
@@ -144,11 +144,7 @@ public class Omega extends ComponentDefinition {
                 return; //ignore message from old view
             }
             candidates.remove(event.node);
-            Address newLeader = select();
-            if (leader != newLeader) {
-                leader = newLeader;
-                trigger(new Trust(leader), eld);
-            }
+            notifyListeners();
         }
     };
     Handler<Restore> restoreHandler = new Handler<Restore>() {
@@ -159,15 +155,21 @@ public class Omega extends ComponentDefinition {
                 return; //ignore message from old view
             }
             candidates.add(event.node);
-            Address newLeader = select();
-            if (leader != newLeader) {
-                leader = newLeader;
-                trigger(new Trust(leader), eld);
-            }
+            notifyListeners();
         }
     };
 
     private Address select() {
         return candidates.first();
+    }
+
+    private void notifyListeners() {
+        Address newLeader = select();
+        if (leader != newLeader) {
+            leader = newLeader;
+            trigger(new Trust(leader), eld);
+        } else {
+            trigger(GroupStatusChange.EVENT, eld);
+        }
     }
 }
