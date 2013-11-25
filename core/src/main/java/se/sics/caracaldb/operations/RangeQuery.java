@@ -20,7 +20,9 @@
  */
 package se.sics.caracaldb.operations;
 
+import java.util.Map.Entry;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit;
@@ -33,7 +35,7 @@ import se.sics.caracaldb.store.TransformationFilter;
 public class RangeQuery {
 
     public static class Request extends CaracalOp {
-        
+
         public KeyRange subRange;
         public final KeyRange initRange;
         public final Limit.LimitTracker limitTracker;
@@ -57,7 +59,7 @@ public class RangeQuery {
             this.transFilter = transFilter;
             this.execType = execType;
         }
-       
+
         private Request(long id, KeyRange subRange, KeyRange initRange, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
             super(id);
             this.initRange = initRange;
@@ -80,17 +82,19 @@ public class RangeQuery {
             }
             return false;
         }
-        
+
         public Request subRange(KeyRange newSubRange) {
             return new Request(id, newSubRange, initRange, limitTracker, transFilter, execType);
         }
     }
-    
+
     public enum Type {
-        PARALLEL, SEQUENTIAL;
+
+        SEQUENTIAL;
     }
 
     public static class Response extends CaracalResponse {
+
         public Request req;
         public final SortedMap<Key, byte[]> data;
         public final boolean readLimit;
@@ -122,12 +126,80 @@ public class RangeQuery {
         public void setReq(Request req) {
             this.req = req;
         }
-        
+
         @Override
         public String toString() {
             String str = "RangeQuery Response(" + id + ", ";
             str += code.name() + ")";
             return str;
+        }
+    }
+
+    public static class SeqCollector {
+
+        public final Request req;
+        private TreeMap<Key, byte[]> results;
+        private boolean done;
+        private ResponseCode respCode;
+        TreeMap<Key, KeyRange> pendingSubRanges;
+
+        public SeqCollector(Request req) {
+            this.req = req;
+            results = new TreeMap<Key, byte[]>();
+            pendingSubRanges = new TreeMap<Key, KeyRange>();
+            pendingSubRanges.put(req.subRange.begin, req.subRange);
+        }
+
+        public void processResponse(Response resp) {
+            if (resp.id != req.id) {
+                return;
+            }
+            if (resp.code.equals(ResponseCode.SUCCESS)) {
+                KeyRange respRange = resp.req.subRange;
+                KeyRange primaryRange = removePrimaryRange(respRange.begin);
+                addRestRange(primaryRange, respRange);
+                checkReadLimit(resp.readLimit, respRange.end);
+                results.putAll(resp.data);
+                if (pendingSubRanges.isEmpty()) {
+                    done = true;
+                    respCode = ResponseCode.SUCCESS;
+                }
+            } else {
+                respCode = resp.code;
+                done = true;
+            }
+        }
+
+        private KeyRange removePrimaryRange(Key key) {
+            Entry<Key, KeyRange> entry = pendingSubRanges.floorEntry(key);
+            if (entry == null) {
+                entry = pendingSubRanges.firstEntry();
+            }
+            pendingSubRanges.remove(entry.getKey());
+            return entry.getValue();
+        }
+
+        private void addRestRange(KeyRange primaryRange, KeyRange subRange) {
+            if (!primaryRange.equals(subRange)) {
+                if (!subRange.end.equals(primaryRange.end)) {
+                    KeyRange rightRange = KeyRange.closed(subRange.end).endFrom(primaryRange);
+                    pendingSubRanges.put(rightRange.begin, rightRange);
+                }
+                if (!subRange.begin.equals(primaryRange.begin)) {
+                    KeyRange leftRange = KeyRange.closed(primaryRange.begin).open(subRange.begin);
+                    pendingSubRanges.put(leftRange.begin, leftRange);
+                }
+            }
+
+        }
+
+        private void checkReadLimit(boolean readLimit, Key end) {
+            if (readLimit) {
+                SortedMap<Key, KeyRange> rest = pendingSubRanges.tailMap(end);
+                for(Key key : rest.keySet()) {
+                    pendingSubRanges.remove(key);
+                }
+            }
         }
     }
 }

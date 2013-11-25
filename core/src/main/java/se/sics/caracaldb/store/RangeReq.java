@@ -67,7 +67,7 @@ public class RangeReq extends StorageRequest {
                 byte[] key = it.peekKey();
                 if (range.contains(key)) {
                     Pair<Boolean, byte[]> res = transFilter.execute(it.peekValue());
-                    if (!res.getValue0()) {
+                    if (res.getValue0()) {
                         if (limit.read(res.getValue1())) {
                             results.put(new Key(key), res.getValue1());
                             if (!limit.canRead()) {

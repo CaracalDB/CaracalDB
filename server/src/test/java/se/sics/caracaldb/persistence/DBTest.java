@@ -23,15 +23,23 @@ package se.sics.caracaldb.persistence;
 import com.google.common.io.Closer;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.persistence.disk.LevelDBJNI;
 import se.sics.caracaldb.persistence.memory.InMemoryDB;
+import se.sics.caracaldb.store.GetReq;
+import se.sics.caracaldb.store.GetResp;
+import se.sics.caracaldb.store.Put;
+import se.sics.caracaldb.store.RangeReq;
+import se.sics.caracaldb.store.RangeResp;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.caracaldb.system.Launcher;
 
@@ -189,6 +197,43 @@ public class DBTest {
             db.close();
             // test idempotence
             db.close();
+        }
+    }
+
+    @Test
+    public void leveldbMessageTest() throws IOException {
+        Launcher.reset();
+        Configuration conf = Launcher.config().finalise();
+        String dbPath = conf.getString("caracal.database.path");
+        int dbCache = 100;
+        rangeQueryTest(new LevelDBJNI(dbPath, dbCache));
+        cleanUp(conf.getString("caracal.database.pathHead"));
+    }
+
+    private void rangeQueryTest(Database db) throws IOException {
+        Key[] keys = linearKeys(20);
+        for (int i = 0; i < 20; i++) {
+            new Put(keys[i], ByteBuffer.allocate(4).putInt(i + 10).array()).execute(db);
+        }
+
+        GetResp getResp = (GetResp) new GetReq(keys[5]).execute(db);
+        assertEquals(15, ByteBuffer.wrap(getResp.value).getInt());
+
+        KeyRange range1 = KeyRange.closed(keys[0]).closed(keys[19]);
+        RangeReq r1 = new RangeReq(range1, null, null);
+        RangeResp rr1 = (RangeResp) r1.execute(db);
+        assertEquals(20, rr1.result.size());
+        for (int i = 0; i < 20; i++) {
+            assertTrue(rr1.result.containsKey(keys[i]));
+        }
+        assertEquals(15, ByteBuffer.wrap(rr1.result.get(keys[5])).getInt());
+
+        KeyRange range2 = KeyRange.closed(keys[1]).open(keys[18]);
+        RangeReq r2 = new RangeReq(range2, null, null);
+        RangeResp rr2 = (RangeResp) r2.execute(db);
+        assertEquals(17, rr2.result.size());
+        for (int i = 1; i < 18; i++) {
+            assertTrue(rr2.result.containsKey(keys[i]));
         }
     }
 
