@@ -35,7 +35,6 @@ import se.sics.caracaldb.simulation.ValidationStore2.Validator;
 import se.sics.caracaldb.simulation.command.OpCmd;
 import se.sics.caracaldb.simulation.command.PutCmd;
 import se.sics.caracaldb.simulation.command.RQCmd;
-import se.sics.caracaldb.simulation.command.TerminateCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.TFFactory;
@@ -45,6 +44,7 @@ import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.network.Network;
+import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -54,7 +54,7 @@ public class Experiment2 extends ComponentDefinition {
     private static final Random RAND = new Random();
     private static final Logger LOG = LoggerFactory.getLogger(Experiment2.class);
 
-    Negative<Experiment2Port> expExecutor = provides(Experiment2Port.class);
+    Negative<ExperimentPort> expExecutor = provides(ExperimentPort.class);
     Positive<Network> net = requires(Network.class);
 
     private final ValidationStore2 resultValidator;
@@ -63,7 +63,8 @@ public class Experiment2 extends ComponentDefinition {
     private boolean idle;
 
     public Experiment2(Experiment2Init init) {
-        this.resultValidator = init.store;
+        this.resultValidator = new ValidationStore2();
+        SimulationHelper.resultValidator = resultValidator;
         this.pendingOps = new LinkedList<OpCmd>();
         this.idle = true;
         this.validator = null;
@@ -111,6 +112,7 @@ public class Experiment2 extends ComponentDefinition {
         public void handle(ValidateCmd event) {
             if (idle) {
                 resultValidator.endExperiment();
+                trigger(new TerminateExperiment(), expExecutor);
             } else {
                 LOG.warn("need more time to finish ops {}", pendingOps.size());
             }

@@ -35,9 +35,7 @@ import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.simulation.command.BootCmd;
 import se.sics.caracaldb.simulation.command.Experiment;
-import se.sics.caracaldb.simulation.command.GetCmd;
 import se.sics.caracaldb.simulation.command.OpCmd;
-import se.sics.caracaldb.simulation.command.PutCmd;
 import se.sics.caracaldb.simulation.command.TerminateCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;
 import se.sics.caracaldb.system.Configuration;
@@ -59,16 +57,17 @@ import se.sics.kompics.virtual.networkmodel.HostAddress;
 import se.sics.kompics.virtual.simulator.MessageDestinationFilter;
 
 /**
- *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class SimulatorComponent extends ComponentDefinition {
 
     private static final Logger LOG = LoggerFactory.getLogger(SimulatorComponent.class);
     private static final Random RAND = new Random();
+
     Positive<Experiment> simulator = requires(Experiment.class);
     Positive<Network> net = requires(Network.class);
     Positive<Timer> timer = requires(Timer.class);
+
     // instance
     private TreeSet<Integer> portsInUse = new TreeSet<Integer>();
     private InetAddress localIP;
@@ -76,9 +75,7 @@ public class SimulatorComponent extends ComponentDefinition {
     private Address receiver;
     private Address target;
 
-    private ValidationStore valStore;
-
-    Positive<Experiment2Port> expExecutor = requires(Experiment2Port.class);
+    Positive<ExperimentPort> expExecutor = requires(ExperimentPort.class);
 
     public SimulatorComponent(SimulatorComponentInit init) {
         baseConfig = init.config;
@@ -89,7 +86,6 @@ public class SimulatorComponent extends ComponentDefinition {
             throw new RuntimeException(ex.getMessage());
         }
 
-        valStore = new ValidationStore();
         receiver = new Address(localIP, getFreePort(), null);
         TimestampIdFactory.init(receiver);
 
@@ -97,26 +93,25 @@ public class SimulatorComponent extends ComponentDefinition {
         //system nodes simulation
         subscribe(nodeBootHandler, simulator);
         subscribe(killSystemHandler, simulator);
+        //experiments
+        subscribe(experimentOpHandler, simulator);
+        subscribe(validateHandler, simulator);
+        subscribe(terminateHandler, simulator);
+        subscribe(experimentEndedHandler, expExecutor);
+        subscribe(caracalOpHandler, expExecutor);
 
+        Component experimentExecutor;
         if (SimulationHelper.type.equals(SimulationHelper.ExpType.NO_RESULT)) {
-            subscribe(getHandler, simulator);
-            subscribe(putHandler, simulator);
-            subscribe(validateHandler, simulator);
-            subscribe(terminateExpHandler, simulator);
-
-            Component respReceiver = create(ResponseReceiver.class, new ResponseReceiverInit(valStore));
-            connect(respReceiver.getNegative(Network.class), net, new MessageDestinationFilter(new HostAddress(receiver)));
+            experimentExecutor = create(Experiment1.class, new Experiment1Init());
         } else if (SimulationHelper.type.equals(SimulationHelper.ExpType.WITH_RESULT)) {
-            subscribe(experimentOpHandler, simulator);
-            subscribe(caracalOpHandler, expExecutor);
-            subscribe(validateExp2Handler, simulator);
-
-            ValidationStore2 resultValidator = new ValidationStore2();
-            SimulationHelper.resultValidator = resultValidator;
-            Component experimentExecutor = create(Experiment2.class, new Experiment2Init(resultValidator));
-            connect(experimentExecutor.getNegative(Network.class), net, new MessageDestinationFilter(new HostAddress(receiver)));
-            connect(expExecutor.getPair(), experimentExecutor.getPositive(Experiment2Port.class));
+            experimentExecutor = create(Experiment2.class, new Experiment2Init());
+        } else {
+            LOG.error("unknown experiment");
+            System.exit(1);
+            return;
         }
+        connect(experimentExecutor.getNegative(Network.class), net, new MessageDestinationFilter(new HostAddress(receiver)));
+        connect(expExecutor.getPair(), experimentExecutor.getPositive(ExperimentPort.class));
     }
 
     private int getFreePort() {
@@ -131,21 +126,6 @@ public class SimulatorComponent extends ComponentDefinition {
         int p = portsInUse.last() + 1;
         portsInUse.add(p);
         return p;
-    }
-
-    private Key randomKey(int size) {
-        int s = size;
-        if (size == -1) {
-            s = Math.abs(RAND.nextInt(1000));
-        }
-        byte[] bytes = new byte[s];
-        RAND.nextBytes(bytes);
-        // don't write in the 00 XX... key range
-        // it's reserved
-        if (bytes[0] == 0) {
-            bytes[0] = 1;
-        }
-        return new Key(bytes);
     }
 
     //*****************
@@ -212,51 +192,12 @@ public class SimulatorComponent extends ComponentDefinition {
     Handler<TerminateExperiment> killSystemHandler = new Handler<TerminateExperiment>() {
         @Override
         public void handle(TerminateExperiment event) {
-            LOG.info("Terminating Experiment.");
+            LOG.info("kill system, terminate experiment.");
             Kompics.forceShutdown();
         }
     };
-    //*************************************
-    //experiment - put get operation success
-    //**************************************
-    Handler<GetCmd> getHandler = new Handler<GetCmd>() {
-        @Override
-        public void handle(GetCmd event) {
-            Key k = randomKey(8);
-            GetRequest getr = new GetRequest(TimestampIdFactory.get().newId(), k);
-            valStore.request(getr);
-            CaracalMsg msg = new CaracalMsg(receiver, target, getr);
-            ForwardMessage fMsg = new ForwardMessage(receiver, target, k, msg);
-            trigger(fMsg, net);
-            LOG.debug("Sent GET {}", getr);
-        }
-    };
-    Handler<PutCmd> putHandler = new Handler<PutCmd>() {
-        @Override
-        public void handle(PutCmd event) {
-            Key k = randomKey(8);
-            Key val = randomKey(32);
-            PutRequest putr = new PutRequest(TimestampIdFactory.get().newId(), k, val.getArray());
-            valStore.request(putr);
-            CaracalMsg msg = new CaracalMsg(receiver, target, putr);
-            ForwardMessage fMsg = new ForwardMessage(receiver, target, k, msg);
-            trigger(fMsg, net);
-            LOG.debug("Sent PUT {}", putr);
-        }
-    };
-
-    Handler<ValidateCmd> validateHandler = new Handler<ValidateCmd>() {
-        @Override
-        public void handle(ValidateCmd event) {
-            SimulationHelper.setValidator(valStore);
-            if (valStore.isDone()) {
-                LOG.info("Placed Validation Store.");
-                trigger(new TerminateExperiment(), simulator);
-            }
-        }
-    };
-
-    Handler<TerminateCmd> terminateExpHandler = new Handler<TerminateCmd>() {
+    
+     Handler<TerminateCmd> terminateHandler = new Handler<TerminateCmd>() {
         @Override
         public void handle(TerminateCmd event) {
             LOG.info("Got termination command.");
@@ -264,9 +205,18 @@ public class SimulatorComponent extends ComponentDefinition {
         }
     };
 
-    //*******************************************
-    //experiment put/rangequery with result check
-    //*******************************************
+    //***************************
+    //experiment forward handlers
+    //***************************
+    Handler<TerminateExperiment> experimentEndedHandler = new Handler<TerminateExperiment>() {
+
+        @Override
+        public void handle(TerminateExperiment event) {
+            LOG.info("experiment ended");
+            trigger(event, simulator);
+        }
+    };
+
     Handler<OpCmd> experimentOpHandler = new Handler<OpCmd>() {
 
         @Override
@@ -285,6 +235,8 @@ public class SimulatorComponent extends ComponentDefinition {
                 key = ((PutRequest) op).key;
             } else if (op instanceof RangeQuery.Request) {
                 key = ((RangeQuery.Request) op).initRange.begin;
+            } else if (op instanceof GetRequest) {
+                key = ((GetRequest) op).key;
             } else {
                 LOG.error("unexpected op - logic error");
                 System.exit(1);
@@ -297,7 +249,7 @@ public class SimulatorComponent extends ComponentDefinition {
         }
     };
 
-    Handler<ValidateCmd> validateExp2Handler = new Handler<ValidateCmd>() {
+    Handler<ValidateCmd> validateHandler = new Handler<ValidateCmd>() {
 
         @Override
         public void handle(ValidateCmd event) {

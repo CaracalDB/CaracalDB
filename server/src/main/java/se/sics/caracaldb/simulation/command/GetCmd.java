@@ -25,5 +25,8 @@ package se.sics.caracaldb.simulation.command;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class GetCmd extends OpCmd {
-    
+    @Override
+    public String toString() {
+        return "GET COMMAND";
+    }
 }

@@ -28,9 +28,4 @@ import se.sics.kompics.Init;
  */
 
 public class Experiment2Init extends Init<Experiment2> {
-    public final ValidationStore2 store;
-    
-    public Experiment2Init(ValidationStore2 store) {
-        this.store = store;
-    }
 }
