@@ -33,11 +33,13 @@ public class Meth extends Init<MethCat> {
     public final Address self;
     public final KeyRange responsibility;
     public final View view;
+    public final long statsPeriod;
     
 
-    public Meth(Address self, KeyRange responsibility, View view) {
+    public Meth(Address self, KeyRange responsibility, View view, long statsPeriod) {
         this.self = self;
         this.responsibility = responsibility;
         this.view = view;
+        this.statsPeriod = statsPeriod;
     }
 }

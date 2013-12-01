@@ -24,12 +24,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.NavigableMap;
 import java.util.TreeMap;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Database;
-import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.persistence.StoreIterator;
 
 /**

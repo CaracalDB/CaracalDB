@@ -34,6 +34,7 @@ import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
+import se.sics.caracaldb.store.StorageResponse;
 import se.sics.caracaldb.store.TransformationFilter;
 import se.sics.kompics.Response;
 
@@ -56,7 +57,7 @@ public class ReplayRangeReq extends RangeReq {
      * this definetly needs extra code
      */
     @Override
-    public Response execute(Persistence store) throws IOException {
+    public StorageResponse execute(Persistence store) throws IOException {
         RangeResp resp = (RangeResp) super.execute(store);
         SortedMap<Key, byte[]> result = resp.result;
         for (CaracalOp op : ops) {

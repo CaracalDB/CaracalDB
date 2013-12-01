@@ -40,7 +40,7 @@ public class BatchWrite extends StorageRequest {
     }
 
     @Override
-    public Response execute(Persistence store) {
+    public StorageResponse execute(Persistence store) {
         Batch wb = null;
         try {
             wb = store.createBatch();
@@ -51,7 +51,9 @@ public class BatchWrite extends StorageRequest {
         } finally {
             wb.close();
         }
-        return null;
+        return null; 
+        //TODO BatchWrites don't generate a diff (would be very inefficient)
+        // If you use BatchWrites make sure to run a size scan afterwards (for example after syncing up nodes)
     }
     
 }

@@ -22,7 +22,6 @@ package se.sics.caracaldb.store;
 
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Persistence;
-import se.sics.kompics.Event;
 import se.sics.kompics.Response;
 
 /**
@@ -40,9 +39,16 @@ public class Put extends StorageRequest {
     }
 
     @Override
-    public Response execute(Persistence store) {
+    public StorageResponse execute(Persistence store) {
+        byte[] oldValue = store.get(key.getArray());
         store.put(key.getArray(), value);
-        return null;
+        Diff diff = null;
+        if (oldValue == null) {
+            diff = new Diff(value.length+key.getKeySize(), 1);
+        } else {
+            diff = new Diff(value.length - oldValue.length, 0);
+        }
+        return new PutResp(this, diff);
     }
     
     @Override

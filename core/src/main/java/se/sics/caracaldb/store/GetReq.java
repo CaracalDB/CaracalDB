@@ -38,7 +38,7 @@ public class GetReq extends StorageRequest {
     }
 
     @Override
-    public Response execute(Persistence store) {
+    public StorageResponse execute(Persistence store) {
         byte[] val = store.get(key.getArray());
         return new GetResp(this, key, val);
     }

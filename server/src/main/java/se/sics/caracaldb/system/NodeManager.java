@@ -22,8 +22,6 @@ package se.sics.caracaldb.system;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sics.caracaldb.Key;
-import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.global.LookupService;
@@ -34,12 +32,12 @@ import se.sics.caracaldb.global.NodeJoin;
 import se.sics.caracaldb.global.NodeSynced;
 import se.sics.caracaldb.operations.Meth;
 import se.sics.caracaldb.operations.MethCat;
-import se.sics.caracaldb.replication.log.ReplicatedLog;
 import se.sics.caracaldb.paxos.Paxos;
 import se.sics.caracaldb.paxos.PaxosInit;
 import se.sics.caracaldb.replication.linearisable.ExecutionEngine;
 import se.sics.caracaldb.replication.linearisable.ExecutionEngineInit;
 import se.sics.caracaldb.replication.linearisable.Replication;
+import se.sics.caracaldb.replication.log.ReplicatedLog;
 import se.sics.caracaldb.store.Store;
 import se.sics.caracaldb.system.Configuration.NodePhase;
 import se.sics.kompics.Channel;
@@ -123,9 +121,7 @@ public class NodeManager extends ComponentDefinition {
         networkPort = requires(Network.class);
         maintenancePort = requires(MaintenanceService.class);
 
-
         subscribe(stopNodeHandler, networkPort);
-
 
         // INIT
         vsc = init.vsc;
@@ -133,7 +129,6 @@ public class NodeManager extends ComponentDefinition {
         self = vsc.getSelf();
 
         LOG.debug("Setting up VNode: " + self);
-
 
         for (VirtualComponentHook hook : config.getVirtualHooks(NodePhase.INIT)) {
             hook.setUp(vsc, proxy);
@@ -164,21 +159,24 @@ public class NodeManager extends ComponentDefinition {
                 LOG.debug("{}: Joining: {}", self, event.op);
                 NodeJoin join = (NodeJoin) event.op;
                 Component methCat = create(MethCat.class,
-                        new Meth(self, join.responsibility, join.view));
+                        new Meth(self, join.responsibility, join.view,
+                                config.getMilliseconds("caracal.stats.nodeInterval")));
                 View repView = join.dataTransfer ? null : join.view;
                 //LOG.debug("NODEJOIN {} - {}", join.dataTransfer, repView);
                 Component replication = create(ExecutionEngine.class,
                         new ExecutionEngineInit(repView, self,
-                        join.responsibility,
-                        config.getMilliseconds("caracal.network.keepAlivePeriod"),
-                        config.getInt("caracal.network.dataMessageSize")));
+                                join.responsibility,
+                                config.getMilliseconds("caracal.network.keepAlivePeriod"),
+                                config.getInt("caracal.network.dataMessageSize")));
                 Component paxos = create(Paxos.class,
-                        new PaxosInit(repView, join.quorum, 
-                        config.getMilliseconds("caracal.network.keepAlivePeriod"), self));
+                        new PaxosInit(repView, join.quorum,
+                                config.getMilliseconds("caracal.network.keepAlivePeriod"), self));
                 // methcat
                 vsc.connectNetwork(methCat);
                 connect(methCat.getNegative(Replication.class), replication.getPositive(Replication.class));
                 connect(methCat.getNegative(LookupService.class), vsc.getLookup());
+                connect(methCat.getNegative(MaintenanceService.class), maintenancePort);
+                connect(methCat.getNegative(Timer.class), vsc.getTimer());
                 // repl
                 vsc.connectNetwork(replication);
                 connect(replication.getNegative(Store.class), vsc.getStore());

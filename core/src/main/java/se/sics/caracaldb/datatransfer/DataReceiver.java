@@ -29,6 +29,7 @@ import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.store.BatchWrite;
 import se.sics.caracaldb.store.StorageRequest;
+import se.sics.caracaldb.store.StorageResponse;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Response;
 import se.sics.kompics.Start;
@@ -96,7 +97,7 @@ public class DataReceiver extends DataTransferComponent {
         }
 
         @Override
-        public Response execute(Persistence store) {
+        public StorageResponse execute(Persistence store) {
             for (Entry<Key, byte[]> e : data.entrySet()) {
                 Key k = e.getKey();
                 byte[] val = e.getValue();

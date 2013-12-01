@@ -21,7 +21,6 @@
 package se.sics.caracaldb.store;
 
 import se.sics.kompics.PortType;
-import se.sics.kompics.Response;
 
 /**
  *

@@ -56,7 +56,7 @@ public class LUTTest {
         LookupTable lut = LookupTable.generateInitial(addrs, 2);
 
         assertEquals(addrs.size(), lut.numHosts());
-        assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationGroups());
+        assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationSets());
 
         for (int i = 0; i < 5; i++) {
             assertNotNull("Should find responsible for any Key", lut.virtualHostsGetResponsible(randomKey(4)));
@@ -98,7 +98,7 @@ public class LUTTest {
             LookupTable lut2 = LookupTable.deserialise(lutbytes);
 
             assertEquals(addrs.size(), lut2.numHosts());
-            assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut2.numReplicationGroups());
+            assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut2.numReplicationSets());
 
             for (int i = 0; i < n; i++) {
                 assertNotNull("Should find responsible for any Key", lut2.virtualHostsGetResponsible(randomKey(4)));

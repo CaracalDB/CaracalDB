@@ -31,7 +31,7 @@ import org.hyperic.sigar.Sigar;
 import org.hyperic.sigar.SigarException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sics.caracaldb.util.CustomSerialisers;
+import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.address.Address;
 
 /**

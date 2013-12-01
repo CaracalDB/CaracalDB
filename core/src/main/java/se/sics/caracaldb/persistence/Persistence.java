@@ -25,11 +25,64 @@ package se.sics.caracaldb.persistence;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public interface Persistence {
+
+    /**
+     * Associates the specified value with the specified key in this map. If the
+     * map previously contained a mapping for the key, the old value is
+     * replaced.
+     * <p>
+     * Do not write null as key or value! Use empty arrays instead.
+     * <p>
+     * @param key
+     * @param value
+     */
     public void put(byte[] key, byte[] value);
+
+    /**
+     * Removes the mapping for this key from this TreeMap if present.
+     * <p>
+     * @param key
+     */
     public void delete(byte[] key);
+
+    /**
+     * Returns the value to which the specified key is mapped, or null if this
+     * map contains no mapping for the key.
+     * <p>
+     * @param key
+     * @return
+     */
     public byte[] get(byte[] key);
+
+    /**
+     * Prepares a write batch (allocate native memory in case of native
+     * databases)
+     * <p>
+     * @return
+     */
     public Batch createBatch();
+
+    /**
+     * Write a previously created (by createBatch()) batch to the database
+     * atomically.
+     * <p>
+     * @param b
+     */
     public void writeBatch(Batch b);
+
+    /**
+     * Returns an object to iterate over the store from the beginning.
+     * <p>
+     * @return
+     */
     public StoreIterator iterator();
+
+    /**
+     * Returns an object to iterate over the store from the start key
+     * (inclusive).
+     * <p>
+     * @param startKey
+     * @return
+     */
     public StoreIterator iterator(byte[] startKey);
 }

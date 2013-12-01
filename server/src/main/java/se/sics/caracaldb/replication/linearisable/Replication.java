@@ -22,6 +22,7 @@ package se.sics.caracaldb.replication.linearisable;
 
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
+import se.sics.caracaldb.store.Diff;
 import se.sics.kompics.PortType;
 
 /**
@@ -33,7 +34,9 @@ public class Replication extends PortType {
     {
         request(CaracalOp.class);
         request(ViewChange.class);
+        request(ReplicationSetInfo.class);
         indication(CaracalResponse.class);
         indication(Synced.class);
+        indication(Diff.class);
     }
 }

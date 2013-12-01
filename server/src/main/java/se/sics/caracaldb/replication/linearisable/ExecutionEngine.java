@@ -30,6 +30,7 @@ import java.util.UUID;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.datatransfer.Completed;
 import se.sics.caracaldb.datatransfer.DataReceiver;
@@ -59,7 +60,9 @@ import se.sics.caracaldb.store.GetResp;
 import se.sics.caracaldb.store.Put;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
+import se.sics.caracaldb.store.SizeScan;
 import se.sics.caracaldb.store.StorageRequest;
+import se.sics.caracaldb.store.StorageResponse;
 import se.sics.caracaldb.store.Store;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
@@ -107,7 +110,6 @@ public class ExecutionEngine extends ComponentDefinition {
         this.view = init.view;
         this.self = init.self;
 
-
         state = State.PASSIVE;
 
         if (view == null) {
@@ -146,6 +148,16 @@ public class ExecutionEngine extends ComponentDefinition {
             trigger(new Propose(new SMROp(event.id, event)), rLog);
         }
     };
+    Handler<ReplicationSetInfo> infoHandler = new Handler<ReplicationSetInfo>() {
+
+        @Override
+        public void handle(ReplicationSetInfo event) {
+            trigger(new Propose(new Scan(event.range)), rLog);
+
+            LOG.info("{}: Scheduling SizeScan. State: {}, Log-size: {}, View: {}, lastSnapshot: {}",
+                    new Object[]{self, state, opLog.size(), view, lastSnapshotId});
+        }
+    };
     Handler<GetResp> getHandler = new Handler<GetResp>() {
         @Override
         public void handle(GetResp event) {
@@ -156,6 +168,15 @@ public class ExecutionEngine extends ComponentDefinition {
         @Override
         public void handle(RangeResp resp) {
             trigger(new RangeQuery.Response(resp), rep);
+        }
+    };
+    Handler<StorageResponse> diffHandler = new Handler<StorageResponse>() {
+
+        @Override
+        public void handle(StorageResponse event) {
+            if (event.diff != null) {
+                trigger(event.diff, rep);
+            }
         }
     };
     Handler<ViewChange> viewChangeHandler = new Handler<ViewChange>() {
@@ -188,6 +209,10 @@ public class ExecutionEngine extends ComponentDefinition {
                 if (v instanceof SyncedUp) {
                     goActive();
                     continue;
+                }
+                if (v instanceof Scan) {
+                    Scan s = (Scan) v;
+                    trigger(new SizeScan(s.range), store);
                 }
                 if (!(v instanceof Noop)) {
                     LOG.error("Unkown decision value: {}", v);
@@ -280,7 +305,7 @@ public class ExecutionEngine extends ComponentDefinition {
         trigger(req, store);
         lastSnapshotId = diff.getValue0();
     }
-    
+
     private void doReconf(Reconfigure rconf) {
         if ((view != null) && (view.id >= rconf.view.id)) {
             LOG.warn("Ignoring reconfiguration from {} to {}: Local is at least as recent.",
@@ -315,6 +340,9 @@ public class ExecutionEngine extends ComponentDefinition {
         subscribe(opHandler, rep);
         subscribe(getHandler, store);
         subscribe(snapshotHandler, store);
+        subscribe(rangeHandler, store); //TODO @Alex was not subscribed before. Did you just forget?
+        subscribe(diffHandler, store);
+        subscribe(infoHandler, rep);
     }
 
     private class Actions {
@@ -421,8 +449,8 @@ public class ExecutionEngine extends ComponentDefinition {
                 @Override
                 public void initiate(GetRequest op, long pos) {
                     /*
-                     * Can't answer this during catch-up.
-                     * Simply ignore it and let another replica reply.
+                     * Can't answer this during catch-up. Simply ignore it and
+                     * let another replica reply.
                      */
                 }
 
@@ -447,8 +475,8 @@ public class ExecutionEngine extends ComponentDefinition {
                 @Override
                 public void initiate(RangeQuery.Request op, long pos) {
                     /*
-                     * Can't answer this during catch-up.
-                     * Simply ignore it and let another replica reply.
+                     * Can't answer this during catch-up. Simply ignore it and
+                     * let another replica reply.
                      */
                 }
 
@@ -505,191 +533,7 @@ public class ExecutionEngine extends ComponentDefinition {
             });
         }
     }
-//    public ExecutionEngine(ExecutionEngineInit event) {
-//        this.init = event;
-//
-//        this.view = init.view;
-//        this.self = init.self;
-//
-//        provideOp(GetRequest.class, getAction);
-//        provideOp(PutRequest.class, putAction);
-//
-//
-//        state = State.PASSIVE;
-//
-//        if (view == null) {
-//            LOG.debug("{}: Starting in passive mode", self);
-//            subscribe(installHandler, rLog);
-//        } else {
-//            LOG.debug("{}: Starting in active mode", self);
-//            subscribe(startHandler, control);
-//        }
-//
-//
-//
-//
-//    }
-//    Handler<Start> startHandler = new Handler<Start>() {
-//        @Override
-//        public void handle(Start event) {
-//            goToSyncing();
-//            goToReady();
-//        }
-//    };
-//    // Passive Handlers
-//    Handler<Decide> installHandler = new Handler<Decide>() {
-//        @Override
-//        public void handle(Decide e) {
-//            if (e.value instanceof Reconfigure) {
-//                Reconfigure event = (Reconfigure) e.value;
-//                unsubscribe(this, rLog);
-//                view = event.view;
-//                goToSyncing();
-//            } else {
-//                LOG.warn("{}: Got {} while waiting for initial reconfigure decision", self, e.value);
-//            }
-//        }
-//    };
-//    // Syncing Handlers
-//    Handler<InitiateTransfer> transferHandler = new Handler<InitiateTransfer>() {
-//        @Override
-//        public void handle(InitiateTransfer event) {
-//            final Component dataTransfer = create(DataReceiver.class, new DataReceiverInit(event, false));
-//            connect(dataTransfer.getNegative(Network.class), net, new TransferFilter(event.id));
-//            connect(dataTransfer.getNegative(Timer.class), timer);
-//            connect(dataTransfer.getNegative(Store.class), store);
-//
-//            final Handler<Completed> completedHandler = new Handler<Completed>() {
-//                @Override
-//                public void handle(Completed event) {
-//                    unsubscribe(this, dataTransfer.getPositive(DataTransfer.class));
-//                    trigger(Stop.event, dataTransfer.control());
-//                    Handler<Stopped> cleanupHandler = new Handler<Stopped>() {
-//                        @Override
-//                        public void handle(Stopped event) {
-//                            disconnect(dataTransfer.getNegative(Network.class), net);
-//                            disconnect(dataTransfer.getNegative(Timer.class), timer);
-//                            disconnect(dataTransfer.getNegative(Store.class), store);
-//                            destroy(dataTransfer);
-//                        }
-//                    };
-//                    subscribe(cleanupHandler, dataTransfer.control());
-//
-//                    goToReady();
-//                }
-//            };
-//            subscribe(completedHandler, dataTransfer.getPositive(DataTransfer.class));
-//            trigger(Start.event, dataTransfer.control());
-//            unsubscribe(this, net); // Only allow one instance
-//        }
-//    };
-//    // In Group Handlers
-//    Handler<ViewChange> viewChangeHandler = new Handler<ViewChange>() {
-//        @Override
-//        public void handle(ViewChange event) {
-//            if ((view != null) && (view.id >= event.view.id)) {
-//                LOG.info("Ignoring view change from {} to {}: Local is at least as recent.",
-//                        view, event.view);
-//                return;
-//            }
-//            Reconfigure reconf = new Reconfigure(UUID.randomUUID().getLeastSignificantBits(), event.view, event.quorum);
-//            trigger(new Propose(reconf), rLog);
-//        }
-//    };
-//    Handler<CaracalOp> opHandler = new Handler<CaracalOp>() {
-//        @Override
-//        public void handle(CaracalOp event) {
-//            if (!actions.containsKey(event.getClass())) {
-//                trigger(new CaracalResponse(event.id, ResponseCode.UNSUPPORTED_OP), rep);
-//                return;
-//            }
-//            trigger(new Propose(new SMROp(event.id, event)), rLog);
-//        }
-//    };
-//    Handler<Decide> decideHandler = new Handler<Decide>() {
-//        @Override
-//        public void handle(Decide e) {
-//            if (e.value instanceof Reconfigure) {
-//                Reconfigure event = (Reconfigure) e.value;
-//                if ((view != null) && (view.id >= event.view.id)) {
-//                    LOG.warn("Ignoring reconfiguration from {} to {}: Local is at least as recent.",
-//                            view, event.view);
-//                    return;
-//                }
-//
-//                View oldView = view;
-//                view = event.view;
-//                LOG.info("Moved to view {}", view);
-//
-//                // transfer data
-//                transferDataMaybe(oldView, view);
-//                return;
-//            }
-//            if (e.value instanceof SMROp) {
-//                SMROp event = (SMROp) e.value;
-//                LOG.debug("{}: Decided {}", self, event);
-//                Action a = actions.get(event.op.getClass());
-//                if (a == null) {
-//                    LOG.error("No action for {}. This is weird...", event.op);
-//                    return;
-//                }
-//                a.initiate(event.op);
-//            }
-//        }
-//    };
-//    Handler<GetResp> getHandler = new Handler<GetResp>() {
-//        @Override
-//        public void handle(GetResp event) {
-//            trigger(new GetResponse(event.getId(), event.key, event.value), rep);
-//        }
-//    };
-//    // Actions
-//    Action<GetRequest> getAction = new Action<GetRequest>() {
-//        @Override
-//        public void initiate(GetRequest op) {
-//            GetReq request = new GetReq(op.key);
-//            request.setId(op.id);
-//            //LOG.debug("{}: requesting {}", self, request);
-//            trigger(request, store);
-//        }
-//    };
-//    Action<PutRequest> putAction = new Action<PutRequest>() {
-//        @Override
-//        public void initiate(PutRequest op) {
-//            Put request = new Put(op.key, op.data);
-//            trigger(request, store);
-//            //LOG.debug("{}: requesting {}", self, request);
-//            trigger(new PutResponse(op.id, op.key), rep);
-//        }
-//    };
-//
-//    private <T extends CaracalOp> void provideOp(Class<T> type, Action<T> action) {
-//        actions.put(type, action);
-//    }
 
-//    private void goToSyncing() {
-//        if (state != State.PASSIVE) {
-//            LOG.error("Trying to go from {} to SYNCING!", state);
-//            return;
-//        }
-//        state = State.SYNCING;
-//
-//        subscribe(transferHandler, net);
-//        
-//        subscribe(decideHandler, rLog);
-//        subscribe(viewChangeHandler, rep);
-//        subscribe(opHandler, rep);
-//        subscribe(getHandler, store);
-//    }
-//
-//    private void goToReady() {
-//        if (state != State.SYNCING) {
-//            LOG.error("Trying to go from {} to READY!", state);
-//            return;
-//        }
-//        trigger(Synced.EVENT, rep);
-//    }
-//
     private void transferDataMaybe(View oldView, View newView) {
         SortedSet<Address> responsible = new TreeSet<Address>();
         Address higher = oldView.members.ceiling(self);
@@ -712,7 +556,7 @@ public class ExecutionEngine extends ComponentDefinition {
             metadata.put("snapshotId", lastSnapshotId);
             final Component sender = create(DataSender.class,
                     new DataSenderInit(id, init.range, self, dst,
-                    2 * init.keepAlivePeriod, init.dataMessageSize, metadata));
+                            2 * init.keepAlivePeriod, init.dataMessageSize, metadata));
             connect(sender.getNegative(Network.class), net, new TransferFilter(id));
             connect(sender.getNegative(Timer.class), timer);
             connect(sender.getNegative(Store.class), store);
@@ -739,6 +583,7 @@ public class ExecutionEngine extends ComponentDefinition {
         }
 
     }
+
     public static class SMROp extends Value {
 
         public final CaracalOp op;
@@ -771,6 +616,22 @@ public class ExecutionEngine extends ComponentDefinition {
 
         public SyncedUp() {
             super(UUID.randomUUID().getLeastSignificantBits());
+        }
+
+        @Override
+        public int compareTo(Value o) {
+            return super.baseCompareTo(o);
+        }
+    }
+
+    public static class Scan extends Value {
+
+        public final KeyRange range;
+
+        public Scan(KeyRange range) {
+            super(UUID.randomUUID().getLeastSignificantBits());
+
+            this.range = range;
         }
 
         @Override

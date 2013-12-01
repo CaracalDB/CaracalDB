@@ -18,7 +18,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.util;
+package se.sics.caracaldb.utils;
 
 import com.google.common.io.Closer;
 import com.google.common.primitives.Ints;
@@ -50,21 +50,7 @@ public abstract class CustomSerialisers {
         byte[] portBytes = Ints.toByteArray(addr.getPort());
         w.writeByte(portBytes[2]);
         w.writeByte(portBytes[3]);
-        // write ids with 1 bit plus either 1 or 4 bytes
-        byte[] id = addr.getId();
-        if (id != null) {
-            if (id.length <= Key.BYTE_KEY_SIZE) {
-                w.writeBoolean(true);
-                w.writeByte(id.length);
-            } else {
-                w.writeBoolean(false);
-                w.writeInt(id.length);
-            }
-            w.write(id);
-        } else {
-            w.writeBoolean(true);
-            w.writeByte(0);
-        }
+        serialiseKey(addr.getId(), w);
 
     }
 
@@ -73,10 +59,10 @@ public abstract class CustomSerialisers {
         try {
             ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
             DataOutputStream w = closer.register(new DataOutputStream(baos));
-            
+
             serialiseAddress(addr, w);
             w.flush();
-            
+
             return baos.toByteArray();
         } catch (Throwable e) {
             throw closer.rethrow(e);
@@ -97,6 +83,61 @@ public abstract class CustomSerialisers {
         byte portUpper = r.readByte();
         byte portLower = r.readByte();
         int port = Ints.fromBytes((byte) 0, (byte) 0, portUpper, portLower);
+        Key id = deserialiseKey(r);
+        return new Address(ip, port, id.getArray());
+    }
+
+    public static void serialiseKey(Key key, DataOutputStream w) throws IOException {
+        if (key instanceof Key.Inf) {
+            w.writeBoolean(true);
+        } else {
+            w.writeBoolean(false);
+        }
+        byte[] id = key.getArray();
+        if (id != null) {
+            if (id.length <= Key.BYTE_KEY_SIZE) {
+                w.writeBoolean(true);
+                w.writeByte(id.length);
+            } else {
+                w.writeBoolean(false);
+                w.writeInt(id.length);
+            }
+            w.write(id);
+        } else {
+            w.writeBoolean(true);
+            w.writeByte(0);
+        }
+    }
+
+    public static void serialiseKey(byte[] key, DataOutputStream w) throws IOException {
+        serialiseKey(new Key(key), w);
+    }
+
+    public static byte[] serialiseKey(Key key) throws IOException {
+        Closer closer = Closer.create();
+        try {
+            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
+            DataOutputStream w = closer.register(new DataOutputStream(baos));
+
+            serialiseKey(key, w);
+            w.flush();
+
+            return baos.toByteArray();
+        } catch (Throwable e) {
+            throw closer.rethrow(e);
+        } finally {
+            closer.close();
+        }
+    }
+
+    public static byte[] serialiseKey(byte[] key) throws IOException {
+        return serialiseKey(new Key(key));
+    }
+
+    public static Key deserialiseKey(DataInputStream r) throws IOException {
+        if (r.readBoolean()) {
+            return Key.INF;
+        }
         boolean isByteLength = r.readBoolean();
         int keySize;
         if (isByteLength) {
@@ -109,10 +150,10 @@ public abstract class CustomSerialisers {
             id = null;
         } else {
             id = new byte[keySize];
-            if (r.read(ipBytes) != keySize) {
+            if (r.read(id) != keySize) {
                 throw new IOException("Incomplete dataset!");
             }
         }
-        return new Address(ip, port, id);
+        return new Key(id);
     }
 }

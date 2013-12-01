@@ -28,4 +28,5 @@ import se.sics.kompics.PortType;
  */
 public class MaintenanceService extends PortType {{
     request(NodeBooted.class);
+    request(NodeStats.class);
 }}

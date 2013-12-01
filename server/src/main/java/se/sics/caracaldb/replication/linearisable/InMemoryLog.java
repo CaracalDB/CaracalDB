@@ -114,4 +114,9 @@ public class InMemoryLog implements OperationsLog {
         ops.addAll(gapLog.values());
         return ops.iterator();
     }
+
+    @Override
+    public Integer size() {
+        return log.size() + gapLog.size();
+    }
 }

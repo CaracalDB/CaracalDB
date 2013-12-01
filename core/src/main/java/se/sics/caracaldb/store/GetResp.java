@@ -21,7 +21,6 @@
 package se.sics.caracaldb.store;
 
 import se.sics.caracaldb.Key;
-import se.sics.kompics.Response;
 
 /**
  *
@@ -33,7 +32,7 @@ public class GetResp extends StorageResponse {
     public final byte[] value;
     
     public GetResp(GetReq req, Key k, byte[] v) {
-        super(req);
+        super(req, null);
         key = k;
         value = v;
     }

@@ -29,10 +29,12 @@ import se.sics.kompics.Response;
 public abstract class StorageResponse extends Response {
     
     private long id;
+    public final Diff diff;
     
-    public StorageResponse(StorageRequest req) {
+    public StorageResponse(StorageRequest req, Diff diff) {
         super(req);
         id = req.getId();
+        this.diff = diff;
     }
     
     /**

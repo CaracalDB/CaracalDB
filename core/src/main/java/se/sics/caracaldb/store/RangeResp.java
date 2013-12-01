@@ -34,7 +34,7 @@ public class RangeResp extends StorageResponse {
     public final boolean readLimit;
     
     public RangeResp(RangeReq req, SortedMap<Key, byte[]> result, boolean readAll) {
-        super(req);
+        super(req, null);
         this.req = req;
         this.result = result;
         this.readLimit = readAll;

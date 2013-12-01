@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,21 +18,37 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.replication.linearisable;
+package se.sics.caracaldb;
 
-import se.sics.caracaldb.store.Diff;
-import se.sics.caracaldb.store.StorageResponse;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author sario
  */
-public class SnapshotResp extends StorageResponse {
-    
-    public final long snapshotId;
-    
-    public SnapshotResp(SnapshotReq req, Diff diff, long pos) {
-        super(req, diff);
-        snapshotId = pos;
+@RunWith(JUnit4.class)
+public class MiscTest {
+
+    @Test
+    public void thisTest() {
+        Subclass subby = new Subclass();
+        Superclass suppy = new Subclass();
+        String subName = Subclass.class.getCanonicalName();
+        assertEquals(subName, subby.myClass());
+        assertEquals(subName, suppy.myClass());
+    }
+
+    public abstract static class Superclass {
+
+        public String myClass() {
+            return this.getClass().getCanonicalName();
+        }
+    }
+
+    public static class Subclass extends Superclass {
+
     }
 }

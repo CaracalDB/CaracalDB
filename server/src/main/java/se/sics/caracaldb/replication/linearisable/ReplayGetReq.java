@@ -30,6 +30,7 @@ import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.store.GetReq;
 import se.sics.caracaldb.store.GetResp;
+import se.sics.caracaldb.store.StorageResponse;
 import se.sics.kompics.Response;
 
 /**
@@ -48,7 +49,7 @@ public class ReplayGetReq extends GetReq {
     }
     
     @Override
-    public Response execute(Persistence store) {
+    public StorageResponse execute(Persistence store) {
         GetResp resp = (GetResp) super.execute(store);
         byte[] val = resp.value;
         for (CaracalOp op : ops) {

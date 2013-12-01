@@ -22,6 +22,7 @@ package se.sics.caracaldb.operations;
 
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
@@ -31,15 +32,24 @@ import se.sics.caracaldb.global.ForwardToAny;
 import se.sics.caracaldb.global.ForwardToRange;
 import se.sics.caracaldb.global.LookupService;
 import se.sics.caracaldb.global.MaintenanceMsg;
+import se.sics.caracaldb.global.MaintenanceService;
+import se.sics.caracaldb.global.NodeStats;
 import se.sics.caracaldb.global.NodeSynced;
 import se.sics.caracaldb.global.Reconfiguration;
 import se.sics.caracaldb.replication.linearisable.Replication;
+import se.sics.caracaldb.replication.linearisable.ReplicationSetInfo;
 import se.sics.caracaldb.replication.linearisable.Synced;
+import se.sics.caracaldb.store.Diff;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Positive;
+import se.sics.kompics.Stop;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
+import se.sics.kompics.timer.CancelPeriodicTimeout;
+import se.sics.kompics.timer.SchedulePeriodicTimeout;
+import se.sics.kompics.timer.Timeout;
+import se.sics.kompics.timer.Timer;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>
@@ -56,6 +66,8 @@ public class MethCat extends ComponentDefinition {
     Positive<Network> network = requires(Network.class);
     Positive<Replication> replication = requires(Replication.class);
     Positive<LookupService> lookup = requires(LookupService.class);
+    Positive<MaintenanceService> maintenance = requires(MaintenanceService.class);
+    Positive<Timer> timer = requires(Timer.class);
     // Instance
     private State state;
     private KeyRange responsibility;
@@ -63,10 +75,19 @@ public class MethCat extends ComponentDefinition {
     private Map<Long, CaracalMsg> openOps = new TreeMap<Long, CaracalMsg>();
     private View view;
 
+    // Stats
+    private long storeSize = 0;
+    private long storeNumberKeys = 0;
+    private long numOps = 0;
+    private long lastOpTS = 0;
+    private UUID timerId = null;
+    private long timerInterval;
+
     public MethCat(Meth init) {
         this.responsibility = init.responsibility;
         this.self = init.self;
         this.view = init.view;
+        this.timerInterval = init.statsPeriod;
 
         state = State.FORWARDING;
 
@@ -74,6 +95,15 @@ public class MethCat extends ComponentDefinition {
         subscribe(forwardingHandler, network);
         subscribe(syncedHandler, replication);
     }
+    Handler<Stop> stopHandler = new Handler<Stop>() {
+
+        @Override
+        public void handle(Stop event) {
+            if (timerId != null) {
+                trigger(new CancelPeriodicTimeout(timerId), timer);
+            }
+        }
+    };
     // FORWARDING
     Handler<CaracalMsg> forwardingHandler = new Handler<CaracalMsg>() {
         @Override
@@ -199,6 +229,40 @@ public class MethCat extends ComponentDefinition {
         }
     };
 
+    Handler<Diff> diffHandler = new Handler<Diff>() {
+
+        @Override
+        public void handle(Diff event) {
+            if (event.reset) {
+                storeSize = event.size;
+                storeNumberKeys = event.keys;
+            } else {
+                storeSize += event.size;
+                storeNumberKeys += event.keys;
+            }
+        }
+    };
+
+    Handler<StatsTimeout> timeoutHandler = new Handler<StatsTimeout>() {
+
+        @Override
+        public void handle(StatsTimeout event) {
+            long time = System.currentTimeMillis();
+            long ops = resetOpS(time);
+            NodeStats stats = new NodeStats(self, responsibility, storeSize, storeNumberKeys, ops);
+            trigger(stats, maintenance);
+        }
+
+    };
+
+    private long resetOpS(long time) {
+        long timediff = lastOpTS - time;
+        double ops = Math.floor(((double) numOps) / ((double) timediff));
+        lastOpTS = time;
+        numOps = 0;
+        return (long) ops;
+    }
+
     private boolean responsible(Key k) {
         return responsibility.contains(k);
     }
@@ -211,8 +275,19 @@ public class MethCat extends ComponentDefinition {
         unsubscribe(syncedHandler, replication);
         // new subs
         subscribe(responseHandler, replication);
+        subscribe(diffHandler, replication);
         subscribe(requestHandler, network);
         subscribe(maintenanceHandler, network);
+        subscribe(timeoutHandler, timer);
+
+        trigger(new ReplicationSetInfo(responsibility), replication);
+
+        SchedulePeriodicTimeout spt = new SchedulePeriodicTimeout(timerInterval, timerInterval);
+        StatsTimeout timeout = new StatsTimeout(spt);
+        spt.setTimeoutEvent(timeout);
+        trigger(spt, timer);
+        timerId = timeout.getTimeoutId();
+        lastOpTS = System.currentTimeMillis();
     }
 
     private void forwardToViewMember(CaracalMsg event) {
@@ -220,6 +295,13 @@ public class MethCat extends ComponentDefinition {
             if (!adr.equals(self)) {
                 trigger(event.insertDestination(adr), network);
             }
+        }
+    }
+
+    public static class StatsTimeout extends Timeout {
+
+        StatsTimeout(SchedulePeriodicTimeout spt) {
+            super(spt);
         }
     }
 }

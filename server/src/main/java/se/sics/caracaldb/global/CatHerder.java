@@ -55,7 +55,7 @@ import se.sics.caracaldb.system.Configuration;
 import se.sics.caracaldb.system.StartVNode;
 import se.sics.caracaldb.system.Stats;
 import se.sics.caracaldb.system.Stats.Report;
-import se.sics.caracaldb.util.CustomSerialisers;
+import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;

@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -20,19 +20,18 @@
  */
 package se.sics.caracaldb.replication.linearisable;
 
-import se.sics.caracaldb.store.Diff;
-import se.sics.caracaldb.store.StorageResponse;
+import se.sics.caracaldb.KeyRange;
+import se.sics.kompics.Event;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author sario
  */
-public class SnapshotResp extends StorageResponse {
-    
-    public final long snapshotId;
-    
-    public SnapshotResp(SnapshotReq req, Diff diff, long pos) {
-        super(req, diff);
-        snapshotId = pos;
+public class ReplicationSetInfo extends Event {
+
+    public final KeyRange range;
+
+    public ReplicationSetInfo(KeyRange range) {
+        this.range = range;
     }
 }

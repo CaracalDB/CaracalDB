@@ -47,7 +47,7 @@ import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
-import se.sics.caracaldb.util.CustomSerialisers;
+import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.address.Address;
 
 /**
@@ -62,12 +62,13 @@ public class LookupTable {
     public static final Key RESERVED_START = Key.ZERO_KEY; // ( )
     public static final Key RESERVED_END = new Key(1); // (00 00 00 01)
     public static final Key RESERVED_HEARTBEATS = RESERVED_PREFIX.append(new byte[]{0, 0, 0, 1}).get(); // (00 00 00 00 00 00 00 01)
+    public static final Key RESERVED_LUTUPDATES = RESERVED_PREFIX.append(new byte[]{0, 0, 0, 2}).get(); // (00 00 00 00 00 00 00 02)
     private static final String EMPTY_TXT = "<EMPTY>";
     private static final Random RAND = new Random();
     private static LookupTable INSTANCE = null; // Don't tell anyone about this! (static fields and simulations oO)
     private ArrayList<Address> hosts;
-    private ArrayList<Integer[]> replicationGroups;
-    private ArrayList<Integer> replicationGroupVersions;
+    private ArrayList<Integer[]> replicationSets;
+    private ArrayList<Integer> replicationSetVersions;
     private LookupGroup[] virtualHostGroups;
     private Long[] virtualHostGroupVersions;
     long versionId = 0;
@@ -85,12 +86,12 @@ public class LookupTable {
         return hosts.get(pos);
     }
 
-    public int numReplicationGroups() {
-        return replicationGroups.size();
+    public int numReplicationSets() {
+        return replicationSets.size();
     }
 
     public Address[] getHosts(int replicationGroupId) {
-        Integer[] group = replicationGroups.get(replicationGroupId);
+        Integer[] group = replicationSets.get(replicationGroupId);
         if (group == null) {
             return null;
         }
@@ -108,25 +109,25 @@ public class LookupTable {
             return null;
         }
 
-        Integer rgVersion = replicationGroupVersions.get(rgId);
+        Integer rgVersion = replicationSetVersions.get(rgId);
         Address[] group = getVirtualHosts(rgId, rg.getValue0());
         return group;
     }
 
     /**
-     * 
+     *
      * @param range
-     * @return a map of sub-keyRanges and their respective replication group. 
-     * this map cannot be null, but it can be empty if the range itself is emptyRange 
-     * else it should contain at least one replicationGroup
-     * @throws se.sics.caracaldb.global.LookupTable.BrokenLut 
+     * @return a map of sub-keyRanges and their respective replication group.
+     * this map cannot be null, but it can be empty if the range itself is
+     * emptyRange else it should contain at least one replicationGroup
+     * @throws se.sics.caracaldb.global.LookupTable.BrokenLut
      */
     public NavigableMap<KeyRange, Address[]> getAllResponsibles(KeyRange range) throws BrokenLut {
         TreeMap<KeyRange, Address[]> result = new TreeMap<KeyRange, Address[]>();
         if (range.equals(KeyRange.EMPTY)) {
             return result;
         }
-         
+
         Pair<Integer, Pair<Key, Integer>> rangeInfo = virtualHostsGetResponsibleWithGid(range.begin);
         if (rangeInfo == null) {
             throw BrokenLut.exception;
@@ -165,13 +166,12 @@ public class LookupTable {
         }
         return result;
     }
-    
-    
+
     public Pair<KeyRange, Address[]> getFirstResponsibles(KeyRange range) throws BrokenLut {
         if (range.equals(KeyRange.EMPTY)) {
             return null;
         }
-         
+
         Pair<Integer, Pair<Key, Integer>> rangeInfo = virtualHostsGetResponsibleWithGid(range.begin);
         Key rgKey = rangeInfo.getValue1().getValue0();
         Integer rgId = rangeInfo.getValue1().getValue1();
@@ -179,11 +179,11 @@ public class LookupTable {
             throw BrokenLut.exception;
         }
         Key endR = virtualHostsGetSuccessor(rgKey);
-        if(endR == null) {
+        if (endR == null) {
             throw BrokenLut.exception;
         }
         KeyRange firstRange = KeyRange.startFrom(range).open(endR);
-        
+
         Address[] group = getVirtualHosts(rgId, rgKey);
         return Pair.with(firstRange, group);
     }
@@ -194,14 +194,14 @@ public class LookupTable {
             return null;
         }
 
-        Integer rgVersion = replicationGroupVersions.get(rgId);
+        Integer rgVersion = replicationSetVersions.get(rgId);
         Address[] group = getVirtualHosts(rgId, nodeId);
         View view = new View(ImmutableSortedSet.copyOf(group), rgVersion);
         return view;
     }
 
     public Address[] getVirtualHosts(int replicationGroupId, Key nodeId) {
-        Integer[] rGroup = replicationGroups.get(replicationGroupId);
+        Integer[] rGroup = replicationSets.get(replicationGroupId);
         if (rGroup == null) {
             return null;
         }
@@ -225,13 +225,13 @@ public class LookupTable {
 
     /**
      * Find all the virtual nodes at a host.
-     *
+     * <p>
      * More exactly, find the ids of all virtual nodes that are supposed to be
      * at the given host according to the state of the LUT.
-     *
+     * <p>
      * This is a horribly slow operation. It's meant for bootup, use it later at
      * your own risk.
-     *
+     * <p>
      * @param host
      * @return
      */
@@ -251,7 +251,7 @@ public class LookupTable {
         }
         // find all replication groups for hostId
         TreeSet<Integer> repGroupIds = new TreeSet<Integer>();
-        for (ListIterator<Integer[]> it = replicationGroups.listIterator(); it.hasNext();) {
+        for (ListIterator<Integer[]> it = replicationSets.listIterator(); it.hasNext();) {
             int pos = it.nextIndex();
             Integer[] group = it.next();
             for (int i = 0; i < group.length; i++) {
@@ -284,10 +284,10 @@ public class LookupTable {
 
     /**
      * Builds a readable format of the LUT.
-     *
+     * <p>
      * This is probably not a good idea for large tables. Use for debugging of
      * small sets only.
-     *
+     * <p>
      * @param sb
      */
     public void printFormat(StringBuilder sb) {
@@ -311,13 +311,13 @@ public class LookupTable {
         sb.append('\n');
 
         sb.append("## Replication Groups ## \n");
-        for (ListIterator<Integer[]> it = replicationGroups.listIterator(); it.hasNext();) {
+        for (ListIterator<Integer[]> it = replicationSets.listIterator(); it.hasNext();) {
             int pos = it.nextIndex();
             Integer[] group = it.next();
             sb.append(pos);
             sb.append(". ");
             sb.append("(v");
-            sb.append(replicationGroupVersions.get(pos));
+            sb.append(replicationSetVersions.get(pos));
             sb.append(") ");
             if (group == null) {
                 sb.append(EMPTY_TXT);
@@ -372,12 +372,12 @@ public class LookupTable {
             }
 
             // replicationgroups
-            w.writeInt(replicationGroups.size());
-            for (ListIterator<Integer[]> it = replicationGroups.listIterator(); it.hasNext();) {
+            w.writeInt(replicationSets.size());
+            for (ListIterator<Integer[]> it = replicationSets.listIterator(); it.hasNext();) {
                 int pos = it.nextIndex();
                 Integer[] group = it.next();
-                Integer version = replicationGroupVersions.get(pos);
-                serialiseReplicationGroup(version, group, w);
+                Integer version = replicationSetVersions.get(pos);
+                serialiseReplicationSet(version, group, w);
             }
 
             // virtualHostGroups
@@ -417,12 +417,12 @@ public class LookupTable {
 
             // replicationgroups
             int numRGs = r.readInt();
-            INSTANCE.replicationGroups = new ArrayList<Integer[]>(numRGs);
-            INSTANCE.replicationGroupVersions = new ArrayList<Integer>(numRGs);
+            INSTANCE.replicationSets = new ArrayList<Integer[]>(numRGs);
+            INSTANCE.replicationSetVersions = new ArrayList<Integer>(numRGs);
             for (int i = 0; i < numRGs; i++) {
                 Pair<Integer, Integer[]> group = deserialiseReplicationGroup(r);
-                INSTANCE.replicationGroups.add(group.getValue1());
-                INSTANCE.replicationGroupVersions.add(group.getValue0());
+                INSTANCE.replicationSets.add(group.getValue1());
+                INSTANCE.replicationSetVersions.add(group.getValue0());
             }
 
             // virtualHostGroups
@@ -444,7 +444,7 @@ public class LookupTable {
         }
     }
 
-    private static void serialiseReplicationGroup(Integer version, Integer[] group, DataOutputStream w) throws IOException {
+    private static void serialiseReplicationSet(Integer version, Integer[] group, DataOutputStream w) throws IOException {
         w.writeInt(version);
         byte groupSize = UnsignedBytes.checkedCast(group.length);
         w.writeByte(groupSize);
@@ -466,7 +466,7 @@ public class LookupTable {
     public static LookupTable generateInitial(Set<Address> hosts, int vNodesPerHost) {
         LookupTable lut = new LookupTable();
         lut.generateHosts(hosts);
-        lut.generateReplicationGroups(hosts);
+        lut.generateReplicationSets(hosts);
         lut.generateInitialVirtuals(vNodesPerHost);
 
         INSTANCE = lut;
@@ -478,15 +478,15 @@ public class LookupTable {
         this.hosts = new ArrayList<Address>(hosts);
     }
 
-    private void generateReplicationGroups(Set<Address> hosts) {
+    private void generateReplicationSets(Set<Address> hosts) {
         ArrayList<Integer> dup1, dup2, dup3;
         List<Integer> nats = naturals(hosts.size());
         dup1 = new ArrayList<Integer>(nats);
         dup2 = new ArrayList<Integer>(nats);
         dup3 = new ArrayList<Integer>(nats);
 
-        replicationGroups = new ArrayList<Integer[]>(INIT_REP_FACTOR * hosts.size());
-        replicationGroupVersions = new ArrayList<Integer>(INIT_REP_FACTOR * hosts.size());
+        replicationSets = new ArrayList<Integer[]>(INIT_REP_FACTOR * hosts.size());
+        replicationSetVersions = new ArrayList<Integer>(INIT_REP_FACTOR * hosts.size());
 
         for (int n = 0; n < INIT_REP_FACTOR; n++) {
             Collections.shuffle(dup1, RAND);
@@ -505,8 +505,8 @@ public class LookupTable {
                 }
                 Integer[] group = new Integer[]{h1, h2, h3};
                 int pos = n * hosts.size() + i;
-                replicationGroups.add(pos, group);
-                replicationGroupVersions.add(pos, 0);
+                replicationSets.add(pos, group);
+                replicationSetVersions.add(pos, 0);
             }
         }
     }
@@ -521,17 +521,17 @@ public class LookupTable {
         virtualHostsPut(RESERVED_START, 0);
         // Place as many virtual nodes as there are hosts in the system
         // for random (non-schema-aligned) writes (more or less evenly distributed)
-        virtualHostsPut(RESERVED_END, RAND.nextInt(replicationGroups.size()));
-        int numVNodes = hosts.size()*vNodesPerHost;
+        virtualHostsPut(RESERVED_END, RAND.nextInt(replicationSets.size()));
+        int numVNodes = hosts.size() * vNodesPerHost;
         UnsignedInteger incr = (UnsignedInteger.MAX_VALUE.minus(UnsignedInteger.ONE)).dividedBy(UnsignedInteger.fromIntBits(numVNodes));
         UnsignedInteger last = UnsignedInteger.ONE;
         UnsignedInteger ceiling = UnsignedInteger.MAX_VALUE.minus(incr);
         while (last.compareTo(ceiling) <= 0) {
             last = last.plus(incr);
-            virtualHostsPut(new Key(last.intValue()), RAND.nextInt(replicationGroups.size()));
+            virtualHostsPut(new Key(last.intValue()), RAND.nextInt(replicationSets.size()));
         }
     }
-    
+
     Iterator<Address> hostIterator() {
         return hosts.iterator();
     }
@@ -545,6 +545,22 @@ public class LookupTable {
     Integer virtualHostsGet(Key key) {
         LookupGroup group = virtualHostGroups[key.getFirstByte()];
         return group.get(key);
+    }
+    /*
+     * Expose internal variable for updates via LUTUpdate. Don't use this for
+     * anything else!
+     */
+
+    ArrayList<Address> hosts() {
+        return this.hosts;
+    }
+    
+    ArrayList<Integer> replicationSetVersions() {
+        return this.replicationSetVersions;
+    }
+    
+    ArrayList<Integer[]> replicationSets() {
+        return this.replicationSets;
     }
 
     /**
@@ -606,8 +622,9 @@ public class LookupTable {
 
         public static final NoResponsibleInGroup exception = new NoResponsibleInGroup();
     }
-    
+
     public static class BrokenLut extends Throwable {
+
         public static final BrokenLut exception = new BrokenLut();
     }
 }

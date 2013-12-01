@@ -21,7 +21,6 @@
 package se.sics.caracaldb.global;
 
 import com.google.common.io.Closer;
-import com.google.common.primitives.UnsignedBytes;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -36,6 +35,7 @@ import java.util.TreeMap;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.utils.CustomSerialisers;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>
@@ -139,14 +139,7 @@ public class LookupGroup {
             for (Map.Entry<Key, Integer> e : virtualHosts.entrySet()) {
                 Key k = e.getKey();
                 Integer val = e.getValue();
-                if (k.isByteLength()) {
-                    w.writeBoolean(true);
-                    w.writeByte(k.getByteKeySize());
-                } else {
-                    w.writeBoolean(false);
-                    w.writeInt(k.getKeySize());
-                }
-                w.write(k.getArray());
+                CustomSerialisers.serialiseKey(k, w);
                 w.writeInt(val);
             }
 
@@ -170,18 +163,7 @@ public class LookupGroup {
             LookupGroup lg = new LookupGroup(prefix);
             int size = r.readInt();
             for (int i = 0; i < size; i++) {
-                boolean isByteLength = r.readBoolean();
-                int keysize;
-                if (isByteLength) {
-                    keysize = UnsignedBytes.toInt(r.readByte());
-                } else {
-                    keysize = r.readInt();
-                }
-                byte[] keydata = new byte[keysize];
-                if (r.read(keydata) != keysize) {
-                    throw new IOException("Data seems incomplete.");
-                }
-                Key k = new Key(keydata);
+                Key k = CustomSerialisers.deserialiseKey(r);
                 Integer val = r.readInt();
                 lg.put(k, val);
             }

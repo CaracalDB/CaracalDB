@@ -24,32 +24,47 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import se.sics.caracaldb.persistence.Persistence;
+import se.sics.caracaldb.store.Diff;
 import se.sics.caracaldb.store.StorageRequest;
-import se.sics.kompics.Response;
+import se.sics.caracaldb.store.StorageResponse;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class SnapshotReq extends StorageRequest {
-    
+
     private List<StorageRequest> reqs = new LinkedList<StorageRequest>();
     public final long snapshotId;
-    
+
     public SnapshotReq(long highestPos) {
         snapshotId = highestPos;
     }
-    
+
     public void addReq(StorageRequest req) {
         reqs.add(req);
     }
 
     @Override
-    public Response execute(Persistence store) throws IOException {
+    public StorageResponse execute(Persistence store) throws IOException {
+        long size = 0;
+        long keys = 0;
+        boolean reset = false;
+
         for (StorageRequest req : reqs) {
-            req.execute(store);
+            StorageResponse res = req.execute(store);
+            if (res.diff != null) {
+                if (res.diff.reset) {
+                    size = res.diff.size;
+                    keys = res.diff.keys;
+                    reset = true;
+                } else {
+                    size += res.diff.size;
+                    keys += res.diff.keys;
+                }
+            }
         }
-        return new SnapshotResp(this, snapshotId);
+        return new SnapshotResp(this, new Diff(size, keys, reset), snapshotId);
     }
-    
+
 }
