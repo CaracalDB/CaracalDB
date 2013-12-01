@@ -27,4 +27,8 @@ import se.sics.kompics.Event;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class PutCmd extends OpCmd {
+    @Override
+    public String toString() {
+        return "PUT COMMAND";
+    }
 }

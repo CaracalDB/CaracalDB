@@ -179,11 +179,13 @@ public class LookupTable {
             throw BrokenLut.exception;
         }
         Key endR = virtualHostsGetSuccessor(rgKey);
-        if (endR == null) {
-            throw BrokenLut.exception;
+        KeyRange firstRange;
+        if(endR == null || endR.compareTo(range.end) >= 0) {  
+            firstRange = range;
+        } else {
+            firstRange = KeyRange.startFrom(range).open(endR);
         }
-        KeyRange firstRange = KeyRange.startFrom(range).open(endR);
-
+        
         Address[] group = getVirtualHosts(rgId, rgKey);
         return Pair.with(firstRange, group);
     }
@@ -593,12 +595,12 @@ public class LookupTable {
         return result == null ? null : result.getValue1();
     }
 
-    Key virtualHostsGetSuccessor(Key key) {
-        int groupId = key.getFirstByte();
+    Key virtualHostsGetSuccessor(Key vnodeKey) {
+        int groupId = vnodeKey.getFirstByte();
         LookupGroup keyGroup = virtualHostGroups[groupId];
         while (true) {
             try {
-                Key k = keyGroup.getSuccessor(key);
+                Key k = keyGroup.getSuccessor(vnodeKey);
                 return k;
             } catch (NoResponsibleInGroup e) {
                 groupId++;

@@ -20,17 +20,14 @@
  */
 package se.sics.caracaldb.simulation;
 
-import com.esotericsoftware.minlog.Log;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableMap;
-import java.util.Set;
 import java.util.TreeMap;
+import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
@@ -39,39 +36,101 @@ import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.PutResponse;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.operations.ResponseCode;
-import se.sics.caracaldb.store.PersistentStore;
+import se.sics.caracaldb.persistence.Database;
+import se.sics.caracaldb.persistence.StoreIterator;
+import se.sics.caracaldb.persistence.memory.InMemoryDB;
+import se.sics.caracaldb.store.Limit;
 
 /**
- *
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class ValidationStore2 {
 
-    private TreeMap<Key, byte[]> store;
-    private Validator opValidator;
+    private final Database store;
     private static final Logger LOG = LoggerFactory.getLogger(ValidationStore2.class);
-
-    public void startOp(CaracalOp op) {
+    
+    private boolean end = false;
+    
+    public ValidationStore2() {
+        this.store = new InMemoryDB();
+    }
+    
+    public Validator startOp(CaracalOp op) {
         if (op instanceof GetRequest) {
-            opValidator = new GetValidator((GetRequest) op);
+            GetRequest get = (GetRequest) op;
+            return new GetValidator(get, store.get(get.key.getArray()));
+        } else if (op instanceof PutRequest) {
+            PutRequest put = (PutRequest) op;
+            store.put(put.key.getArray(), put.data);
+            return new PutValidator(put);
+        } else if (op instanceof RangeQuery.Request) {
+            RangeQuery.Request rq = (RangeQuery.Request) op;
+            return new RangeQueryValidator(rq, getExpectedRangeResult(rq));
+        } else {
+            return null;
         }
     }
+    
+    public void endExperiment() {
+        this.end = true;
+    }
+    
+    public boolean experimentEnded() {
+        return end;
+    }
 
-    static interface Validator {
+    private NavigableMap<Key, byte[]> getExpectedRangeResult(RangeQuery.Request rq) {
+        TreeMap<Key, byte[]> expectedResult = new TreeMap<Key, byte[]>();
+        Limit.LimitTracker lt = rq.limitTracker.doClone();
+        StoreIterator it = store.iterator(rq.initRange.begin.getArray());
+        while (it.hasNext()) {
+            Key key = new Key(it.peekKey());
+            if(!rq.subRange.contains(key)) {
+                if(key.equals(rq.subRange.begin)) {
+                    continue;
+                }
+                break;
+            }
+            if (lt.canRead()) {
+                Pair<Boolean, byte[]> result = rq.transFilter.execute(it.peekValue());
+                if (result.getValue0()) {
+                    if (lt.read(result.getValue1())) {
+                        expectedResult.put(key, result.getValue1());
+                    }
+                    if (!lt.canRead()) {
+                        break;
+                    }
+                }
+                it.next();
+            } else {
+                break;
+            }
+        }
+        return expectedResult;
+    }
 
-        boolean validateAndContinue(CaracalResponse resp, NavigableMap<Key, byte[]> store) throws ValidatorException;
+    public static interface Validator {
+
+        /**
+         * @param resp
+         * @return true if operation finished successfully, false if the operation is not done or throw and exception if the operation failed
+         * @throws se.sics.caracaldb.simulation.ValidationStore2.ValidatorException 
+         */
+        boolean validateAndContinue(CaracalResponse resp) throws ValidatorException;
     }
 
     static class GetValidator implements Validator {
 
-        private GetRequest req;
+        private final GetRequest req;
+        private final byte[] expectedResult;
 
-        GetValidator(GetRequest req) {
+        GetValidator(GetRequest req, byte[] expectedResult) {
             this.req = req;
+            this.expectedResult = expectedResult;
         }
 
         @Override
-        public boolean validateAndContinue(CaracalResponse resp, NavigableMap<Key, byte[]> store) throws ValidatorException {
+        public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
             if (resp.id != req.id) {
                 LOG.debug("was not expecting resp {}", resp);
                 return false;
@@ -80,7 +139,7 @@ public class ValidationStore2 {
                 if (!getResp.code.equals(ResponseCode.SUCCESS)) {
                     LOG.debug("operation {} failed with resp {}", new Object[]{req, resp.code});
                     throw new ValidatorException();
-                } else if (Arrays.equals(store.get(req.key), getResp.data)) {
+                } else if (Arrays.equals(expectedResult, getResp.data)) {
                     return true;
                 } else {
                     LOG.debug("operation {} returned wrong value", req);
@@ -92,17 +151,17 @@ public class ValidationStore2 {
             }
         }
     }
-    
+
     static class PutValidator implements Validator {
 
-        private PutRequest req;
+        private final PutRequest req;
 
         PutValidator(PutRequest req) {
             this.req = req;
         }
 
         @Override
-        public boolean validateAndContinue(CaracalResponse resp, NavigableMap<Key, byte[]> store) throws ValidatorException {
+        public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
             if (resp.id != req.id) {
                 LOG.debug("was not expecting resp {}", resp);
                 return false;
@@ -120,37 +179,54 @@ public class ValidationStore2 {
             }
         }
     }
-    
-//    static class RangeQueryValidator implements Validator {
-//
-//        private RangeQuery.Request req;
-//        private Set<KeyRange> subRanges;
-//        private TreeMap<
-//
-//        RangeQueryValidator(RangeQuery.Request req) {
-//            this.req = req;
-//            subRanges = new HashSet<KeyRange>();
-//        }
-//
-//        @Override
-//        public boolean validateAndContinue(CaracalResponse resp, NavigableMap<Key, byte[]> store) throws ValidatorException {
-//            if (resp.id != req.id) {
-//                LOG.debug("was not expecting resp {}", resp);
-//                return false;
-//            } else if (resp instanceof RangeQuery.Response) {
-//                RangeQuery.Response rqResp = (RangeQuery.Response) resp;
-//                if (!rqResp.code.equals(ResponseCode.SUCCESS)) {
-//                    LOG.debug("operation {} failed with resp {}", new Object[]{req, resp.code});
-//                    throw new ValidatorException();
-//                } else {
-//                    
-//                }
-//            } else {
-//                LOG.debug("operation {} received wrong response type {}", new Object[]{req, resp});
-//                throw new ValidatorException();
-//            }
-//        }
-//    }
+
+    static class RangeQueryValidator implements Validator {
+
+        private final RangeQuery.Request req;
+        private final RangeQuery.SeqCollector col;
+        private final NavigableMap<Key, byte[]> expectedResult;
+
+        RangeQueryValidator(RangeQuery.Request req, NavigableMap<Key, byte[]> expectedResult) {
+            this.req = req;
+            this.col = new RangeQuery.SeqCollector(req);
+            this.expectedResult = expectedResult;
+        }
+
+        @Override
+        public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
+            if (resp.id != req.id) {
+                LOG.debug("was not expecting resp {}", resp);
+                return false;
+            } else if (resp instanceof RangeQuery.Response) {
+                RangeQuery.Response rqResp = (RangeQuery.Response) resp;
+                if (!rqResp.code.equals(ResponseCode.SUCCESS)) {
+                    LOG.debug("operation {} failed with resp {}", new Object[]{req, resp.code});
+                    throw new ValidatorException();
+                }
+                col.processResponse(rqResp);
+                if (col.isDone()) {
+                    TreeMap<Key, byte[]> result = col.getResult();
+                    if (result.size() != expectedResult.size()) {
+                        LOG.debug("operation {} failed with different number of returned elements");
+                        throw new ValidatorException();
+                    }
+                    for (Entry<Key, byte[]> e : result.entrySet()) {
+                        byte[] expectedData = expectedResult.get(e.getKey());
+                        if (!Arrays.equals(expectedData, e.getValue())) {
+                            LOG.debug("operation {} returned wrong value", req);
+                            throw new ValidatorException();
+                        }
+                    }
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                LOG.debug("operation {} received wrong response type {}", new Object[]{req, resp});
+                throw new ValidatorException();
+            }
+        }
+    }
 
     public static class ValidatorException extends Exception {
     }

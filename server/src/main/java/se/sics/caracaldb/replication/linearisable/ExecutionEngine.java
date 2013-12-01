@@ -339,6 +339,7 @@ public class ExecutionEngine extends ComponentDefinition {
         subscribe(viewChangeHandler, rep);
         subscribe(opHandler, rep);
         subscribe(getHandler, store);
+        subscribe(rangeHandler, store);
         subscribe(snapshotHandler, store);
         subscribe(rangeHandler, store); //TODO @Alex was not subscribed before. Did you just forget?
         subscribe(diffHandler, store);

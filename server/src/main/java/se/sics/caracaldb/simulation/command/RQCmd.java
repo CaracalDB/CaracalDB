@@ -1,6 +1,6 @@
-/* 
+ /*
  * This file is part of the CaracalDB distributed storage system.
- *
+ * replace(" +$", "", "r")}
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
  * Copyright (C) 2009 Royal Institute of Technology (KTH)
  *
@@ -18,22 +18,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.store;
-
-import org.javatuples.Pair;
+package se.sics.caracaldb.simulation.command;
 
 /**
+ *
  * @author Alex Ormenisan <aaor@sics.se>
- * 
- * TransformationFilters are stateless
  */
-public interface TransformationFilter {
-
-    /**
-     * @param value serialized item
-     * @return <filtered,value> where filtered is true if the value is supposed
-     * to be filtered out and false otherwise and value is the transformed final
-     * value as byte array
-     */
-    public Pair<Boolean, byte[]> execute(byte[] serializedValue);
+public class RQCmd extends OpCmd {
+    @Override
+    public String toString() {
+        return "RANGEQUERY COMMAND";
+    }
 }

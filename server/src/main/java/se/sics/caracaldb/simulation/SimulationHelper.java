@@ -18,22 +18,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.store;
-
-import org.javatuples.Pair;
+package se.sics.caracaldb.simulation;
 
 /**
+ *
  * @author Alex Ormenisan <aaor@sics.se>
- * 
- * TransformationFilters are stateless
  */
-public interface TransformationFilter {
+public class SimulationHelper {
+
+    private static ValidationStore validator;
+    public static ValidationStore2 resultValidator;
+    public static ExpType type;
+    
+    
+    public static void reset() {
+        validator = null;
+        resultValidator = null;
+    }
+    
+    /**
+     * @return the validator
+     */
+    public static ValidationStore getValidator() {
+        return validator;
+    }
 
     /**
-     * @param value serialized item
-     * @return <filtered,value> where filtered is true if the value is supposed
-     * to be filtered out and false otherwise and value is the transformed final
-     * value as byte array
+     * @param aValidator the validator to set
      */
-    public Pair<Boolean, byte[]> execute(byte[] serializedValue);
+    public static void setValidator(ValidationStore aValidator) {
+        validator = aValidator;
+    }
+    
+    public static enum ExpType {
+        NO_RESULT, WITH_RESULT
+    }
 }

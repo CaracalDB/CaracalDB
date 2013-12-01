@@ -21,11 +21,13 @@
 package se.sics.caracaldb.operations;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.simulation.SimulationGen;
+import se.sics.caracaldb.simulation.SimulationHelper;
 import se.sics.caracaldb.simulation.ValidationStore;
 import se.sics.caracaldb.system.BootTest;
 import se.sics.caracaldb.system.Launcher;
@@ -43,21 +45,30 @@ public class OperationsTest {
 
     @Before
     public void setUp() {
-
         Launcher.reset();
-
     }
 
     @Test
     public void basic() {
+        SimulationHelper.type = SimulationHelper.ExpType.NO_RESULT;
         SimulationScenario opScen = SimulationGen.putGet(BOOT_NUM, OP_NUM);
-
-
+        
         Launcher.simulate(opScen);
 
-        ValidationStore store = Launcher.getValidator();
+        ValidationStore store = SimulationHelper.getValidator();
         assertNotNull(store);
         store.print();
         store.validate();
+    }
+    
+    @Test
+    public void rangeQueryTest() {
+        SimulationHelper.type = SimulationHelper.ExpType.WITH_RESULT;
+        SimulationScenario opScen = SimulationGen.rangeQuery(BOOT_NUM, 10*OP_NUM, OP_NUM/10);
+     
+        Launcher.simulate(opScen);
+        
+        assertNotNull(SimulationHelper.resultValidator);
+        assertTrue(SimulationHelper.resultValidator.experimentEnded());
     }
 }

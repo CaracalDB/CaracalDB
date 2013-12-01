@@ -18,22 +18,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.store;
+package se.sics.caracaldb.simulation;
 
-import org.javatuples.Pair;
+import se.sics.kompics.Init;
 
 /**
+ *
  * @author Alex Ormenisan <aaor@sics.se>
- * 
- * TransformationFilters are stateless
  */
-public interface TransformationFilter {
 
-    /**
-     * @param value serialized item
-     * @return <filtered,value> where filtered is true if the value is supposed
-     * to be filtered out and false otherwise and value is the transformed final
-     * value as byte array
-     */
-    public Pair<Boolean, byte[]> execute(byte[] serializedValue);
+public class Experiment2Init extends Init<Experiment2> {
+    public final ValidationStore2 store;
+    
+    public Experiment2Init(ValidationStore2 store) {
+        this.store = store;
+    }
 }
