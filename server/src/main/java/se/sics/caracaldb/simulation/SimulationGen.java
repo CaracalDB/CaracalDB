@@ -23,6 +23,7 @@ package se.sics.caracaldb.simulation;
 import se.sics.caracaldb.simulation.command.BootCmd;
 import se.sics.caracaldb.simulation.command.GetCmd;
 import se.sics.caracaldb.simulation.command.PutCmd;
+import se.sics.caracaldb.simulation.command.RQCmd;
 import se.sics.caracaldb.simulation.command.TerminateCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
@@ -33,13 +34,13 @@ import se.sics.kompics.p2p.experiment.dsl.adaptor.Operation;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class SimulationGen {
-    
+
     private static int seed = 0;
-    
+
     public static void setSeed(int i) {
         seed = i;
     }
-    
+
     public static int getSeed() {
         return seed;
     }
@@ -67,12 +68,12 @@ public class SimulationGen {
                 terminateAfterTerminationOf(33 * 1000, termProc);
             }
         };
-        
+
         scen.setSeed(seed);
-        
+
         return scen;
     }
-    
+
     public static SimulationScenario putGet(final int boot, final int ops) {
         SimulationScenario scen = new SimulationScenario() {
             {
@@ -82,7 +83,7 @@ public class SimulationGen {
                         raise(1, opBoot(boot));
                     }
                 };
-                
+
                 StochasticProcess opProc = new SimulationScenario.StochasticProcess() {
                     {
                         eventInterArrivalTime(uniform(200, 500));
@@ -105,9 +106,53 @@ public class SimulationGen {
                 terminateAfterTerminationOf(ops * 500000, opProc);
             }
         };
-        
+
         scen.setSeed(seed);
-        
+
+        return scen;
+    }
+
+    public static SimulationScenario rangeQuery(final int boot, final int putOps, final int rqOps) {
+        SimulationScenario scen = new SimulationScenario() {
+            {
+                StochasticProcess bootProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(constant(0));
+                        raise(1, opBoot(boot));
+                    }
+                };
+
+                StochasticProcess opPutProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(uniform(200, 500));
+                        raise(putOps, opPut());
+                    }
+                };
+
+                StochasticProcess opRQProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(uniform(200, 500*putOps/rqOps));
+                        raise(putOps, opRQ());
+                    }
+                };
+                
+                StochasticProcess validateProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(constant(500));
+                        raise(Integer.MAX_VALUE, opValidate()); // can never send enough terminate commands ;)
+                    }
+                };
+
+                bootProc.start();
+                opPutProc.startAfterTerminationOf(10000, bootProc);
+                opRQProc.startAfterTerminationOf(10000, bootProc);
+                validateProc.startAfterStartOf(60000, opPutProc);
+                terminateAfterTerminationOf(putOps * 500000, opPutProc);
+            }
+        };
+
+        scen.setSeed(seed);
+
         return scen;
     }
 
@@ -119,7 +164,7 @@ public class SimulationGen {
             }
         };
     }
-    
+
     public static Operation<PutCmd> opPut() {
         return new Operation<PutCmd>() {
 
@@ -129,7 +174,7 @@ public class SimulationGen {
             }
         };
     }
-    
+
     public static Operation<GetCmd> opGet() {
         return new Operation<GetCmd>() {
 
@@ -140,6 +185,16 @@ public class SimulationGen {
         };
     }
     
+    public static Operation<RQCmd> opRQ() {
+        return new Operation<RQCmd>() {
+            
+            @Override 
+            public RQCmd generate() {
+                return new RQCmd();
+            }
+        };
+    }
+
 //    public static Operation<OpCmd> opOp() {
 //        return new Operation<OpCmd>() {
 //
@@ -149,7 +204,6 @@ public class SimulationGen {
 //            }
 //        };
 //    }
-
     public static Operation<TerminateCmd> opTerminate() {
         return new Operation<TerminateCmd>() {
             @Override
@@ -158,7 +212,7 @@ public class SimulationGen {
             }
         };
     }
-    
+
     public static Operation<ValidateCmd> opValidate() {
         return new Operation<ValidateCmd>() {
             @Override

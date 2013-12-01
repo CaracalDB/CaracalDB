@@ -20,15 +20,10 @@
  */
 package se.sics.caracaldb.system;
 
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import se.sics.caracaldb.simulation.SimulationHelper;
 import se.sics.caracaldb.simulation.SimulatorMain;
-import se.sics.caracaldb.simulation.ValidationStore;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Scheduler;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 import se.sics.kompics.simulation.SimulatorScheduler;
 
@@ -43,7 +38,6 @@ public abstract class Launcher {
     private static Scheduler scheduler;
     private static boolean simulation = false;
     private static SimulationScenario scenario;
-    private static ValidationStore validator;
 
     public static void main(String[] args) {
         reset();
@@ -64,7 +58,7 @@ public abstract class Launcher {
         simulation = false;
         scheduler = null;
         scenario = null;
-        validator = null;
+        SimulationHelper.reset();
     }
 
     public static Configuration getConfig() {
@@ -106,19 +100,5 @@ public abstract class Launcher {
         Launcher.scenario = scenario;
         Kompics.setScheduler(scheduler);
         Kompics.createAndStart(SimulatorMain.class, 1);
-    }
-
-    /**
-     * @return the validator
-     */
-    public static ValidationStore getValidator() {
-        return validator;
-    }
-
-    /**
-     * @param aValidator the validator to set
-     */
-    public static void setValidator(ValidationStore aValidator) {
-        validator = aValidator;
     }
 }

@@ -26,92 +26,117 @@ package se.sics.caracaldb.store;
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public abstract class Limit {
+
     public static LimitTracker noLimit() {
-        return new LimitTracker() {
-
-            @Override
-            public boolean read(byte[] value) {
-                return true;
-            }
-
-            @Override
-            public boolean canRead() {
-                return true;
-            }
-        };
+        return new NoLimit();
     }
-    
+
     public static LimitTracker toBytes(int number) {
         return new ByteSize(number);
     }
-    
+
     public static LimitTracker toKiloBytes(int number) {
-        return new ByteSize(number*1000);
+        return new ByteSize(number * 1000);
     }
-    
+
     public static LimitTracker toMegaBytes(int number) {
-        return new ByteSize(number*1000*1000);
+        return new ByteSize(number * 1000 * 1000);
     }
-    
+
     public static LimitTracker toItems(int number) {
         return new ItemCount(number);
     }
-    
+
+    /**
+     * LimitTrackers are statefull
+     */
     public interface LimitTracker {
+
         /**
          * @param value
          * @return <canReanCurrent>
          */
         public boolean read(byte[] value);
-        
+
         /**
          * @return <canReadFurther>
          */
-        public boolean canRead(); 
+        public boolean canRead();
+
+        public LimitTracker doClone();
     }
-    
+
+    private static class NoLimit implements LimitTracker {
+
+        @Override
+        public boolean read(byte[] value) {
+            return true;
+        }
+
+        @Override
+        public boolean canRead() {
+            return true;
+        }
+
+        @Override
+        public NoLimit doClone() {
+            return new NoLimit();
+        }
+    }
+
     private static class ItemCount implements LimitTracker {
+
         private int itemCount;
-        
+
         public ItemCount(int itemCount) {
             this.itemCount = itemCount;
         }
-        
+
         @Override
         public boolean read(byte[] value) {
-            if(itemCount >= 1) {
+            if (itemCount >= 1) {
                 itemCount--;
                 return true;
             }
             return false;
         }
-        
+
         @Override
         public boolean canRead() {
             return itemCount >= 1;
         }
+
+        @Override
+        public ItemCount doClone() {
+            return new ItemCount(itemCount);
+        }
     }
-    
+
     private static class ByteSize implements LimitTracker {
+
         private int byteSize;
-        
+
         public ByteSize(int byteSize) {
             this.byteSize = byteSize;
         }
-        
-        @Override 
+
+        @Override
         public boolean read(byte[] value) {
-            if(byteSize >= value.length) {
+            if (byteSize >= value.length) {
                 byteSize = byteSize - value.length;
                 return true;
             }
             return false;
         }
-        
-        @Override 
+
+        @Override
         public boolean canRead() {
             return byteSize > 0;
         }
+
+        @Override
+        public ByteSize doClone() {
+            return new ByteSize(byteSize);
+        }
     }
 }
-

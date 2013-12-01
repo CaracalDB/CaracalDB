@@ -23,6 +23,7 @@ package se.sics.caracaldb.operations;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit;
@@ -138,9 +139,8 @@ public class RangeQuery {
     public static class SeqCollector {
 
         public final Request req;
-        private TreeMap<Key, byte[]> results;
+        private final TreeMap<Key, byte[]> results;
         private boolean done;
-        private ResponseCode respCode;
         TreeMap<Key, KeyRange> pendingSubRanges;
 
         public SeqCollector(Request req) {
@@ -150,22 +150,30 @@ public class RangeQuery {
             pendingSubRanges.put(req.subRange.begin, req.subRange);
         }
 
+        public boolean isDone() {
+            return done;
+        }
+
+        public TreeMap<Key, byte[]> getResult() {
+            return results;
+        }
+
+        /**
+         * @param resp expected to be SUCCESS
+         */
         public void processResponse(Response resp) {
+            if (done) {
+                return;
+            }
             if (resp.id != req.id) {
                 return;
             }
-            if (resp.code.equals(ResponseCode.SUCCESS)) {
-                KeyRange respRange = resp.req.subRange;
-                KeyRange primaryRange = removePrimaryRange(respRange.begin);
-                addRestRange(primaryRange, respRange);
-                checkReadLimit(resp.readLimit, respRange.end);
-                results.putAll(resp.data);
-                if (pendingSubRanges.isEmpty()) {
-                    done = true;
-                    respCode = ResponseCode.SUCCESS;
-                }
-            } else {
-                respCode = resp.code;
+            KeyRange respRange = resp.req.subRange;
+            KeyRange primaryRange = removePrimaryRange(respRange.begin);
+            addRestRange(primaryRange, respRange);
+            checkReadLimit(resp.readLimit, respRange.end);
+            results.putAll(resp.data);
+            if (pendingSubRanges.isEmpty()) {
                 done = true;
             }
         }
@@ -196,7 +204,7 @@ public class RangeQuery {
         private void checkReadLimit(boolean readLimit, Key end) {
             if (readLimit) {
                 SortedMap<Key, KeyRange> rest = pendingSubRanges.tailMap(end);
-                for(Key key : rest.keySet()) {
+                for (Key key : rest.keySet()) {
                     pendingSubRanges.remove(key);
                 }
             }
