@@ -64,7 +64,7 @@ public class OperationsTest {
     @Test
     public void rangeQueryTest() {
         SimulationHelper.type = SimulationHelper.ExpType.WITH_RESULT;
-        SimulationScenario opScen = SimulationGen.rangeQuery(BOOT_NUM, 100*OP_NUM, OP_NUM);
+        SimulationScenario opScen = SimulationGen.rangeQuery(BOOT_NUM, 10*OP_NUM, OP_NUM/10);
      
         Launcher.simulate(opScen);
         

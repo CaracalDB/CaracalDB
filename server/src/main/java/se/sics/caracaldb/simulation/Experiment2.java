@@ -20,7 +20,6 @@
  */
 package se.sics.caracaldb.simulation;
 
-import com.esotericsoftware.minlog.Log;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -37,6 +36,7 @@ import se.sics.caracaldb.simulation.command.OpCmd;
 import se.sics.caracaldb.simulation.command.PutCmd;
 import se.sics.caracaldb.simulation.command.RQCmd;
 import se.sics.caracaldb.simulation.command.TerminateCmd;
+import se.sics.caracaldb.simulation.command.ValidateCmd;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.TFFactory;
 import se.sics.caracaldb.utils.TimestampIdFactory;
@@ -69,7 +69,7 @@ public class Experiment2 extends ComponentDefinition {
         this.validator = null;
 
         subscribe(operationHandler, expExecutor);
-        subscribe(terminateHandler, expExecutor);
+        subscribe(validateHandler, expExecutor);
         subscribe(responseHandler, net);
     }
 
@@ -77,21 +77,13 @@ public class Experiment2 extends ComponentDefinition {
 
         @Override
         public void handle(OpCmd op) {
+            LOG.debug("received {}", op);
             if (idle) {
+                LOG.debug("performing command {}", op);
                 doOp(op);
             } else {
+                LOG.debug("waiting on another command");
                 pendingOps.add(op);
-            }
-        }
-    };
-    Handler<TerminateCmd> terminateHandler = new Handler<TerminateCmd>() {
-
-        @Override
-        public void handle(TerminateCmd event) {
-            if (idle) {
-                LOG.warn("need more time to finish ops");
-            } else {
-                resultValidator.endExperiment();
             }
         }
     };
@@ -107,7 +99,20 @@ public class Experiment2 extends ComponentDefinition {
             }
 
             if (idle && !pendingOps.isEmpty()) {
-                doOp(pendingOps.remove(0));
+                OpCmd op = pendingOps.remove(0);
+                LOG.debug("performing command {}", op);
+                doOp(op);
+            }
+        }
+    };
+    Handler<ValidateCmd> validateHandler = new Handler<ValidateCmd>() {
+
+        @Override
+        public void handle(ValidateCmd event) {
+            if (idle) {
+                resultValidator.endExperiment();
+            } else {
+                LOG.warn("need more time to finish ops {}", pendingOps.size());
             }
         }
     };
@@ -115,20 +120,30 @@ public class Experiment2 extends ComponentDefinition {
     private void doOp(OpCmd op) {
         if (op instanceof PutCmd) {
             idle = false;
+            
             long id = TimestampIdFactory.get().newId();
             Key k = randomKey(8);
             Key val = randomKey(32);
             PutRequest put = new PutRequest(id, k, val.getArray());
+
+            LOG.debug("performing {}", put);
             validator = resultValidator.startOp(put);
-            LOG.debug("put request {}, key:{}", id, k);
             trigger(put, expExecutor);
         } else if (op instanceof RQCmd) {
             idle = false;
             long id = TimestampIdFactory.get().newId();
-            KeyRange range = KeyRange.closed(randomKey(8)).open(randomKey(8));
+            Key key1 = randomKey(8);
+            Key key2 = randomKey(8);
+            KeyRange range;
+            if(key1.compareTo(key2) < 0) {
+                range = KeyRange.closed(key1).closed(key2);
+            } else {
+                range = KeyRange.closed(key2).closed(key1);
+            }
             RangeQuery.Request rq = new RangeQuery.Request(id, range, Limit.noLimit(), TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
+            
+            LOG.debug("performing {}", rq);
             validator = resultValidator.startOp(rq);
-            LOG.debug("rangequery request {}, range:{}", id, range);
             trigger(rq, expExecutor);
         }
     }

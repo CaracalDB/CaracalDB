@@ -25,5 +25,8 @@ package se.sics.caracaldb.simulation.command;
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class RQCmd extends OpCmd {
-
+    @Override
+    public String toString() {
+        return "RANGEQUERY COMMAND";
+    }
 }

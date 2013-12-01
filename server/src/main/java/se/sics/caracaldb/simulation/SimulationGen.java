@@ -147,7 +147,7 @@ public class SimulationGen {
                 opPutProc.startAfterTerminationOf(10000, bootProc);
                 opRQProc.startAfterTerminationOf(10000, bootProc);
                 validateProc.startAfterStartOf(60000, opPutProc);
-                terminateAfterTerminationOf(putOps * 500000, opPutProc);
+                terminateAfterTerminationOf(putOps * 50000, opPutProc);
             }
         };
 

@@ -22,7 +22,7 @@ package se.sics.caracaldb.simulation;
 
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.simulation.command.OpCmd;
-import se.sics.caracaldb.simulation.command.TerminateCmd;
+import se.sics.caracaldb.simulation.command.ValidateCmd;
 import se.sics.kompics.PortType;
 
 /**
@@ -34,7 +34,7 @@ import se.sics.kompics.PortType;
 public class Experiment2Port  extends PortType {
     {
         request(OpCmd.class);
-        request(TerminateCmd.class);
+        request(ValidateCmd.class);
         indication(CaracalOp.class);
     }
 }

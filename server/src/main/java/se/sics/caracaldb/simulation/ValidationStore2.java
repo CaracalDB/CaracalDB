@@ -36,6 +36,7 @@ import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.PutResponse;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.operations.ResponseCode;
+import se.sics.caracaldb.persistence.Database;
 import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.persistence.memory.InMemoryDB;
 import se.sics.caracaldb.store.Limit;
@@ -45,10 +46,14 @@ import se.sics.caracaldb.store.Limit;
  */
 public class ValidationStore2 {
 
-    private InMemoryDB store;
+    private final Database store;
     private static final Logger LOG = LoggerFactory.getLogger(ValidationStore2.class);
     
     private boolean end = false;
+    
+    public ValidationStore2() {
+        this.store = new InMemoryDB();
+    }
     
     public Validator startOp(CaracalOp op) {
         if (op instanceof GetRequest) {
@@ -80,6 +85,12 @@ public class ValidationStore2 {
         StoreIterator it = store.iterator(rq.initRange.begin.getArray());
         while (it.hasNext()) {
             Key key = new Key(it.peekKey());
+            if(!rq.subRange.contains(key)) {
+                if(key.equals(rq.subRange.begin)) {
+                    continue;
+                }
+                break;
+            }
             if (lt.canRead()) {
                 Pair<Boolean, byte[]> result = rq.transFilter.execute(it.peekValue());
                 if (result.getValue0()) {
@@ -90,6 +101,9 @@ public class ValidationStore2 {
                         break;
                     }
                 }
+                it.next();
+            } else {
+                break;
             }
         }
         return expectedResult;

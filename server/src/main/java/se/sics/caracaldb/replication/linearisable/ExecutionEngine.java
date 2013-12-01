@@ -314,6 +314,7 @@ public class ExecutionEngine extends ComponentDefinition {
         subscribe(viewChangeHandler, rep);
         subscribe(opHandler, rep);
         subscribe(getHandler, store);
+        subscribe(rangeHandler, store);
         subscribe(snapshotHandler, store);
     }
 

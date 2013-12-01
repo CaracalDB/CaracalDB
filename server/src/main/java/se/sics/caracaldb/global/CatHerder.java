@@ -127,7 +127,8 @@ public class CatHerder extends ComponentDefinition {
         subscribe(forwardToRangeHandler, lookup);
         subscribe(bootedHandler, maintenance);
         subscribe(forwardMsgHandler, net);
-        subscribe(sendHeartbeatHandler, timer);
+        //TODO Alex remove before next push
+//        subscribe(sendHeartbeatHandler, timer);
     }
     Handler<Start> startHandler = new Handler<Start>() {
 
@@ -216,8 +217,21 @@ public class CatHerder extends ComponentDefinition {
                     return;
                 }
 
-                int nodePos = RAND.nextInt(repGroup.getValue1().length);
-                Address dest = repGroup.getValue1()[nodePos];
+                Address dest = null;
+
+                // Try to deliver locally
+                for (Address adr : repGroup.getValue1()) {
+                    if (adr.sameHostAs(self)) {
+                        dest = adr;
+                    }
+                }
+
+                if (dest == null) {
+                    //send to a random node of the replicationGroup
+                    int nodePos = RAND.nextInt(repGroup.getValue1().length);
+                    dest = repGroup.getValue1()[nodePos];
+                }
+
                 Message msg = event.getSubRangeMessage(repGroup.getValue0(), dest);
                 trigger(msg, net);
                 LOG.debug("{}: Forwarding {} to {}", new Object[]{self, msg, dest});
@@ -277,7 +291,7 @@ public class CatHerder extends ComponentDefinition {
                 PutRequest pr = new PutRequest(TimestampIdFactory.get().newId(), heartBeatKey, r.serialise());
                 Address dest = findDest(pr.key);
                 CaracalMsg msg = new CaracalMsg(self, dest, pr);
-                trigger(msg, net); 
+                trigger(msg, net);
                 LOG.debug("Sending Heartbeat: {}", r);
             } catch (IOException ex) {
                 LOG.error("Could not serialise Report. If this persists the node will be declared as dead due to lacking heartbeats.", ex);

@@ -124,11 +124,12 @@ public class MethCat extends ComponentDefinition {
     Handler<CaracalMsg> requestHandler = new Handler<CaracalMsg>() {
         @Override
         public void handle(CaracalMsg event) {
-            LOG.debug("{}: Received request {}. Processing...", self, event);
+            LOG.debug("{}: Received request {}", new Object[]{self, event});
 
             if (event.op instanceof RangeQuery.Request) {
                 RangeQuery.Request req = (RangeQuery.Request) event.op;
                 if (responsibility.contains(req.subRange)) {
+                    LOG.debug("{}: Processing request {}", new Object[]{self, event});
                     if (req.subRange.equals(KeyRange.EMPTY)) {
                         LOG.warn("Forwarding of ranges is defective, receiving empty range");
                         return;
@@ -136,24 +137,29 @@ public class MethCat extends ComponentDefinition {
                     openOps.put(event.op.id, event);
                     trigger(req, replication);
                 } else {
+                    LOG.debug("{}: Forwarding request {}", new Object[]{self, event});
                     ForwardToRange ftr = new ForwardToRange(req, req.subRange, event.getSource());
                     trigger(ftr, lookup);
                 }
             } else if (event.op instanceof GetRequest) {
                 GetRequest req = (GetRequest) event.op;
                 if (responsible(req.key)) {
+                    LOG.debug("{}: Processing request {}", new Object[]{self, event});
                     openOps.put(event.op.id, event);
                     trigger(event.op, replication);
                 } else {
+                    LOG.debug("{}: Forwarding request {}", new Object[]{self, event});
                     ForwardToAny fta = new ForwardToAny(req.key, event);
                     trigger(fta, lookup);
                 }
             } else if (event.op instanceof PutRequest) {
                 PutRequest req = (PutRequest) event.op;
                 if (responsible(req.key)) {
+                    LOG.debug("{}: Processing request {}", new Object[]{self, event});
                     openOps.put(event.op.id, event);
                     trigger(event.op, replication);
                 } else {
+                    LOG.debug("{}: Forwarding request {}", new Object[]{self, event});
                     ForwardToAny fta = new ForwardToAny(req.key, event);
                     trigger(fta, lookup);
                 }
@@ -177,11 +183,16 @@ public class MethCat extends ComponentDefinition {
                 RangeQuery.Response resp = (RangeQuery.Response) event;
                 resp.setReq(req);
                 if (req.execType.equals(RangeQuery.Type.SEQUENTIAL) && !resp.readLimit) {
-                    KeyRange endRange = KeyRange.closed(req.subRange.end).endFrom(req.initRange);
-
-                    ForwardToRange fta = new ForwardToRange(req, endRange, orig.getSource());
-                    trigger(fta, lookup);
-                    LOG.debug("{}: RangeQuery sequentialy {} from {}", new Object[]{self, event, orig.getSource()});
+                    if(req.subRange.end.equals(req.initRange.end) && req.subRange.endBound.equals(req.initRange.endBound)) {
+                        //finished rangequery do no forward it further
+                    } else {
+                        KeyRange endRange = KeyRange.closed(req.subRange.end).endFrom(req.initRange);
+                        ForwardToRange fta = new ForwardToRange(req, endRange, orig.getSource());
+                        trigger(fta, lookup);
+                        LOG.debug("{}: RangeQuery sequentialy {} from {}", new Object[]{self, event, orig.getSource()});
+                    }
+                } else {
+                    //finished rangequery do not forward it further
                 }
             }
             trigger(new CaracalMsg(self, orig.getSource(), event), network);

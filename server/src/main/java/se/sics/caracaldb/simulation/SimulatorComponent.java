@@ -23,16 +23,13 @@ package se.sics.caracaldb.simulation;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Random;
-import java.util.Set;
 import java.util.TreeSet;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.global.ForwardMessage;
 import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.CaracalOp;
-import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.RangeQuery;
@@ -46,7 +43,6 @@ import se.sics.caracaldb.simulation.command.ValidateCmd;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.caracaldb.system.HostManager;
 import se.sics.caracaldb.system.HostManagerInit;
-import se.sics.caracaldb.system.Launcher;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
@@ -113,13 +109,13 @@ public class SimulatorComponent extends ComponentDefinition {
         } else if (SimulationHelper.type.equals(SimulationHelper.ExpType.WITH_RESULT)) {
             subscribe(experimentOpHandler, simulator);
             subscribe(caracalOpHandler, expExecutor);
-            subscribe(terminateExp2Handler, simulator);
+            subscribe(validateExp2Handler, simulator);
 
             ValidationStore2 resultValidator = new ValidationStore2();
             SimulationHelper.resultValidator = resultValidator;
             Component experimentExecutor = create(Experiment2.class, new Experiment2Init(resultValidator));
             connect(experimentExecutor.getNegative(Network.class), net, new MessageDestinationFilter(new HostAddress(receiver)));
-            connect(expExecutor, experimentExecutor.getNegative(Experiment2Port.class));
+            connect(expExecutor.getPair(), experimentExecutor.getPositive(Experiment2Port.class));
         }
     }
 
@@ -301,12 +297,11 @@ public class SimulatorComponent extends ComponentDefinition {
         }
     };
 
-    Handler<TerminateCmd> terminateExp2Handler = new Handler<TerminateCmd>() {
+    Handler<ValidateCmd> validateExp2Handler = new Handler<ValidateCmd>() {
 
         @Override
-        public void handle(TerminateCmd event) {
-            SimulationHelper.resultValidator.endExperiment();
-            LOG.info("Got termination command.");
+        public void handle(ValidateCmd event) {
+            LOG.info("Got validation command.");
             trigger(event, expExecutor);
         }
     };
