@@ -62,7 +62,7 @@ public class LUTTest {
             assertNotNull("Should find responsible for any Key", lut.virtualHostsGetResponsible(randomKey(4)));
         }
     }
-    
+
     @Test
     public void localNodesTest() {
         Set<Address> addrs = generateAddresses(3);
@@ -71,13 +71,13 @@ public class LUTTest {
         StringBuilder sb = new StringBuilder();
         lut.printFormat(sb);
         System.out.println(sb.toString());
-        
+
         ImmutableSet<Key> expected = ImmutableSet.of(Key.fromHex("00"),
                 Key.fromHex("00 00 00 01"),
                 Key.fromHex("55 55 55 55"),
                 Key.fromHex("AA AA AA A9"),
                 Key.fromHex("FF FF FF FD"));
-        
+
         for (Address adr : addrs) {
             Set<Key> localNodes = lut.getVirtualNodesAt(adr);
             System.out.println("Nodes for " + adr + " are " + localNodes);
@@ -133,22 +133,22 @@ public class LUTTest {
             fail(ex.getMessage());
         }
     }
-    
+
     @Test
     public void keyTest() {
         Key k = new Key(new byte[]{0, 1, 2, 3});
         assertEquals("00 01 02 03", k.toString());
-        
+
         k = new Key(1);
         assertEquals("00 00 00 01", k.toString());
-        
+
         k = new Key("AB");
         assertEquals("41 42", k.toString());
-        
+
         k = Key.fromHex("FF FF FF FD");
         assertEquals("FF FF FF FD", k.toString());
     }
-
+    
     private Set<Address> generateAddresses(int n) {
         Set<Address> addresses = new HashSet<Address>(n);
         while (addresses.size() < n) {
@@ -170,7 +170,7 @@ public class LUTTest {
         if (size == -1) {
             s = Math.abs(RAND.nextInt(1000));
         }
-        byte[] bytes = new byte[s];
+        byte[] bytes = new byte[s+1];
         RAND.nextBytes(bytes);
         return new Key(bytes);
     }

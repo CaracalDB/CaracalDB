@@ -97,7 +97,7 @@ public class LookupTable {
         }
         Address[] hostAddrs = new Address[group.length];
         for (int i = 0; i < group.length; i++) {
-            hostAddrs[i] = getHost(i);
+            hostAddrs[i] = getHost(group[i]);
         }
         return hostAddrs;
     }
