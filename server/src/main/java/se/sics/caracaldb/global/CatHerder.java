@@ -359,6 +359,7 @@ public class CatHerder extends ComponentDefinition {
             for (Address adr : fails) {
                 //TODO something
             }
+            //TODO clear range for next time
         }
     };
     Handler<Decide> decideHandler = new Handler<Decide>() {
@@ -401,7 +402,7 @@ public class CatHerder extends ComponentDefinition {
 
         subscribe(decideHandler, rlog);
         subscribe(checkHBHandler, timer);
-        subscribe(rangeHandler, store);
+        //subscribe(rangeHandler, store); //TODO uncomment when fixed
     }
 
     private void connectSlaveHandlers() {
