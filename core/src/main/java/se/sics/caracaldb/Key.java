@@ -154,10 +154,21 @@ public class Key implements Comparable<Key> {
         if (that instanceof Inf) {
             return Integer.MIN_VALUE;
         }
-        return COMP.compare(this.data, that.data);
+        return compare(this.data, that.data);
     }
 
     public static int compare(byte[] key1, byte[] key2) {
+        if (key1 == null) {
+            if (key2 == null) {
+                return 0;
+            } else {
+                return Integer.MIN_VALUE;
+            }
+        }
+        if (key2 == null) {
+            return Integer.MAX_VALUE;
+        }
+        
         return COMP.compare(key1, key2);
     }
 

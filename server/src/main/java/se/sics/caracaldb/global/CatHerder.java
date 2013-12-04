@@ -98,6 +98,7 @@ public class CatHerder extends ComponentDefinition {
     private Set<Address> masterGroup = null;
     private UUID sendHeartbeatId = null;
     private UUID checkHeartbeatsId = null;
+    private HashMap<Address, NodeStats> nodeStats = new HashMap<Address, NodeStats>();
     // master
     private HashSet<Address> outstandingFailures = new HashSet<Address>();
     private Component paxos;
@@ -127,8 +128,8 @@ public class CatHerder extends ComponentDefinition {
         subscribe(forwardToRangeHandler, lookup);
         subscribe(bootedHandler, maintenance);
         subscribe(forwardMsgHandler, net);
-        //TODO Alex remove before next push
-//        subscribe(sendHeartbeatHandler, timer);
+        subscribe(statsHandler, maintenance);
+        subscribe(sendHeartbeatHandler, timer);
     }
     Handler<Start> startHandler = new Handler<Start>() {
 
@@ -286,7 +287,7 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(SendHeartbeat event) {
-            Report r = Stats.collect(self);
+            Report r = Stats.collect(self, nodeStats);
             try {
                 PutRequest pr = new PutRequest(TimestampIdFactory.get().newId(), heartBeatKey, r.serialise());
                 Address dest = findDest(pr.key);
@@ -300,6 +301,13 @@ public class CatHerder extends ComponentDefinition {
             }
         }
 
+    };
+    Handler<NodeStats> statsHandler = new Handler<NodeStats>() {
+
+        @Override
+        public void handle(NodeStats event) {
+            nodeStats.put(event.node, event);
+        }
     };
     /*
      * MASTER ONLY

@@ -32,14 +32,13 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.store.Store;
-import se.sics.kompics.ChannelFilter;
+import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.ClearToSend;
-import se.sics.kompics.network.Message;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.RequestToSend;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
@@ -140,14 +139,7 @@ abstract class DataTransferComponent extends ComponentDefinition {
             for (Map.Entry<Key, byte[]> e : result.entrySet()) {
                 Key k = e.getKey();
                 byte[] val = e.getValue();
-                if (k.isByteLength()) {
-                    w.writeBoolean(true);
-                    w.writeByte(k.getByteKeySize());
-                } else {
-                    w.writeBoolean(false);
-                    w.writeInt(k.getKeySize());
-                }
-                w.write(k.getArray());
+                CustomSerialisers.serialiseKey(k, w);
                 w.writeInt(val.length);
                 w.write(val);
             }

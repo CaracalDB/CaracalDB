@@ -28,7 +28,10 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
 import se.sics.kompics.address.Address;
 
 /**
@@ -88,24 +91,19 @@ public abstract class CustomSerialisers {
     }
 
     public static void serialiseKey(Key key, DataOutputStream w) throws IOException {
-        if (key instanceof Key.Inf) {
-            w.writeBoolean(true);
-        } else {
-            w.writeBoolean(false);
-        }
         byte[] id = key.getArray();
+        BitBuffer bbuf = BitBuffer.create((key instanceof Key.Inf), (id == null));
+        boolean byteFlag = (id != null) && (id.length <= Key.BYTE_KEY_SIZE);
+        bbuf.write(byteFlag);
+        byte[] flags = bbuf.finalise();
+        w.write(flags);
         if (id != null) {
-            if (id.length <= Key.BYTE_KEY_SIZE) {
-                w.writeBoolean(true);
-                w.writeByte(id.length);
+            if (byteFlag) {
+                w.writeByte(UnsignedBytes.checkedCast(id.length));
             } else {
-                w.writeBoolean(false);
                 w.writeInt(id.length);
             }
             w.write(id);
-        } else {
-            w.writeBoolean(true);
-            w.writeByte(0);
         }
     }
 
@@ -135,25 +133,125 @@ public abstract class CustomSerialisers {
     }
 
     public static Key deserialiseKey(DataInputStream r) throws IOException {
-        if (r.readBoolean()) {
+        byte[] flagBytes = new byte[1];
+        r.read(flagBytes);
+        boolean[] flags = BitBuffer.extract(3, flagBytes);
+        boolean infFlag = flags[0];
+        boolean nullFlag = flags[1];
+        boolean byteFlag = flags[2];
+        if (infFlag) {
             return Key.INF;
         }
-        boolean isByteLength = r.readBoolean();
+        if (nullFlag) {
+            return new Key((byte[]) null);
+        }
         int keySize;
-        if (isByteLength) {
+        if (byteFlag) {
             keySize = UnsignedBytes.toInt(r.readByte());
         } else {
             keySize = r.readInt();
         }
         byte[] id;
-        if (keySize == 0) {
-            id = null;
-        } else {
-            id = new byte[keySize];
-            if (r.read(id) != keySize) {
-                throw new IOException("Incomplete dataset!");
-            }
+        id = new byte[keySize];
+        if (r.read(id) != keySize) {
+            throw new IOException("Incomplete dataset!");
         }
         return new Key(id);
+    }
+    
+    public static void serialiseKeyRange(KeyRange range, DataOutputStream w) throws IOException {
+        BitBuffer bbuf = new BitBuffer();
+        bbuf.write(range.beginBound == KeyRange.Bound.CLOSED);
+        bbuf.write(range.endBound == KeyRange.Bound.CLOSED);
+        byte[] flags = bbuf.finalise();
+        w.write(flags);
+        serialiseKey(range.begin, w);
+        serialiseKey(range.end, w);
+    }
+    
+    public static byte[] serialiseKeyRange(KeyRange range) throws IOException {
+        Closer closer = Closer.create();
+        try {
+            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
+            DataOutputStream w = closer.register(new DataOutputStream(baos));
+
+            serialiseKeyRange(range, w);
+            w.flush();
+
+            return baos.toByteArray();
+        } catch (Throwable e) {
+            throw closer.rethrow(e);
+        } finally {
+            closer.close();
+        }
+    }
+    
+    public static KeyRange deserialiseKeyRange(DataInputStream r) throws IOException {
+        byte[] flags = new byte[1];
+        r.read(flags);
+        boolean[] bounds = BitBuffer.extract(2, flags);
+        KeyRange.Bound beginBound = bounds[0] ? KeyRange.Bound.CLOSED : KeyRange.Bound.OPEN;
+        KeyRange.Bound endBound = bounds[1] ? KeyRange.Bound.CLOSED : KeyRange.Bound.OPEN;
+        Key begin = deserialiseKey(r);
+        Key end = deserialiseKey(r);
+        return new KeyRange(beginBound, begin, end, endBound);
+    }
+    
+    public static class BitBuffer {
+
+        private static final int ZERO = 0;
+        private static final int[] POS = {1, 2, 4, 8, 16, 32, 64, 128};
+
+        private final ArrayList<Boolean> buffer = new ArrayList<Boolean>();
+
+        private BitBuffer() {
+        }
+
+        public static BitBuffer create(Boolean... args) {
+            BitBuffer b = new BitBuffer();
+            b.buffer.addAll(Arrays.asList(args));
+            return b;
+        }
+
+        public BitBuffer write(Boolean... args) {
+            buffer.addAll(Arrays.asList(args));
+            return this;
+        }
+
+        public byte[] finalise() {
+            int numBytes = (int) Math.ceil(((double) buffer.size()) / 8.0);
+            byte[] bytes = new byte[numBytes];
+            for (int i = 0; i < numBytes; i++) {
+                int b = ZERO;
+                for (int j = 0; j < 8; j++) {
+                    int pos = i * 8 + j;
+                    if (buffer.size() > pos) {
+                        if (buffer.get(pos)) {
+                            b = b ^ POS[j];
+                        }
+                    }
+                }
+                bytes[i] = UnsignedBytes.checkedCast(b);
+            }
+            return bytes;
+        }
+
+        public static boolean[] extract(int numValues, byte[] bytes) {
+            assert (((int) Math.ceil(((double) numValues) / 8.0)) <= bytes.length);
+
+            boolean[] output = new boolean[numValues];
+            for (int i = 0; i < bytes.length; i++) {
+                int b = bytes[i];
+                for (int j = 0; j < 8; j++) {
+                    int pos = i * 8 + j;
+                    if (pos >= numValues) {
+                        return output;
+                    }
+                    output[pos] = ((b & POS[j]) != 0);
+                }
+            }
+
+            return output;
+        }
     }
 }
