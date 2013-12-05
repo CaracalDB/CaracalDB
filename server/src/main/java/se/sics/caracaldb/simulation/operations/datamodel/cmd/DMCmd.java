@@ -20,10 +20,11 @@
  */
 package se.sics.caracaldb.simulation.operations.datamodel.cmd;
 
-import se.sics.kompics.Event;
+import se.sics.caracaldb.simulation.common.cmd.OperationsCmd;
+
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DMCmd extends Event {
+public class DMCmd extends OperationsCmd {
 }

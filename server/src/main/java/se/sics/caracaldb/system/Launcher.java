@@ -22,6 +22,7 @@ package se.sics.caracaldb.system;
 
 import se.sics.caracaldb.simulation.SimulationHelper;
 import se.sics.caracaldb.simulation.SimulatorMain;
+import se.sics.caracaldb.simulation.main.NewSimulatorMain;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Scheduler;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
@@ -67,7 +68,7 @@ public abstract class Launcher {
         }
         return config;
     }
-    
+
     public static Configuration.Builder config() {
         return configBuilder;
     }
@@ -75,11 +76,11 @@ public abstract class Launcher {
     public static Scheduler getScheduler() {
         return scheduler;
     }
-    
+
     public static boolean isSimulation() {
         return simulation;
     }
-    
+
     public static SimulationScenario getScenario() {
         return scenario;
     }
@@ -100,5 +101,14 @@ public abstract class Launcher {
         Launcher.scenario = scenario;
         Kompics.setScheduler(scheduler);
         Kompics.createAndStart(SimulatorMain.class, 1);
+    }
+
+    public static void newSimulate(SimulationScenario scenario) {
+        simulation = true;
+        config = configBuilder.finalise();
+        scheduler = new SimulatorScheduler();
+        Launcher.scenario = scenario;
+        Kompics.setScheduler(scheduler);
+        Kompics.createAndStart(NewSimulatorMain.class, 1);
     }
 }

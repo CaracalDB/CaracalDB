@@ -22,7 +22,6 @@ package se.sics.caracaldb.simulation.main;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sics.caracaldb.simulation.SimulatorComponentInit;
 import se.sics.caracaldb.simulation.common.cmd.Cmd;
 import se.sics.caracaldb.simulation.common.cmd.OperationsCmd;
 import se.sics.caracaldb.simulation.common.cmd.SystemCmd;
@@ -32,6 +31,7 @@ import se.sics.caracaldb.simulation.operations.OperationsPort;
 import se.sics.caracaldb.simulation.system.SystemPort;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
+import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Positive;
 import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
@@ -39,9 +39,9 @@ import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class SimulatorComponent extends ComponentDefinition {
+public class SimulationComponent extends ComponentDefinition {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SimulatorComponent.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SimulationComponent.class);
 
     private Positive<SimulationPort> simulator = requires(SimulationPort.class);
     private Positive<SystemPort> system = requires(SystemPort.class);
@@ -50,7 +50,7 @@ public class SimulatorComponent extends ComponentDefinition {
     private boolean terminated = false;
     private int workingPorts = 2;
 
-    public SimulatorComponent(SimulatorComponentInit init) {
+    public SimulationComponent() {
         subscribe(commandHadler, simulator);
         subscribe(killHandler, simulator);
         subscribe(terminateHandler, system);

@@ -40,7 +40,6 @@ import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -49,7 +48,7 @@ public class DMOp1Component extends ComponentDefinition {
 
     private static final Logger LOG = LoggerFactory.getLogger(DMOp1Component.class);
 
-    Positive<Network> net = requires(Network.class);
+    Positive<Network> network = requires(Network.class);
     Negative<OperationsPort> opExecutor = provides(OperationsPort.class);
 
     public Address self = null;
@@ -69,6 +68,7 @@ public class DMOp1Component extends ComponentDefinition {
         subscribe(terminateHandler, opExecutor);
         subscribe(connectNodeHandler, opExecutor);
         subscribe(testCommandHandler, opExecutor);
+        subscribe(respHandler, network);
     }
 
     Handler<TerminateMsg.Req> terminateHandler = new Handler<TerminateMsg.Req>() {
@@ -90,6 +90,10 @@ public class DMOp1Component extends ComponentDefinition {
 
         @Override
         public void handle(ConnectNode.Ind event) {
+             if (terminated) {
+                LOG.debug("Terminated - dropping msg...");
+                return;
+            }
             target = event.node;
             tryResendingBuffered();
         }
@@ -100,7 +104,11 @@ public class DMOp1Component extends ComponentDefinition {
 
         @Override
         public void handle(DMTestCmd event) {
-            LOG.debug("test command");
+             if (terminated) {
+                LOG.debug("Terminated - dropping msg...");
+                return;
+            }
+            LOG.debug("testing");
             DMMessage.Req req = new DMMessage.Req(TimestampIdFactory.get().newId());
             if (sendMsg(req)) {
                 pendingMsg.put(req.id, req);
@@ -114,12 +122,16 @@ public class DMOp1Component extends ComponentDefinition {
 
         @Override
         public void handle(DMNetworkMessage.Resp netResp) {
-            LOG.debug("{}: received datamodel resp {} from {}", new Object[]{self, netResp.message, target});
+             if (terminated) {
+                LOG.debug("Terminated - dropping msg...");
+                return;
+            }
+            LOG.debug("Received datamodel resp {} from {}", new Object[]{self, netResp.message, target});
             pendingMsg.remove(netResp.message.id);
             if (netResp.message instanceof DMMessage.Resp) {
                 handleTestResp(netResp.message);
             } else {
-                LOG.warn("Unknown resp {}. Dropping...", netResp.message);
+                LOG.warn("{}: unknown resp {}. Dropping...", netResp.message);
             }
         }
 
@@ -127,11 +139,11 @@ public class DMOp1Component extends ComponentDefinition {
 
     private boolean sendMsg(DMMessage.Req req) {
         if (self == null || target == null) {
-            LOG.debug("cannot forward msg {}, buffering", req);
+            LOG.debug("{}: cannot send msg {}, buffering", new Object[]{self, req});
             return false;
         }
-        LOG.debug("{}: sending datamodel req {} to {}", new Object[]{self, req, target});
-        trigger(new DMNetworkMessage.Req(self, target, req), net);
+        LOG.debug("Sending datamodel req {} to {}", new Object[]{self, req, target});
+        trigger(new DMNetworkMessage.Req(self, target, req), network);
         return true;
     }
 

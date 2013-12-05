@@ -26,6 +26,8 @@ import se.sics.caracaldb.simulation.command.PutCmd;
 import se.sics.caracaldb.simulation.command.RQCmd;
 import se.sics.caracaldb.simulation.command.TerminateCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;
+import se.sics.caracaldb.simulation.common.cmd.Cmd;
+import se.sics.caracaldb.simulation.operations.datamodel.cmd.DMTestCmd;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 import se.sics.kompics.p2p.experiment.dsl.adaptor.Operation;
 
@@ -131,11 +133,11 @@ public class SimulationGen {
 
                 StochasticProcess opRQProc = new SimulationScenario.StochasticProcess() {
                     {
-                        eventInterArrivalTime(uniform(200, 500*putOps/rqOps));
+                        eventInterArrivalTime(uniform(200, 500 * putOps / rqOps));
                         raise(putOps, opRQ());
                     }
                 };
-                
+
                 StochasticProcess validateProc = new SimulationScenario.StochasticProcess() {
                     {
                         eventInterArrivalTime(constant(500));
@@ -148,6 +150,34 @@ public class SimulationGen {
                 opRQProc.startAfterTerminationOf(10000, bootProc);
                 validateProc.startAfterStartOf(60000, opPutProc);
                 terminateAfterTerminationOf(putOps * 50000, opPutProc);
+            }
+        };
+
+        scen.setSeed(seed);
+
+        return scen;
+    }
+
+    public static SimulationScenario testScenario(final int boot) {
+        SimulationScenario scen = new SimulationScenario() {
+            {
+                StochasticProcess bootProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(constant(0));
+                        raise(1, opBoot(boot));
+                    }
+                };
+
+                StochasticProcess testProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(constant(500));
+                        raise(10, testCmd());
+                    }
+                };
+
+                bootProc.start();
+                testProc.startAfterTerminationOf(10000, bootProc);
+                terminateAfterTerminationOf(20000, testProc);
             }
         };
 
@@ -184,14 +214,25 @@ public class SimulationGen {
             }
         };
     }
-    
+
     public static Operation<RQCmd> opRQ() {
         return new Operation<RQCmd>() {
-            
-            @Override 
+
+            @Override
             public RQCmd generate() {
                 return new RQCmd();
             }
+        };
+    }
+
+    public static Operation<Cmd> testCmd() {
+        return new Operation<Cmd>() {
+
+            @Override
+            public Cmd generate() {
+                return new DMTestCmd();
+            }
+
         };
     }
 

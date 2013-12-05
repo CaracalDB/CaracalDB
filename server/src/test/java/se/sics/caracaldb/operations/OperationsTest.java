@@ -48,27 +48,33 @@ public class OperationsTest {
         Launcher.reset();
     }
 
-    @Test
-    public void basic() {
-        SimulationHelper.type = SimulationHelper.ExpType.NO_RESULT;
-        SimulationScenario opScen = SimulationGen.putGet(BOOT_NUM, OP_NUM);
-        
-        Launcher.simulate(opScen);
-
-        ValidationStore store = SimulationHelper.getValidator();
-        assertNotNull(store);
-        store.print();
-        store.validate();
-    }
+//    @Test
+//    public void basic() {
+//        SimulationHelper.type = SimulationHelper.ExpType.NO_RESULT;
+//        SimulationScenario opScen = SimulationGen.putGet(BOOT_NUM, OP_NUM);
+//        
+//        Launcher.simulate(opScen);
+//
+//        ValidationStore store = SimulationHelper.getValidator();
+//        assertNotNull(store);
+//        store.print();
+//        store.validate();
+//    }
+//    
+//    @Test
+//    public void rangeQueryTest() {
+//        SimulationHelper.type = SimulationHelper.ExpType.WITH_RESULT;
+//        SimulationScenario opScen = SimulationGen.rangeQuery(BOOT_NUM, 10*OP_NUM, OP_NUM/10);
+//     
+//        Launcher.simulate(opScen);
+//        
+//        assertNotNull(SimulationHelper.resultValidator);
+//        assertTrue(SimulationHelper.resultValidator.experimentEnded());
+//    }
     
     @Test
-    public void rangeQueryTest() {
-        SimulationHelper.type = SimulationHelper.ExpType.WITH_RESULT;
-        SimulationScenario opScen = SimulationGen.rangeQuery(BOOT_NUM, 10*OP_NUM, OP_NUM/10);
-     
-        Launcher.simulate(opScen);
-        
-        assertNotNull(SimulationHelper.resultValidator);
-        assertTrue(SimulationHelper.resultValidator.experimentEnded());
+    public void test() {
+        SimulationScenario testScen = SimulationGen.testScenario(BOOT_NUM);
+        Launcher.newSimulate(testScen);
     }
 }
