@@ -76,11 +76,11 @@ public class DMOp1Component extends ComponentDefinition {
         public void handle(TerminateMsg.Req event) {
             if (!terminated) {
                 terminated = true;
-                LOG.info("Received TERMINATE");
+                LOG.info("received TERMINATE");
                 if (bufferedMsg.isEmpty() && pendingMsg.isEmpty()) {
-                    LOG.info("Terminating correctly");
+                    LOG.info("terminating correctly");
                 } else {
-                    LOG.warn("Still have pending messages, incorrect termination");
+                    LOG.warn("still have pending messages, incorrect termination");
                 }
             }
         }
@@ -91,7 +91,7 @@ public class DMOp1Component extends ComponentDefinition {
         @Override
         public void handle(ConnectNode.Ind event) {
              if (terminated) {
-                LOG.debug("Terminated - dropping msg...");
+                LOG.debug("terminated - dropping msg...");
                 return;
             }
             target = event.node;
@@ -105,7 +105,7 @@ public class DMOp1Component extends ComponentDefinition {
         @Override
         public void handle(DMTestCmd event) {
              if (terminated) {
-                LOG.debug("Terminated - dropping msg...");
+                LOG.debug("terminated - dropping msg...");
                 return;
             }
             LOG.debug("testing");
@@ -126,12 +126,12 @@ public class DMOp1Component extends ComponentDefinition {
                 LOG.debug("Terminated - dropping msg...");
                 return;
             }
-            LOG.debug("Received datamodel resp {} from {}", new Object[]{self, netResp.message, target});
+            LOG.debug("received datamodel resp {} from {}", new Object[]{netResp.message, target});
             pendingMsg.remove(netResp.message.id);
             if (netResp.message instanceof DMMessage.Resp) {
                 handleTestResp(netResp.message);
             } else {
-                LOG.warn("{}: unknown resp {}. Dropping...", netResp.message);
+                LOG.warn("unknown resp {}. Dropping...", netResp.message);
             }
         }
 
@@ -142,7 +142,7 @@ public class DMOp1Component extends ComponentDefinition {
             LOG.debug("{}: cannot send msg {}, buffering", new Object[]{self, req});
             return false;
         }
-        LOG.debug("Sending datamodel req {} to {}", new Object[]{self, req, target});
+        LOG.debug("sending datamodel req {} to {}", new Object[]{req, target});
         trigger(new DMNetworkMessage.Req(self, target, req), network);
         return true;
     }
@@ -162,12 +162,12 @@ public class DMOp1Component extends ComponentDefinition {
         }
 
         if (!auxBuffer.isEmpty()) {
-            LOG.warn("Sending of messages might be wrong");
+            LOG.warn("sending of messages might be wrong");
         }
         bufferedMsg = auxBuffer;
     }
 
     private void handleTestResp(DMMessage.Resp resp) {
-        LOG.debug("Processing resp {}", resp);
+        LOG.debug("processing resp {}", resp);
     }
 }

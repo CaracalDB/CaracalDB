@@ -26,6 +26,7 @@ import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.simulation.common.msg.ConnectNode;
+import se.sics.caracaldb.simulation.common.msg.TerminateMsg;
 import se.sics.caracaldb.simulation.system.cmd.BootCmd;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.caracaldb.system.HostManager;
@@ -39,7 +40,6 @@ import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.VirtualNetworkChannel;
-import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.virtual.networkmodel.HostAddress;
 import se.sics.kompics.virtual.simulator.MessageDestinationFilter;
@@ -76,9 +76,9 @@ public class SystemComponent extends ComponentDefinition {
         subscribe(connectNodeHandler, system);
     }
 
-    Handler<TerminateExperiment> terminateHandler = new Handler<TerminateExperiment>() {
+    Handler<TerminateMsg.Req> terminateHandler = new Handler<TerminateMsg.Req>() {
         @Override
-        public void handle(TerminateExperiment event) {
+        public void handle(TerminateMsg.Req event) {
             if (terminated) {
                 LOG.debug("Terminated - dropping msg...");
                 return;

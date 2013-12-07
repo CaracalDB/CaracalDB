@@ -18,25 +18,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.simulation.system;
-
-import se.sics.caracaldb.simulation.common.cmd.SystemCmd;
-import se.sics.caracaldb.simulation.common.msg.ConnectNode;
-import se.sics.caracaldb.simulation.common.msg.TerminateMsg;
-import se.sics.kompics.PortType;
+package se.sics.caracaldb.datamodel;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class SystemPort extends PortType {
+public class DataModelMain {
 
-    {
-        request(SystemCmd.class);
-
-        request(ConnectNode.Req.class);
-        indication(ConnectNode.Ind.class);
-
-        request(TerminateMsg.Req.class);
-        indication(TerminateMsg.Ind.class);
-    }
 }

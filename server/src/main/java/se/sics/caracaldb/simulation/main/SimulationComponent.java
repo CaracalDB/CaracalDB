@@ -31,7 +31,6 @@ import se.sics.caracaldb.simulation.operations.OperationsPort;
 import se.sics.caracaldb.simulation.system.SystemPort;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
-import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Positive;
 import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
@@ -55,6 +54,7 @@ public class SimulationComponent extends ComponentDefinition {
         subscribe(killHandler, simulator);
         subscribe(terminateHandler, system);
         subscribe(terminateHandler, operations);
+        subscribe(connectNodeHandler, system);
     }
 
     Handler<Cmd> commandHadler = new Handler<Cmd>() {

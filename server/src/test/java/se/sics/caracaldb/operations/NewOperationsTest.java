@@ -18,25 +18,29 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.simulation.system;
+package se.sics.caracaldb.operations;
 
-import se.sics.caracaldb.simulation.common.cmd.SystemCmd;
-import se.sics.caracaldb.simulation.common.msg.ConnectNode;
-import se.sics.caracaldb.simulation.common.msg.TerminateMsg;
-import se.sics.kompics.PortType;
+import org.junit.Before;
+import org.junit.Test;
+import se.sics.caracaldb.simulation.main.SimulationGen;
+import se.sics.caracaldb.system.Launcher;
+import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class SystemPort extends PortType {
+public class NewOperationsTest {
 
-    {
-        request(SystemCmd.class);
+    private static final int BOOT_NUM = 6;
 
-        request(ConnectNode.Req.class);
-        indication(ConnectNode.Ind.class);
+    @Before
+    public void setUp() {
+        Launcher.reset();
+    }
 
-        request(TerminateMsg.Req.class);
-        indication(TerminateMsg.Ind.class);
+    @Test
+    public void test() {
+        SimulationScenario testScen = SimulationGen.testScenario(BOOT_NUM);
+        Launcher.newSimulate(testScen);
     }
 }

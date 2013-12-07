@@ -33,5 +33,6 @@ public class SimulationPort extends PortType {
     {
         indication(Cmd.class);
         indication(TerminateExperiment.class);
+        request(TerminateExperiment.class);
     }
 }
