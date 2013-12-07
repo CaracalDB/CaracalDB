@@ -19,10 +19,10 @@ import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 import spray.routing.ExceptionHandler
 import akka.actor.Props
-import se.sics.caracaldb.api.data.Entry
-import se.sics.caracaldb.api.data.CaracalJsonProtocol._
-import se.sics.caracaldb.api.data.Operation
 import se.sics.caracaldb.operations.ResponseCode
+import akka.routing._
+import se.sics.caracaldb.api.data._
+import java.nio.charset.Charset
 
 class ServiceRouterActor extends Actor with ServiceRouter with ActorLogging {
 
@@ -33,11 +33,14 @@ class ServiceRouterActor extends Actor with ServiceRouter with ActorLogging {
 }
 
 trait ServiceRouter extends HttpService {
+	import CaracalJsonProtocol._
 	import BasicDirectives._
 
 	implicit val timeout = Timeout(30 seconds);
 
 	val conf = Main.system.settings.config;
+	val numWorkers = conf.getInt("caracal.api.workers");
+	val workers = actorRefFactory.actorOf(Props[CaracalWorker].withRouter(SmallestMailboxRouter(numWorkers)), "caracal-workers");
 
 	import ExecutionDirectives._
 	def debugHandler(implicit log: LoggingContext) = ExceptionHandler {
@@ -77,16 +80,33 @@ trait ServiceRouter extends HttpService {
 
 	}
 
-	private def getOp(schemaStr: String, keyStr: String): Entry = {
-		return Entry(schemaStr, keyStr);
+	private def getOp(schemaStr: String, keyStr: String): Option[Entry] = {
+		val key = KeyUtil.schemaToKey(schemaStr, keyStr);
+		val f = workers ? GetRequest(key);
+		try {
+			val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
+			res match {
+				case e: Entry => return Some(e);
+				case o: Operation => return None;
+			}
+		} catch {
+			case e: TimeoutException => None;
+		}
 	}
 
 	private def putOp(schemaStr: String, keyStr: String, dataStr: String): Operation = {
-		return Operation(ResponseCode.SUCCESS);
+		val key = KeyUtil.schemaToKey(schemaStr, keyStr);
+		val f = workers ? PutRequest(key, dataStr.getBytes(Charset.forName("UTF-8")));
+		try {
+			val res = Await.result(f, 10 seconds).asInstanceOf[Operation];
+			return res;
+		} catch {
+			case e: TimeoutException => return Operation(ResponseCode.CLIENT_TIMEOUT);
+		}
 	}
-	
+
 	private def deleteOp(schemaStr: String, keyStr: String): Operation = {
-		return Operation(ResponseCode.SUCCESS);
+		return putOp(schemaStr, keyStr, ""); // this is not a true delete...but caracal doesn't really have delete support
 	}
 
 }
