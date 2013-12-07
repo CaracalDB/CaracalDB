@@ -50,12 +50,12 @@ import se.sics.kompics.virtual.simulator.VirtualSimulatorInit;
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class NewSimulatorMain extends ComponentDefinition {
+public class DMSimulatorMain extends ComponentDefinition {
 
-    private static final Logger LOG = LoggerFactory.getLogger(NewSimulatorMain.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DMSimulatorMain.class);
     SimulationScenario scenario;
 
-    public NewSimulatorMain() {
+    public DMSimulatorMain() {
         InetAddress localIP;
         try {
             localIP = InetAddress.getLocalHost();

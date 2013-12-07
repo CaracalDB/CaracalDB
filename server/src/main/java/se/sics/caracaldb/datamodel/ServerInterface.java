@@ -26,9 +26,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
-import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.address.Address;
+import se.sics.kompics.network.Message;
 import se.sics.kompics.network.Network;
 
 /**
@@ -40,7 +40,7 @@ public class ServerInterface extends ComponentDefinition {
     private static final Logger LOG = LoggerFactory.getLogger(ServerInterface.class);
 
     Positive<Network> network = requires(Network.class);
-    Negative<SIDataModelPort> dataModel = provides(SIDataModelPort.class);
+    Positive<DataModelPort> dataModel = requires(DataModelPort.class);
 
     private final Map<Long, Address> pendingRequests; //<reqId, src>
     private final Address self;

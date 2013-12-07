@@ -20,9 +20,15 @@
  */
 package se.sics.caracaldb.datamodel;
 
+import se.sics.kompics.PortType;
+
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DataModelMain {
+public class DataModelPort extends PortType {
 
+    {
+        request(DMMessage.Req.class);
+        indication(DMMessage.Resp.class);
+    }
 }

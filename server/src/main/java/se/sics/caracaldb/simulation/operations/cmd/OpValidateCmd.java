@@ -18,17 +18,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
+package se.sics.caracaldb.simulation.operations.cmd;
 
-import se.sics.kompics.PortType;
+import se.sics.caracaldb.simulation.common.cmd.OperationsCmd;
 
 /**
+ *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class SIDataModelPort extends PortType {
 
-    {
-        request(DMMessage.Req.class);
-        indication(DMMessage.Resp.class);
+
+public class OpValidateCmd extends OperationsCmd {
+    @Override
+    public String toString() {
+        return "OPVALIDATE_CMD";
     }
 }

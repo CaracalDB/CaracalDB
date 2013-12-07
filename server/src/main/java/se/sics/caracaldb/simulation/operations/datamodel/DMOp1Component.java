@@ -32,6 +32,7 @@ import se.sics.caracaldb.datamodel.DMMessage;
 import se.sics.caracaldb.datamodel.DMNetworkMessage;
 import se.sics.caracaldb.simulation.common.msg.ConnectNode;
 import se.sics.caracaldb.simulation.common.msg.TerminateMsg;
+import se.sics.caracaldb.simulation.operations.cmd.OpValidateCmd;
 import se.sics.caracaldb.simulation.operations.datamodel.cmd.DMTestCmd;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.ComponentDefinition;
@@ -117,6 +118,15 @@ public class DMOp1Component extends ComponentDefinition {
             }
         }
     };
+    
+    Handler<OpValidateCmd> validateHandler = new Handler<OpValidateCmd>() {
+
+        @Override
+        public void handle(OpValidateCmd event) {
+            
+        }
+        
+    };
 
     Handler<DMNetworkMessage.Resp> respHandler = new Handler<DMNetworkMessage.Resp>() {
 
@@ -142,7 +152,7 @@ public class DMOp1Component extends ComponentDefinition {
             LOG.debug("{}: cannot send msg {}, buffering", new Object[]{self, req});
             return false;
         }
-        LOG.debug("sending datamodel req {} to {}", new Object[]{req, target});
+        LOG.debug("sending datamodel req {} from {} to {}", new Object[]{req, self, target});
         trigger(new DMNetworkMessage.Req(self, target, req), network);
         return true;
     }

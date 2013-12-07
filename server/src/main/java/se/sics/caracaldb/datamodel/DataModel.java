@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
-import se.sics.kompics.Positive;
+import se.sics.kompics.Negative;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -34,7 +34,7 @@ import se.sics.kompics.Positive;
 public class DataModel extends ComponentDefinition {
     private static final Logger LOG = LoggerFactory.getLogger(DataModel.class);
     
-    Positive<SIDataModelPort> dataModel = requires(SIDataModelPort.class);
+    Negative<DataModelPort> dataModel = provides(DataModelPort.class);
     
     public DataModel(DataModelInit init) {
         subscribe(requestHandler, dataModel);

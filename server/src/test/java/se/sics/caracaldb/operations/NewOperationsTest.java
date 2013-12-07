@@ -20,8 +20,11 @@
  */
 package se.sics.caracaldb.operations;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import se.sics.caracaldb.Key;
+import se.sics.caracaldb.simulation.main.DataModelLauncher;
 import se.sics.caracaldb.simulation.main.SimulationGen;
 import se.sics.caracaldb.system.Launcher;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
@@ -40,6 +43,7 @@ public class NewOperationsTest {
 
     @Test
     public void test() {
+        DataModelLauncher.connectDataModel();
         SimulationScenario testScen = SimulationGen.testScenario(BOOT_NUM);
         Launcher.newSimulate(testScen);
     }
