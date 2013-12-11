@@ -23,10 +23,13 @@ import se.sics.caracaldb.operations.ResponseCode
 import akka.routing._
 import se.sics.caracaldb.api.data._
 import java.nio.charset.Charset
+import akka.event.LoggingAdapter
 
 class ServiceRouterActor extends Actor with ServiceRouter with ActorLogging {
 
 	def actorRefFactory = context
+	
+	def logger = log;
 
 	def receive = runRoute(primaryRoute);
 
@@ -37,6 +40,8 @@ trait ServiceRouter extends HttpService {
 	import BasicDirectives._
 
 	implicit val timeout = Timeout(30 seconds);
+	
+	def logger: LoggingAdapter;
 
 	val conf = Main.system.settings.config;
 	val numWorkers = conf.getInt("caracal.api.workers");
@@ -82,9 +87,11 @@ trait ServiceRouter extends HttpService {
 
 	private def getOp(schemaStr: String, keyStr: String): Option[Entry] = {
 		val key = KeyUtil.schemaToKey(schemaStr, keyStr);
+		logger.debug("GET {}", key);
 		val f = workers ? GetRequest(key);
 		try {
 			val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
+			logger.debug("GET result was {}", res);
 			res match {
 				case e: Entry => return Some(e);
 				case o: Operation => return None;
@@ -96,9 +103,11 @@ trait ServiceRouter extends HttpService {
 
 	private def putOp(schemaStr: String, keyStr: String, dataStr: String): Operation = {
 		val key = KeyUtil.schemaToKey(schemaStr, keyStr);
+		logger.debug("PUT ({}, {})", key, dataStr);
 		val f = workers ? PutRequest(key, dataStr.getBytes(Charset.forName("UTF-8")));
 		try {
 			val res = Await.result(f, 10 seconds).asInstanceOf[Operation];
+			logger.debug("PUT result was {}", res);
 			return res;
 		} catch {
 			case e: TimeoutException => return Operation(ResponseCode.CLIENT_TIMEOUT);

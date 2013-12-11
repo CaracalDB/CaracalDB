@@ -32,7 +32,7 @@ object CaracalRESTBuild extends Build {
       //libraryDependencies += "com.github.seratch" %% "scalikejdbc"               % "[1.6,)",
       //libraryDependencies += "com.github.seratch" %% "scalikejdbc-interpolation" % "[1.6,)",
       //libraryDependencies += "mysql" % "mysql-connector-java" % "5.1.21",
-      libraryDependencies += "org.slf4j" % "slf4j-simple" % "[1.7,)",
+      libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.5",
       //libraryDependencies += "org.scalaz" %% "scalaz-core" % "6.0.4",
       libraryDependencies += "io.spray" % "spray-can" % "1.2-20131011", // <-- this is supposed to be a SNAPSHOT, but for some reason SBT doesn't resolve it properly -.-
       libraryDependencies += "io.spray" % "spray-caching" % "1.2-20131011",

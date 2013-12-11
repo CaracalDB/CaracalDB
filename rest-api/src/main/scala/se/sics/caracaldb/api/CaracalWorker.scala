@@ -18,7 +18,9 @@ class CaracalWorker extends Actor with ActorLogging {
 	
 	def receive = {
 		case GetRequest(key) => {
+			log.debug("GET {}", key);
 			val resp = worker.get(key);
+			log.debug("GET response: {}", resp);
 			if (resp.code == ResponseCode.SUCCESS) {
 				sender ! Entry(resp.key.toString(), new String(resp.data, Charset.forName("UTF-8")));
 			} else {
@@ -26,7 +28,9 @@ class CaracalWorker extends Actor with ActorLogging {
 			}
 		}
 		case PutRequest(key, value) => {
+			log.debug("PUT ({}, {})", key, value);
 			val resp = worker.put(key, value);
+			log.debug("PUT response: {}", resp);
 			sender ! Operation(resp);
 		}
 	}

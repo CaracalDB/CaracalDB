@@ -45,7 +45,8 @@ public class LauncherComponent extends ComponentDefinition {
     VirtualNetworkChannel vnc;
     
     static {
-        ServerMessageRegistrator.register();
+        //ServerMessageRegistrator.register();
+        //MessageRegistrator.register();
     }
     
     {
@@ -53,8 +54,8 @@ public class LauncherComponent extends ComponentDefinition {
         Address netSelf = new Address(config.getIp(), config.getInt("server.address.port"), null);
         TimestampIdFactory.init(netSelf);
         network = create(GrizzlyNetwork.class, new GrizzlyNetworkInit(netSelf, 8, 0, 0, 
-                config.getInt("caracal.network.messageBufferSize"), 
-                config.getInt("caracal.network.messageBufferSizeMax"),
+                config.getBytes("caracal.network.messageBufferSize").intValue(), 
+                config.getBytes("caracal.network.messageBufferSizeMax").intValue(),
                 Runtime.getRuntime().availableProcessors(),
                 Runtime.getRuntime().availableProcessors(),
                 new ConstantQuotaAllocator(5)));
