@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.datamodel.util;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import se.sics.kompics.address.IdUtils;
 
@@ -36,9 +37,7 @@ public class ByteIdFactory {
         MIN_BYTE_ID = new ByteId(new byte[]{1, 0});
 
         byte[] maxByteId = new byte[256];
-        for (int i = 0; i < 256; i++) {
-            maxByteId[i] = (byte) 255;
-        }
+        Arrays.fill(maxByteId, (byte)255);
         MAX_BYTE_ID = new ByteId(maxByteId);
     }
 
@@ -70,20 +69,15 @@ public class ByteIdFactory {
         return new ByteId(id);
     }
 
-//    public static ByteId getId(String id) {
-//        try {
-//            return new ByteId(IdUtils.parsePrintFormat(id));
-//        } catch (NumberFormatException e) {
-//            return null;
-//        }
-//    }
-
     public static ByteId nextId(ByteId id) {
         LinkedList<Byte> idList = new LinkedList<Byte>();
         for (Byte b : id.getId()) {
             idList.add(b);
         }
         idList = incrementId(idList);
+        if (idList == null) {
+            return null;
+        }
         return new ByteId(idList);
     }
 
