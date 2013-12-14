@@ -34,6 +34,9 @@ import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
 import se.sics.caracaldb.operations.PutRequest;
+import se.sics.caracaldb.operations.RangeQuery;
+import se.sics.caracaldb.operations.RangeResponse;
+import se.sics.caracaldb.operations.ResponseCode;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
@@ -44,7 +47,7 @@ import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.Timer;
 
 /**
- * 
+ *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class ClientWorker extends ComponentDefinition {
@@ -60,7 +63,8 @@ public class ClientWorker extends ComponentDefinition {
     private final Address bootstrapServer;
     private final SortedSet<Address> knownNodes = new TreeSet<Address>();
     private final int sampleSize;
-    private Long currentRequestId;
+    private Long currentRequestId = -1l;
+    private RangeQuery.SeqCollector col;
 
     public ClientWorker(ClientWorkerInit init) {
         responseQ = init.q;
@@ -74,6 +78,7 @@ public class ClientWorker extends ComponentDefinition {
         subscribe(sampleHandler, net);
         subscribe(putHandler, client);
         subscribe(getHandler, client);
+        subscribe(rqHandler, client);
         subscribe(responseHandler, net);
     }
     Handler<Start> startHandler = new Handler<Start>() {
@@ -115,9 +120,25 @@ public class ClientWorker extends ComponentDefinition {
             trigger(fmsg, net);
         }
     };
+    Handler<RangeQuery.Request> rqHandler = new Handler<RangeQuery.Request>() {
+
+        @Override
+        public void handle(RangeQuery.Request event) {
+            LOG.debug("Handling RQ {}", event);
+            currentRequestId = event.id;
+            Address target = randomNode();
+            CaracalMsg msg = new CaracalMsg(self, target, event);
+            ForwardMessage fmsg = new ForwardMessage(self, target, event.initRange.begin, msg);
+            LOG.debug("MSG: {}", fmsg);
+            col = new RangeQuery.SeqCollector(event);
+            trigger(fmsg, net);
+
+        }
+    };
     Handler<CaracalMsg> responseHandler = new Handler<CaracalMsg>() {
         @Override
         public void handle(CaracalMsg event) {
+            knownNodes.add(event.getSource());
             LOG.debug("Handling Message {}", event);
             if (event.op instanceof CaracalResponse) {
                 CaracalResponse resp = (CaracalResponse) event.op;
@@ -125,13 +146,29 @@ public class ClientWorker extends ComponentDefinition {
                     LOG.debug("Ignoring {} as it has already been received.", resp);
                     return;
                 }
-                trigger(resp, client);
-                if (responseQ != null && !responseQ.offer(resp)) {
-                    LOG.warn("Could not insert {} into responseQ. It's overflowing. Clean up this mess!");
+                if (resp instanceof RangeQuery.Response) {
+                    if (col == null) {
+                        LOG.debug("Ignoring {} as the request has already been answered.", resp);
+                        return;
+                    }
+                    if (resp.code != ResponseCode.SUCCESS) {
+                        trigger(resp, client);
+                    }
+                    RangeQuery.Response rresp = (RangeQuery.Response) resp;
+                    col.processResponse(rresp);
+                    if (col.isDone()) {
+                        RangeResponse ranger = col.getResponse();
+                        col = null;
+                        enqueue(ranger);
+                    }
+                    return;
                 }
+                enqueue(resp);
+                
+
                 return;
             }
-            LOG.error("Sending requests to client is doing it wrong! {}", event);
+            LOG.error("Sending requests to clients is doing it wrong! {}", event);
         }
     };
 
@@ -149,5 +186,13 @@ public class ClientWorker extends ComponentDefinition {
             i++;
         }
         return null; // apocalypse oO
+    }
+
+    private void enqueue(CaracalResponse resp) {
+        currentRequestId = -1l;
+        trigger(resp, client);
+        if (responseQ != null && !responseQ.offer(resp)) {
+            LOG.warn("Could not insert {} into responseQ. It's overflowing. Clean up this mess!");
+        }
     }
 }

@@ -8,8 +8,11 @@ object KeyUtil {
 	val digest = MessageDigest.getInstance("MD5");
 
 	def schemaToKey(schema: String, key: String): Key = {
-		val k = Key.fromHex(correctFormat(key));
 		val schemaHash = digest.digest(schema.getBytes("UTF-8"));
+		if (key == null) {
+			return new Key(schemaHash);
+		}
+		val k = Key.fromHex(correctFormat(key));		
 		return k.prepend(schemaHash).get();
 	}
 	

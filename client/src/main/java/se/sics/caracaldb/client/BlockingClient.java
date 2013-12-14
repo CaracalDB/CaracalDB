@@ -25,11 +25,16 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
 import se.sics.caracaldb.operations.GetResponse;
 import se.sics.caracaldb.operations.PutRequest;
+import se.sics.caracaldb.operations.RangeQuery;
+import se.sics.caracaldb.operations.RangeResponse;
 import se.sics.caracaldb.operations.ResponseCode;
+import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.store.TFFactory;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
@@ -84,6 +89,26 @@ public class BlockingClient {
         } catch (InterruptedException ex) {
             LOG.error("Couldn't get a response.", ex);
             return new GetResponse(id, k, null, ResponseCode.CLIENT_TIMEOUT);
+        }
+    }
+    
+    public RangeResponse rangeRequest(KeyRange range) {
+        LOG.debug("RangeRequest for {}", range);
+        long id = TimestampIdFactory.get().newId();
+        RangeQuery.Request req = new RangeQuery.Request(id, range, Limit.noLimit(), TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
+        worker.triggerOnSelf(req);
+        try {
+            CaracalResponse resp = responseQueue.poll(TIMEOUT, TIMEUNIT);
+            if (resp == null) {
+                return new RangeResponse(id, range, ResponseCode.CLIENT_TIMEOUT, null);
+            }
+            if (resp instanceof RangeResponse) {
+                return (RangeResponse) resp;
+            }
+            return new RangeResponse(id, range, ResponseCode.UNSUPPORTED_OP, null);
+        } catch (InterruptedException ex) {
+            LOG.error("Couldn't get a response.", ex);
+            return new RangeResponse(id, range, ResponseCode.CLIENT_TIMEOUT, null);
         }
     }
 }

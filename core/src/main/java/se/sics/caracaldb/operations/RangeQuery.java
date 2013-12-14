@@ -23,7 +23,6 @@ package se.sics.caracaldb.operations;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit;
@@ -156,6 +155,10 @@ public class RangeQuery {
 
         public TreeMap<Key, byte[]> getResult() {
             return results;
+        }
+        
+        public RangeResponse getResponse() {
+            return new RangeResponse(req.id, req.initRange, ResponseCode.SUCCESS, getResult());
         }
 
         /**
