@@ -62,5 +62,13 @@ public class KeyTest {
         System.out.println("F-Key INC: " + fKey.inc().toString());
         assertTrue(fKey.inc().compareTo(Key.INF) == 0);
         assertTrue(Key.ZERO_KEY.inc().compareTo(new Key((byte)1)) == 0);
+        Key someSigKey = Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 06");
+        Key someSigKeyInc = Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 07");
+        System.out.println("Signed Key");
+        assertTrue(someSigKey.inc().compareTo(someSigKeyInc) == 0);
+        Key someKey = Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F6");
+        Key someKeyInc = Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F7");
+        System.out.println("Not so signed Key");
+        assertTrue(someKey.inc().compareTo(someKeyInc) == 0);
     }
 }

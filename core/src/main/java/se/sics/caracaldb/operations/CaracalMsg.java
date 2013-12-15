@@ -28,7 +28,7 @@ import se.sics.kompics.network.Message;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class CaracalMsg extends Message implements Forwardable {
+public class CaracalMsg extends Message implements Forwardable<CaracalMsg> {
     
     public final CaracalOp op;
     
@@ -38,7 +38,7 @@ public class CaracalMsg extends Message implements Forwardable {
     }
 
     @Override
-    public Message insertDestination(Address dest) {
+    public CaracalMsg insertDestination(Address dest) {
         return new CaracalMsg(this.getSource(), dest, op);
     }
     

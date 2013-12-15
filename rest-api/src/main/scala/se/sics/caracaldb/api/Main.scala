@@ -7,7 +7,7 @@ import spray.can.Http
 object Main extends App with MySslConfiguration {
 
 	// we need an ActorSystem to host our application in
-	implicit val system = ActorSystem("whloot");
+	implicit val system = ActorSystem("caracal-api");
 	
 	// get host settings from config
 	val hostname = system.settings.config.getString("caracal.api.host.hostname");

@@ -13,7 +13,7 @@ object CaracalRESTBuild extends Build {
     settings = Project.defaultSettings ++ Seq(
       name := "CaracalDB REST API",
       organization := "se.sics",
-      version := "0.1-SNAPSHOT",
+      version := "0.2-SNAPSHOT",
       scalaVersion := "2.10.2",
       //scalacOptions += "-Ydependent-method-types",
       scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-language:postfixOps", "-language:implicitConversions"),
@@ -32,7 +32,7 @@ object CaracalRESTBuild extends Build {
       //libraryDependencies += "com.github.seratch" %% "scalikejdbc"               % "[1.6,)",
       //libraryDependencies += "com.github.seratch" %% "scalikejdbc-interpolation" % "[1.6,)",
       //libraryDependencies += "mysql" % "mysql-connector-java" % "5.1.21",
-      libraryDependencies += "org.slf4j" % "slf4j-simple" % "[1.7,)",
+      libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.5",
       //libraryDependencies += "org.scalaz" %% "scalaz-core" % "6.0.4",
       libraryDependencies += "io.spray" % "spray-can" % "1.2-20131011", // <-- this is supposed to be a SNAPSHOT, but for some reason SBT doesn't resolve it properly -.-
       libraryDependencies += "io.spray" % "spray-caching" % "1.2-20131011",
@@ -40,8 +40,10 @@ object CaracalRESTBuild extends Build {
       libraryDependencies += "io.spray" % "spray-testkit" % "1.2-20131011",
       libraryDependencies += "io.spray" % "spray-util" % "1.2-20131011",
       libraryDependencies += "io.spray" %% "spray-json" % "1.2.5",
-      libraryDependencies += "se.sics.caracaldb" % "caracaldb-core" % "0.0.2-SNAPSHOT",
-      libraryDependencies += "se.sics.caracaldb" % "caracaldb-client" % "0.0.2-SNAPSHOT"
+      libraryDependencies += "se.sics.caracaldb" % "caracaldb-core" % "0.0.3-SNAPSHOT",
+      libraryDependencies += "se.sics.caracaldb" % "caracaldb-client" % "0.0.3-SNAPSHOT",
+      libraryDependencies += "com.google.code.findbugs" % "jsr305" % "2.0.2",
+      libraryDependencies += "com.google.inject" % "guice-parent" % "3.0"
       //libraryDependencies += "com.beimin" % "eveapi" % "5.1.2",
       //libraryDependencies += "joda-time" % "joda-time" % "2.0"
       // libraryDependencies += "org.mindrot" % "jbcrypt" % "0.3m",

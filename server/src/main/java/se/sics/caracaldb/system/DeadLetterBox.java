@@ -55,7 +55,7 @@ public class DeadLetterBox extends ComponentDefinition {
         public void handle(Message event) {
             if (event instanceof Forwardable) {
                 Forwardable f = (Forwardable) event;
-                Key dest = new Key(event.getSource().getId());
+                Key dest = new Key(event.getDestination().getId());
                 trigger(new ForwardMessage(self, self, dest, f), net);
                 return;
             }

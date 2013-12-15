@@ -23,10 +23,15 @@ import se.sics.caracaldb.operations.ResponseCode
 import akka.routing._
 import se.sics.caracaldb.api.data._
 import java.nio.charset.Charset
+import akka.event.LoggingAdapter
+import se.sics.caracaldb.KeyRange
+import se.sics.caracaldb.KeyRange.Bound
 
 class ServiceRouterActor extends Actor with ServiceRouter with ActorLogging {
 
 	def actorRefFactory = context
+
+	def logger = log;
 
 	def receive = runRoute(primaryRoute);
 
@@ -38,6 +43,8 @@ trait ServiceRouter extends HttpService {
 
 	implicit val timeout = Timeout(30 seconds);
 
+	def logger: LoggingAdapter;
+
 	val conf = Main.system.settings.config;
 	val numWorkers = conf.getInt("caracal.api.workers");
 	val workers = actorRefFactory.actorOf(Props[CaracalWorker].withRouter(SmallestMailboxRouter(numWorkers)), "caracal-workers");
@@ -45,14 +52,23 @@ trait ServiceRouter extends HttpService {
 	import ExecutionDirectives._
 	def debugHandler(implicit log: LoggingContext) = ExceptionHandler {
 		case e => ctx =>
-			log.warning("Request {} could not be handled normally", ctx.request);
+			log.warning("Request {} could not be handled normally: {}", ctx.request, e);
+			e.printStackTrace();
 			ctx.complete(InternalServerError, "An unknown error occurred. We apologize for this inconvenience.");
 	}
 
 	val detachAndRespond = respondWithMediaType(`application/json`) & handleExceptions(debugHandler) & detach();
 
 	val primaryRoute: Route = {
-		pathPrefix("schema" / Segment) { schema =>
+		path("schema" / Segment) { schema =>
+			get {
+				detachAndRespond { ctx =>
+					ctx.complete {
+						rangeOp(schema, null, null);
+					}
+				}
+			}
+		} ~ pathPrefix("schema" / Segment) { schema =>
 			path("key" / Segment) { key =>
 				get {
 					detachAndRespond { ctx =>
@@ -75,30 +91,49 @@ trait ServiceRouter extends HttpService {
 						}
 					}
 				}
+			} ~ path("range" / Segment / Segment) { (begin, end) =>
+				get {
+					detachAndRespond { ctx =>
+						ctx.complete {
+							rangeOp(schema, begin, end);
+						}
+					}
+				}
+			} ~ path("prefix" / Segment) { prefix =>
+				get {
+					detachAndRespond { ctx =>
+						ctx.complete {
+							rangeOp(schema, prefix, null);
+						}
+					}
+				}
 			}
 		}
-
 	}
 
-	private def getOp(schemaStr: String, keyStr: String): Option[Entry] = {
+	private def getOp(schemaStr: String, keyStr: String): Either[Entry, Operation] = {
 		val key = KeyUtil.schemaToKey(schemaStr, keyStr);
+		logger.debug("GET {}", key);
 		val f = workers ? GetRequest(key);
 		try {
 			val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
+			logger.debug("GET result was {}", res);
 			res match {
-				case e: Entry => return Some(e);
-				case o: Operation => return None;
+				case e: Entry => return Left(e);
+				case o: Operation => return Right(o);
 			}
 		} catch {
-			case e: TimeoutException => None;
+			case e: TimeoutException => Right(new Operation(ResponseCode.CLIENT_TIMEOUT));
 		}
 	}
 
 	private def putOp(schemaStr: String, keyStr: String, dataStr: String): Operation = {
 		val key = KeyUtil.schemaToKey(schemaStr, keyStr);
+		logger.debug("PUT ({}, {})", key, dataStr);
 		val f = workers ? PutRequest(key, dataStr.getBytes(Charset.forName("UTF-8")));
 		try {
 			val res = Await.result(f, 10 seconds).asInstanceOf[Operation];
+			logger.debug("PUT result was {}", res);
 			return res;
 		} catch {
 			case e: TimeoutException => return Operation(ResponseCode.CLIENT_TIMEOUT);
@@ -107,6 +142,26 @@ trait ServiceRouter extends HttpService {
 
 	private def deleteOp(schemaStr: String, keyStr: String): Operation = {
 		return putOp(schemaStr, keyStr, ""); // this is not a true delete...but caracal doesn't really have delete support
+	}
+
+	private def rangeOp(schemaStr: String, beginStr: String, endStr: String): Either[List[Entry], Operation] = {
+		val begin = KeyUtil.schemaToKey(schemaStr, beginStr);
+		val range = if (endStr == null) KeyRange.prefix(begin) else {
+			val end = KeyUtil.schemaToKey(schemaStr, endStr);
+			KeyRange.closed(begin).closed(end);
+		}
+		logger.debug("RQ {}", range);
+		val f = workers ? RangeRequest(range);
+		try {
+			val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
+			logger.debug("GET result was {}", res);
+			res match {
+				case Entries(l) => return Left(l);
+				case o: Operation => return Right(o);
+			}
+		} catch {
+			case e: TimeoutException => Right(new Operation(ResponseCode.CLIENT_TIMEOUT));
+		}
 	}
 
 }

@@ -132,7 +132,31 @@ public class Stats {
             sb.append(memoryUsage);
             sb.append("%, Cpu: ");
             sb.append(cpuUsage);
-            sb.append("%)");
+            sb.append("%, Top-K (Size): [");
+            for (Key k : topKSize) {
+                sb.append(k);
+                sb.append(", ");
+            }
+            sb.append("]");
+            sb.append(", Bottom-K (Size): [");
+            for (Key k : bottomKSize) {
+                sb.append(k);
+                sb.append(", ");
+            }
+            sb.append("]");
+            sb.append(", Top-K (Op/s): [");
+            for (Key k : topKOps) {
+                sb.append(k);
+                sb.append(", ");
+            }
+            sb.append("]");
+            sb.append(", Bottom-K (Op/s): [");
+            for (Key k : bottomKOps) {
+                sb.append(k);
+                sb.append(", ");
+            }
+            sb.append("]");
+            sb.append(")");
             return sb.toString();
         }
 

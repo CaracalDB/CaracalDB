@@ -34,10 +34,15 @@ public class ForwardMessage extends Message {
 
     public ForwardMessage(Address src, Address dst, Key forwardTo, Forwardable msg) {
         super(src, dst);
+        assert(forwardTo != null); // or bad things happen -.-
         this.forwardTo = forwardTo;
         this.msg = msg;
     }
 
+    public ForwardMessage forward(Address newDest) {
+        return new ForwardMessage(getSource(), newDest, forwardTo, msg);
+    }
+    
     @Override
     public String toString() {
         String str = "ForwardMessage(";
