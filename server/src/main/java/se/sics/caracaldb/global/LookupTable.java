@@ -59,7 +59,7 @@ public class LookupTable {
     public static final int INIT_REP_FACTOR = 3;
     public static final int NUM_VIRT_GROUPS = 256;
     public static final Key RESERVED_PREFIX = new Key(0); // (00 00 00 00)
-    public static final Key RESERVED_START = Key.ZERO_KEY; // ( )
+    public static final Key RESERVED_START = Key.ZERO_KEY; // (00)
     public static final Key RESERVED_END = new Key(1); // (00 00 00 01)
     public static final Key RESERVED_HEARTBEATS = RESERVED_PREFIX.append(new byte[]{0, 0, 0, 1}).get(); // (00 00 00 00 00 00 00 01)
     public static final Key RESERVED_LUTUPDATES = RESERVED_PREFIX.append(new byte[]{0, 0, 0, 2}).get(); // (00 00 00 00 00 00 00 02)
@@ -519,7 +519,7 @@ public class LookupTable {
             virtualHostGroups[i] = new LookupGroup(Ints.toByteArray(i)[3]);
         }
 
-        // Reserved range from () to (00 00 00 01)
+        // Reserved range from (00) to (00 00 00 01)
         virtualHostsPut(RESERVED_START, 0);
         // Place as many virtual nodes as there are hosts in the system
         // for random (non-schema-aligned) writes (more or less evenly distributed)
