@@ -38,6 +38,10 @@ public class ForwardMessage extends Message {
         this.msg = msg;
     }
 
+    public ForwardMessage forward(Address newDest) {
+        return new ForwardMessage(getSource(), newDest, forwardTo, msg);
+    }
+    
     @Override
     public String toString() {
         String str = "ForwardMessage(";

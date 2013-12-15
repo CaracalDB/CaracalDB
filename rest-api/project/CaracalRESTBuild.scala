@@ -13,7 +13,7 @@ object CaracalRESTBuild extends Build {
     settings = Project.defaultSettings ++ Seq(
       name := "CaracalDB REST API",
       organization := "se.sics",
-      version := "0.1-SNAPSHOT",
+      version := "0.2-SNAPSHOT",
       scalaVersion := "2.10.2",
       //scalacOptions += "-Ydependent-method-types",
       scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-language:postfixOps", "-language:implicitConversions"),
@@ -40,8 +40,8 @@ object CaracalRESTBuild extends Build {
       libraryDependencies += "io.spray" % "spray-testkit" % "1.2-20131011",
       libraryDependencies += "io.spray" % "spray-util" % "1.2-20131011",
       libraryDependencies += "io.spray" %% "spray-json" % "1.2.5",
-      libraryDependencies += "se.sics.caracaldb" % "caracaldb-core" % "0.0.2-SNAPSHOT",
-      libraryDependencies += "se.sics.caracaldb" % "caracaldb-client" % "0.0.2-SNAPSHOT",
+      libraryDependencies += "se.sics.caracaldb" % "caracaldb-core" % "0.0.3-SNAPSHOT",
+      libraryDependencies += "se.sics.caracaldb" % "caracaldb-client" % "0.0.3-SNAPSHOT",
       libraryDependencies += "com.google.code.findbugs" % "jsr305" % "2.0.2",
       libraryDependencies += "com.google.inject" % "guice-parent" % "3.0"
       //libraryDependencies += "com.beimin" % "eveapi" % "5.1.2",

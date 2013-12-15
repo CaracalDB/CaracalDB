@@ -3,7 +3,7 @@
     <groupId>se.sics.caracaldb</groupId>
     <artifactId>caracaldb-parent-pom</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.3-SNAPSHOT</version>
 
     <name>CaracalDB</name>
     <!-- <url>http://kompics.sics.se</url> //-->

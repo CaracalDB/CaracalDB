@@ -27,12 +27,12 @@ import se.sics.kompics.network.Message;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public interface Forwardable {
+public interface Forwardable<T extends Message> {
     /**
      * Return a message with desired contents and with the given address as dest.
      * 
      * @param dest Address where message is forwarded to
      * @return Message to be forwarded
      */
-    public Message insertDestination(Address dest);
+    public T insertDestination(Address dest);
 }

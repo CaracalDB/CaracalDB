@@ -52,14 +52,23 @@ trait ServiceRouter extends HttpService {
 	import ExecutionDirectives._
 	def debugHandler(implicit log: LoggingContext) = ExceptionHandler {
 		case e => ctx =>
-			log.warning("Request {} could not be handled normally", ctx.request);
+			log.warning("Request {} could not be handled normally: {}", ctx.request, e);
+			e.printStackTrace();
 			ctx.complete(InternalServerError, "An unknown error occurred. We apologize for this inconvenience.");
 	}
 
 	val detachAndRespond = respondWithMediaType(`application/json`) & handleExceptions(debugHandler) & detach();
 
 	val primaryRoute: Route = {
-		pathPrefix("schema" / Segment) { schema =>
+		path("schema" / Segment) { schema =>
+			get {
+				detachAndRespond { ctx =>
+					ctx.complete {
+						rangeOp(schema, null, null);
+					}
+				}
+			}
+		} ~ pathPrefix("schema" / Segment) { schema =>
 			path("key" / Segment) { key =>
 				get {
 					detachAndRespond { ctx =>
@@ -99,16 +108,7 @@ trait ServiceRouter extends HttpService {
 					}
 				}
 			}
-		} ~ path("schema" / Segment) { schema =>
-			get {
-				detachAndRespond { ctx =>
-					ctx.complete {
-						rangeOp(schema, null, null);
-					}
-				}
-			}
 		}
-
 	}
 
 	private def getOp(schemaStr: String, keyStr: String): Either[Entry, Operation] = {

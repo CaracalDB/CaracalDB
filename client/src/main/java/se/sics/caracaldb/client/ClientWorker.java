@@ -138,7 +138,7 @@ public class ClientWorker extends ComponentDefinition {
     Handler<CaracalMsg> responseHandler = new Handler<CaracalMsg>() {
         @Override
         public void handle(CaracalMsg event) {
-            knownNodes.add(event.getSource());
+            knownNodes.add(event.getSource().hostAddress());
             LOG.debug("Handling Message {}", event);
             if (event.op instanceof CaracalResponse) {
                 CaracalResponse resp = (CaracalResponse) event.op;
