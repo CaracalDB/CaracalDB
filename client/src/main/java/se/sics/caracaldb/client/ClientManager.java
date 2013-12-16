@@ -31,7 +31,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import se.sics.caracaldb.MessageRegistrator;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.Component;
@@ -109,7 +108,7 @@ public class ClientManager extends ComponentDefinition {
         if (INSTANCE == null) { // Not the nicest singleton solution but fine for this
             synchronized (ClientManager.class) {
                 if (INSTANCE == null) {
-                    MessageRegistrator.register();
+                    //MessageRegistrator.register();
                     Kompics.createAndStart(ClientManager.class, Runtime.getRuntime().availableProcessors());
                 }
             }
@@ -121,7 +120,7 @@ public class ClientManager extends ComponentDefinition {
         if (INSTANCE == null) { // Not the nicest singleton solution but fine for this
             synchronized (ClientManager.class) {
                 if (INSTANCE == null) {
-                    MessageRegistrator.register();
+                    //MessageRegistrator.register();
                     Kompics.createAndStart(ClientManager.class, Runtime.getRuntime().availableProcessors());
                 }
             }

@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb;
 
+import com.google.common.base.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,7 @@ public class KeyRange {
     public final Key end;
     public final Bound endBound;
 
-    private KeyRange(Bound beginBound, Key begin, Key end, Bound endBound) {
+    public KeyRange(Bound beginBound, Key begin, Key end, Bound endBound) {
         this.beginBound = beginBound;
         this.begin = begin;
         this.end = end;
@@ -57,7 +58,7 @@ public class KeyRange {
     }
 
     public static KeyRange key(Key key) {
-        return new KeyRange(Bound.CLOSED, key, key, Bound.CLOSED);
+        return new KeyRange(CLOSED, key, key, CLOSED);
     }
 
     public static KRBuilder open(Key begin) {
@@ -202,6 +203,33 @@ public class KeyRange {
         } else {
             return false;
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof KeyRange) {
+            KeyRange that = (KeyRange) o;
+            if (!Objects.equal(this.beginBound, that.beginBound)) {
+                return false;
+            }
+            if (!Objects.equal(this.begin, that.begin)) {
+                return false;
+            }
+            if (!Objects.equal(this.end, that.end)) {
+                return false;
+            }
+            if (!Objects.equal(this.endBound, that.endBound)) {
+                return false;
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(beginBound, begin, end, endBound);
     }
 
     @Override

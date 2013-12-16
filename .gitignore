@@ -2,3 +2,26 @@
 /client/target/
 /simulator/target/
 /core/target/
+
+.classpath
+.project
+
+*.class
+*.log
+
+# sbt specific
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+
+# Eclipse specific
+.settings
+
+# Other
+# src/main/resources/application.conf

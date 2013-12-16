@@ -154,6 +154,11 @@ public class RangeQuery {
         public Pair<KeyRange, TreeMap<Key, byte[]>> getResult() {
             return Pair.with(coveredRange, results);
         }
+        
+        public RangeResponse getResponse() {
+            Pair<KeyRange, TreeMap<Key, byte[]>> res = getResult();
+            return new RangeResponse(req.id, req.initRange, ResponseCode.SUCCESS, res.getValue0(), res.getValue1());
+        }
 
         /**
          * @param resp expected to be SUCCESS

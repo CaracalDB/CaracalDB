@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
+import se.sics.caracaldb.global.ForwardMessage;
 import se.sics.caracaldb.global.ForwardToAny;
 import se.sics.caracaldb.global.ForwardToRange;
 import se.sics.caracaldb.global.LookupService;
@@ -94,6 +95,7 @@ public class MethCat extends ComponentDefinition {
         // subscriptions
         subscribe(forwardingHandler, network);
         subscribe(syncedHandler, replication);
+        subscribe(forwardMsgHandler, network);
     }
     Handler<Stop> stopHandler = new Handler<Stop>() {
 
@@ -264,6 +266,16 @@ public class MethCat extends ComponentDefinition {
             trigger(stats, maintenance);
         }
 
+    };
+    
+    // OPTIONAL
+    Handler<ForwardMessage> forwardMsgHandler = new Handler<ForwardMessage>() {
+
+        @Override
+        public void handle(ForwardMessage event) {
+            LOG.warn("{}: You are not supposed to send ForwardMessages to VNodes!!! I'll pass it along this time...grudgingly... {}", self, event);
+            trigger(event.forward(self.hostAddress()), network);
+        }
     };
 
     private long resetOpS(long time) {

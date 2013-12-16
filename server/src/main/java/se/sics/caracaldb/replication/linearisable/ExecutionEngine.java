@@ -213,6 +213,7 @@ public class ExecutionEngine extends ComponentDefinition {
                 if (v instanceof Scan) {
                     Scan s = (Scan) v;
                     trigger(new SizeScan(s.range), store);
+                    continue;
                 }
                 if (!(v instanceof Noop)) {
                     LOG.error("Unkown decision value: {}", v);

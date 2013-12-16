@@ -20,8 +20,10 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -98,6 +100,7 @@ public class CatHerder extends ComponentDefinition {
     private Set<Address> masterGroup = null;
     private UUID sendHeartbeatId = null;
     private UUID checkHeartbeatsId = null;
+    private HashMap<Address, NodeStats> nodeStats = new HashMap<Address, NodeStats>();
     // master
     private HashSet<Address> outstandingFailures = new HashSet<Address>();
     private Component paxos;
@@ -127,8 +130,9 @@ public class CatHerder extends ComponentDefinition {
         subscribe(forwardToRangeHandler, lookup);
         subscribe(bootedHandler, maintenance);
         subscribe(forwardMsgHandler, net);
-        //TODO Alex remove before next push
-//        subscribe(sendHeartbeatHandler, timer);
+        subscribe(sampleHandler, net);
+        subscribe(statsHandler, maintenance);
+        subscribe(sendHeartbeatHandler, timer);
     }
     Handler<Start> startHandler = new Handler<Start>() {
 
@@ -286,7 +290,7 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(SendHeartbeat event) {
-            Report r = Stats.collect(self);
+            Report r = Stats.collect(self, nodeStats);
             try {
                 PutRequest pr = new PutRequest(TimestampIdFactory.get().newId(), heartBeatKey, r.serialise());
                 Address dest = findDest(pr.key);
@@ -300,6 +304,33 @@ public class CatHerder extends ComponentDefinition {
             }
         }
 
+    };
+    Handler<NodeStats> statsHandler = new Handler<NodeStats>() {
+
+        @Override
+        public void handle(NodeStats event) {
+            nodeStats.put(event.node, event);
+        }
+    };
+    Handler<SampleRequest> sampleHandler = new Handler<SampleRequest>() {
+
+        @Override
+        public void handle(SampleRequest event) {
+            ArrayList<Address> hosts = lut.hosts();
+            if (hosts.size() <= event.n) {
+                trigger(event.reply(ImmutableSet.copyOf(hosts)), net);
+                return;
+            }
+            Set<Address> sample = new TreeSet<Address>();
+            for (int i = 0; i < event.n; i++) {
+                Address addr = null;
+                while (addr == null) {
+                    addr = hosts.get(RAND.nextInt(hosts.size()));
+                }
+                sample.add(addr);
+            }
+            trigger(event.reply(ImmutableSet.copyOf(sample)), net);
+        }
     };
     /*
      * MASTER ONLY
@@ -351,6 +382,7 @@ public class CatHerder extends ComponentDefinition {
             for (Address adr : fails) {
                 //TODO something
             }
+            //TODO clear range for next time
         }
     };
     Handler<Decide> decideHandler = new Handler<Decide>() {
@@ -393,7 +425,7 @@ public class CatHerder extends ComponentDefinition {
 
         subscribe(decideHandler, rlog);
         subscribe(checkHBHandler, timer);
-        subscribe(rangeHandler, store);
+        //subscribe(rangeHandler, store); //TODO uncomment when fixed
     }
 
     private void connectSlaveHandlers() {

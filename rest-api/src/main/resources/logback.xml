@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <encoder>
+            <pattern>%date{MM/dd HH:mm:ss} %-5level[%thread] %logger{1} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>akka.log</file>
+        <append>false</append>
+        <encoder>
+            <pattern>%date{MM/dd HH:mm:ss} %-5level[%thread] %logger{1} - %msg%n</pattern>
+        </encoder>
+    </appender> -->
+
+    <logger name="akka" level="INFO" />
+    <logger name="spray" level="INFO" />
+    <logger name="se.sics.caracaldb.simulation.Experiment2" level="DEBUG"/>
+    <logger name="org.mortbay.log" level="OFF"/>
+    <logger name="se.sics.caracaldb.global.CatHerder" level="INFO"/>
+    <logger name="se.sics.kompics.simulation." level="INFO"/>
+    <logger name="se.sics.caracaldb.paxos.Paxos" level="INFO"/>
+    <logger name="Kompics" level="INFO"/>
+    <logger name="se.sics.caracaldb.replication.linearisable.ExecutionEngine" level="INFO"/>
+    <logger name="se.sics.kompics.web.jetty" level="WARN"/>
+    <logger name="se.sics.kompics.network.grizzly" level="DEBUG"/>
+    <logger name="log4j.logger.org.glasfish.grizzly" level="DEBUG"/>
+    <logger name="log4j.logger.grizzly" level="DEBUG"/>
+    <logger name="se.sics.caracaldb" level="DEBUG"/>
+    <logger name="se.sics.caracaldb.operations.MethCat" level="DEBUG"/>
+    <logger name="org.apache.commons.configuration.ConfigurationUtils" level="INFO"/>
+    <logger name="se.sics.caracaldb.simulation.SimulatorComponent" level="DEBUG"/>
+    <logger name="se.sics.kompics.timer.java" level="WARN"/>
+    <logger name="se.sics.kompics.virtual" level="INFO"/>
+
+    <root level="DEBUG">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

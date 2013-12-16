@@ -20,7 +20,11 @@
  */
 package se.sics.caracaldb.global;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.Event;
 import se.sics.kompics.address.Address;
 
@@ -42,5 +46,22 @@ public class NodeStats extends Event {
         this.storeSize = storeSize;
         this.storeNumberOfKeys = storeNumberOfKeys;
         this.ops = ops;
+    }
+    
+    public void serialise(DataOutputStream w) throws IOException {
+        CustomSerialisers.serialiseAddress(node, w);
+        CustomSerialisers.serialiseKeyRange(range, w);
+        w.writeLong(storeSize);
+        w.writeLong(storeNumberOfKeys);
+        w.writeLong(ops);
+    }
+    
+    public static NodeStats deserialise(DataInputStream r) throws IOException {
+        Address node = CustomSerialisers.deserialiseAddress(r);
+        KeyRange range = CustomSerialisers.deserialiseKeyRange(r);
+        long storeSize = r.readLong();
+        long storeNumberOfKeys = r.readLong();
+        long ops = r.readLong();
+        return new NodeStats(node, range, storeSize, storeNumberOfKeys, ops);
     }
 }

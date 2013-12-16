@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,21 +18,28 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.global;
+package se.sics.caracaldb.operations;
 
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import java.util.TreeMap;
+import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
 
 /**
- *
- * @author Lars Kroll <lkroll@sics.se>
+ * Just a container for responses collected by a RangeQuery.SeqCollector
+ * <p>
+ * @author sario
  */
-public interface Forwardable<T extends Message> {
-    /**
-     * Return a message with desired contents and with the given address as dest.
-     * 
-     * @param dest Address where message is forwarded to
-     * @return Message to be forwarded
-     */
-    public T insertDestination(Address dest);
+public class RangeResponse extends CaracalResponse {
+
+    public final TreeMap<Key, byte[]> results;
+    public final KeyRange initRange;
+    public final KeyRange coveredRange;
+
+    public RangeResponse(long id, KeyRange initRange, ResponseCode code, KeyRange coveredRange, TreeMap<Key, byte[]> results) {
+        super(id, code);
+        this.initRange = initRange;
+        this.coveredRange = coveredRange;
+        this.results = results;
+    }
+
 }

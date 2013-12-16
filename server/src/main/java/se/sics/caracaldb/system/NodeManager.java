@@ -167,7 +167,7 @@ public class NodeManager extends ComponentDefinition {
                         new ExecutionEngineInit(repView, self,
                                 join.responsibility,
                                 config.getMilliseconds("caracal.network.keepAlivePeriod"),
-                                config.getInt("caracal.network.dataMessageSize")));
+                                config.getBytes("caracal.network.dataMessageSize").intValue()));
                 Component paxos = create(Paxos.class,
                         new PaxosInit(repView, join.quorum,
                                 config.getMilliseconds("caracal.network.keepAlivePeriod"), self));

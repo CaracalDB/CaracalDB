@@ -138,8 +138,9 @@ public class Key implements Comparable<Key> {
         }
         byte[] newData  = Arrays.copyOf(data, data.length);
         for (int i = newData.length-1; i >= 0; i--) {
-            int oldVal = newData[i];
-            if (oldVal != UnsignedBytes.MAX_VALUE) {
+            int oldVal = UnsignedBytes.toInt(newData[i]);
+            System.out.println(oldVal + " != " + UnsignedBytes.MAX_VALUE);
+            if (oldVal != BYTE_KEY_SIZE) {
                 newData[i] = UnsignedBytes.checkedCast(oldVal+1);
                 return new Key(newData);
             } else {
@@ -154,10 +155,21 @@ public class Key implements Comparable<Key> {
         if (that instanceof Inf) {
             return Integer.MIN_VALUE;
         }
-        return COMP.compare(this.data, that.data);
+        return compare(this.data, that.data);
     }
 
     public static int compare(byte[] key1, byte[] key2) {
+        if (key1 == null) {
+            if (key2 == null) {
+                return 0;
+            } else {
+                return Integer.MIN_VALUE;
+            }
+        }
+        if (key2 == null) {
+            return Integer.MAX_VALUE;
+        }
+        
         return COMP.compare(key1, key2);
     }
 

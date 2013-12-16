@@ -22,6 +22,7 @@ package se.sics.caracaldb.system;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertNotNull;
@@ -31,6 +32,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import se.sics.caracaldb.global.NodeStats;
 import se.sics.caracaldb.system.Stats.Report;
 import se.sics.kompics.address.Address;
 
@@ -63,7 +65,7 @@ public class StatsTest {
     public void basic() {
         
         for (int i = 0; i < NUM; i++) {
-            Report r = Stats.collect(self);
+            Report r = Stats.collect(self, new HashMap<Address, NodeStats>()); // TODO actually test this
             assertNotNull(r);
             assertThat(r.cpuUsage, not(equalTo(Double.NaN)));
             System.out.println(r);
