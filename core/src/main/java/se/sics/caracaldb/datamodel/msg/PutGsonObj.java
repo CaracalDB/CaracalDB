@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,18 +18,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
 
-import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.kompics.PortType;
+package se.sics.caracaldb.datamodel.msg;
+
+import com.google.gson.Gson;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DataModelPort extends PortType {
+public class PutGsonObj {
+    public static class Req extends DMMessage.Req {
 
-    {
-        request(DMMessage.Req.class);
-        indication(DMMessage.Resp.class);
+        public final Gson obj;
+
+        public Req(long id, Gson obj) {
+            super(id);
+            this.obj = obj;
+        }
+
+        @Override
+        public String toString() {
+            return "DM_PUT_GSONOBJ_REQ(" + id + ")";
+        }
+    }
+
+    public static class Resp extends DMMessage.Resp {
+
+        public Resp(long id, DMMessage.ResponseCode opResult) {
+            super(id, opResult);
+        }
+
+        @Override
+        public String toString() {
+            return "DM_PUT_GSONOBJ_RESP(" + id + ")";
+        }
     }
 }

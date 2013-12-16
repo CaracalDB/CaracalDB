@@ -20,68 +20,67 @@
  */
 package se.sics.caracaldb.datamodel.util;
 
+import com.google.gson.Gson;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
 /**
- *
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class TypeInfo {
 
-    public final int dbId;
-    public final String typeName;
-    private int typeId;
+    public final ByteId dbId;
+    public final ByteId typeId;
+    private final ByteIdFactory bidFactory;
+    private final Map<ByteId, FieldInfo> fieldMap;   // <fieldId, fieldInfo>
+    private final Set<ByteId> indexSet; 	     // <indexId>
 
-    private Map<Integer, FieldInfo> fieldMap;   // <fieldId, fieldInfo>
-    private Set<Integer> indexSet; 		     // <indexId>
-    private int nextFieldId = 0;
-
-    public TypeInfo(int dbId, String typeName) {
-        this.dbId = dbId;
-        this.typeId = -1;
-        this.typeName = typeName;
-
-        this.fieldMap = new TreeMap<Integer, FieldInfo>();
-        this.indexSet = new TreeSet<Integer>();
-    }
-
-    public TypeInfo(int dbId, int typeId, String typeName) {
+    public TypeInfo(ByteId dbId, ByteId typeId) {
         this.dbId = dbId;
         this.typeId = typeId;
-        this.typeName = typeName;
-        this.fieldMap = new TreeMap<Integer, FieldInfo>();
-        this.indexSet = new TreeSet<Integer>();
+        this.bidFactory = new ByteIdFactory();
+        this.fieldMap = new TreeMap<ByteId, FieldInfo>();
+        this.indexSet = new TreeSet<ByteId>();
     }
 
-    public void setTypeId(int typeId) {
-        this.typeId = typeId;
-    }
-
-    public int getTypeId() {
-        return typeId;
-    }
-
-    public void addField(int fieldId, String fieldName, String sType) throws TypeInfo.InconsistencyException {
+    public void addField(ByteId fieldId, String fieldName, String sType) throws TypeInfo.InconsistencyException {
         FieldInfo.FieldType fieldType = FieldInfo.FieldType.parseString(sType);
         fieldMap.put(fieldId, new FieldInfo(fieldId, fieldName.toLowerCase(), fieldType));
     }
 
     public void addField(String fieldName, String sType) throws TypeInfo.InconsistencyException {
-        nextFieldId++;
+        ByteId nextId = bidFactory.nextId();
         FieldInfo.FieldType fieldType = FieldInfo.FieldType.parseString(sType);
-        fieldMap.put(nextFieldId, new FieldInfo(nextFieldId, fieldName.toLowerCase(), fieldType));
+        fieldMap.put(nextId, new FieldInfo(nextId, fieldName.toLowerCase(), fieldType));
     }
+    
+//    public void deserializeField(ByteId fieldId, String value) {
+//        Gson gson = new Gson();
+//        TempFieldInfo tfInfo = gson.fromJson(value, TempFieldInfo.class);
+//        FieldInfo fInfo = new FieldInfo(new ByteId(tfInfo.fieldId), tfInfo.fieldName, tfInfo.fieldType);
+//        fieldMap.put(fInfo.fieldId, fInfo);
+//        if(tfInfo.indexed) {
+//            indexSet.add(fInfo.fieldId);
+//        }
+//    }
+//    
+//    public String serializeField(ByteId fieldId) {
+//        FieldInfo fInfo = fieldMap.get(fieldId);
+//        boolean indexed = indexSet.contains(fieldId);
+//        TempFieldInfo tfInfo = new TempFieldInfo(fInfo.fieldId.getId(), fInfo.fieldName, fInfo.fieldType, indexed);
+//        Gson gson = new Gson();
+//        return gson.toJson(null)
+//    }
 
-    public int getFieldId(String fieldName) {
+    public ByteId getFieldId(String fieldName) {
         for (FieldInfo field : fieldMap.values()) {
             if (field.fieldName.equals(fieldName)) {
                 return field.fieldId;
             }
         }
-        return -1;
+        return null;
     }
 
     public static class InconsistencyException extends Exception {
@@ -90,4 +89,5 @@ public class TypeInfo {
             super(message);
         }
     }
+    
 }

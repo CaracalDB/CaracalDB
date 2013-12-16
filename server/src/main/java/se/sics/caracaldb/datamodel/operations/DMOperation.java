@@ -18,18 +18,40 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
+package se.sics.caracaldb.datamodel.operations;
 
 import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.kompics.PortType;
+import se.sics.caracaldb.operations.CaracalResponse;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DataModelPort extends PortType {
+public abstract class DMOperation {
+    public final long id;
+    
+    public DMOperation(long id) {
+        this.id = id;
+    }
+    
+    public abstract void start();
 
-    {
-        request(DMMessage.Req.class);
-        indication(DMMessage.Resp.class);
+    public abstract void handleMessage(CaracalResponse resp);
+
+    public static abstract class Result {
+        public final DMMessage.ResponseCode responseCode;
+        
+        public Result(DMMessage.ResponseCode responseCode) {
+            this.responseCode = responseCode;
+        }
+    }
+    
+    public static abstract class ResultBuilder {
+        private DMMessage.ResponseCode responseCode;
+        
+        public void setResponseCode(DMMessage.ResponseCode responseCode) {
+            this.responseCode = responseCode;
+        }
+        
+        public abstract Result build();
     }
 }

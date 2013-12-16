@@ -22,7 +22,15 @@ package se.sics.caracaldb.datamodel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.datamodel.msg.DMMessage;
+import se.sics.caracaldb.datamodel.msg.GetAllTypes;
+import se.sics.caracaldb.datamodel.msg.GetGsonObj;
+import se.sics.caracaldb.datamodel.msg.GetType;
+import se.sics.caracaldb.datamodel.msg.PutGsonObj;
+import se.sics.caracaldb.datamodel.msg.PutType;
+import se.sics.caracaldb.datamodel.operations.DMOperationsMaster;
 import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.Event;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 
@@ -30,24 +38,78 @@ import se.sics.kompics.Negative;
  * @author Alex Ormenisan <aaor@sics.se>
  */
 
-
-public class DataModel extends ComponentDefinition {
+public class DataModel extends ComponentDefinition implements DMOperationsMaster {
     private static final Logger LOG = LoggerFactory.getLogger(DataModel.class);
     
     Negative<DataModelPort> dataModel = provides(DataModelPort.class);
     
     public DataModel(DataModelInit init) {
-        subscribe(requestHandler, dataModel);
+//        subscribe(requestHandler, dataModel);
+        subscribe(getAllTypesHandler, dataModel);
+        subscribe(getTypeHandler, dataModel);
+        subscribe(putTypeHandler, dataModel);
+        subscribe(getGsonObjHandler, dataModel);
+        subscribe(putGsonObjHandler, dataModel);
     }
     
-    Handler<DMMessage.Req> requestHandler = new Handler<DMMessage.Req>() {
+    Handler<GetAllTypes.Req> getAllTypesHandler = new Handler<GetAllTypes.Req>() {
 
         @Override
-        public void handle(DMMessage.Req req) {
-            LOG.debug("processing request {}", new Object[]{req});
-            DMMessage.Resp resp = new DMMessage.Resp(req.id, ResponseCode.SUCCESS);
-            LOG.debug("finished request {}", new Object[]{resp});
-            trigger(resp, dataModel);
+        public void handle(GetAllTypes.Req event) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
+        
     };
+    
+    Handler<GetType.Req> getTypeHandler = new Handler<GetType.Req>() {
+
+        @Override
+        public void handle(GetType.Req event) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+        
+    };
+    
+    Handler<PutType.Req> putTypeHandler = new Handler<PutType.Req>() {
+
+        @Override
+        public void handle(PutType.Req event) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+        
+    };
+    
+    Handler<GetGsonObj.Req> getGsonObjHandler = new Handler<GetGsonObj.Req>() {
+
+        @Override
+        public void handle(GetGsonObj.Req event) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+        
+    };
+    
+    Handler<PutGsonObj.Req> putGsonObjHandler = new Handler<PutGsonObj.Req>() {
+
+        @Override
+        public void handle(PutGsonObj.Req event) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+        
+    };
+
+    //*****DMOperationsMaster*****
+    @Override
+    public void send(long opId, long reqId, Event req) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void childFinished(long opId, DMMessage.ResponseCode opResult) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void droppedMessage(Event msg) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
 }

@@ -25,11 +25,11 @@ package se.sics.caracaldb.datamodel.util;
  */
 public class FieldInfo {
 
-    public final int fieldId;
+    public final ByteId fieldId;
     public final String fieldName;
     public final FieldType fieldType;
 
-    FieldInfo(int fieldId, String fieldName, FieldType fieldType) {
+    FieldInfo(ByteId fieldId, String fieldName, FieldType fieldType) {
         this.fieldId = fieldId;
         this.fieldName = fieldName;
         this.fieldType = fieldType;

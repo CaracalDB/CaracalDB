@@ -20,6 +20,8 @@
  */
 package se.sics.caracaldb.datamodel;
 
+import se.sics.caracaldb.datamodel.msg.DMNetworkMessage;
+import se.sics.caracaldb.datamodel.msg.DMMessage;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;

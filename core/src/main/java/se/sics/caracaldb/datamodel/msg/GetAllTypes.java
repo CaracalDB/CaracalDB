@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,18 +18,44 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
 
-import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.kompics.PortType;
+package se.sics.caracaldb.datamodel.msg;
+
+import java.util.Map;
+import se.sics.caracaldb.datamodel.util.ByteId;
+import se.sics.caracaldb.datamodel.util.TypeInfo;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DataModelPort extends PortType {
+public class GetAllTypes {
+    public static class Req extends DMMessage.Req {
 
-    {
-        request(DMMessage.Req.class);
-        indication(DMMessage.Resp.class);
+        public final ByteId dbId;
+        
+        public Req(long id, ByteId dbId) {
+            super(id);
+            this.dbId = dbId;
+        }
+        
+        @Override
+        public String toString() {
+            return "DM_GET_ALLTYPES_REQ(" + id + ")";
+        }
+    }
+
+    public static class Resp extends DMMessage.Resp {
+
+        public final Map<ByteId, TypeInfo> typesMap;
+
+        public Resp(long id, DMMessage.ResponseCode opResult, Map<ByteId, TypeInfo> tmMap) {
+            super(id, opResult);
+            this.typesMap = tmMap;
+        }
+
+		@Override
+        public String toString() {
+            return "DM_GET_ALLTYPES_RESP(" + id + ")";
+        }
     }
 }

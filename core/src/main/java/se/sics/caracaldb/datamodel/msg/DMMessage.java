@@ -18,33 +18,37 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
+package se.sics.caracaldb.datamodel.msg;
 
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.Event;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DMNetworkMessage {
+public class DMMessage {
 
-    public static class Req extends Message {
+    public static class Req extends Event {
 
-        public final DMMessage.Req message;
+        public final long id;
 
-        public Req(Address src, Address dst, DMMessage.Req message) {
-            super(src, dst);
-            this.message = message;
+        public Req(long id) {
+            this.id = id;
         }
     }
 
-    public static class Resp extends Message {
+    public static class Resp extends Event {
 
-        public final DMMessage.Resp message;
+        public final long id;
+        public final ResponseCode opResult;
 
-        public Resp(Address src, Address dst, DMMessage.Resp message) {
-            super(src, dst);
-            this.message = message;
+        public Resp(long id, ResponseCode opResult) {
+            this.id = id;
+            this.opResult = opResult;
         }
+    }
+
+    public static enum ResponseCode {
+
+        SUCCESS, FAILURE;
     }
 }

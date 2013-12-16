@@ -1,4 +1,4 @@
-/*
+/* 
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,30 +18,43 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
+package se.sics.caracaldb.datamodel.operations;
 
+import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.kompics.Event;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DMMessage {
+public abstract class DMSequentialOp extends DMOperation implements DMOperationsMaster {
 
-    public static class Req extends Event {
-        public final long id;
+    protected final DMOperationsMaster operationsMaster;
 
-        public Req(long id) {
-            this.id = id;
+    protected DMOperation pendingOp;
+
+    protected DMSequentialOp(long id, DMOperationsMaster operationsMaster) {
+        super(id);
+        this.operationsMaster = operationsMaster;
+    }
+
+    //*****OMOperation*****
+    @Override
+    public void handleMessage(CaracalResponse resp) {
+        if (pendingOp != null) {
+            pendingOp.handleMessage(resp);
+        } else {
+            operationsMaster.droppedMessage(resp);
         }
     }
 
-    public static class Resp extends Event {
-        public final long id;
-        public final ResponseCode opResult;
+    //*****OMOperator*****
+    @Override
+    public void send(long opId, long reqId, Event req) {
+        operationsMaster.send(id, reqId, req);
+    }
 
-        public Resp(long id, ResponseCode opResult) {
-            this.id = id;
-            this.opResult = opResult;
-        }
+    @Override
+    public void droppedMessage(Event message) {
+        operationsMaster.droppedMessage(message);
     }
 }

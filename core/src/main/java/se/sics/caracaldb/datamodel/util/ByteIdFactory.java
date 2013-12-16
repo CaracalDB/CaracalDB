@@ -22,7 +22,6 @@ package se.sics.caracaldb.datamodel.util;
 
 import java.util.Arrays;
 import java.util.LinkedList;
-import se.sics.kompics.address.IdUtils;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>

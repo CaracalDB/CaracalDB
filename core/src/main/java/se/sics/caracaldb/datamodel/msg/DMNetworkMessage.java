@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,18 +18,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
+package se.sics.caracaldb.datamodel.msg;
 
 import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.kompics.PortType;
+import se.sics.kompics.address.Address;
+import se.sics.kompics.network.Message;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DataModelPort extends PortType {
+public class DMNetworkMessage {
 
-    {
-        request(DMMessage.Req.class);
-        indication(DMMessage.Resp.class);
+    public static class Req extends Message {
+
+        public final DMMessage.Req message;
+
+        public Req(Address src, Address dst, DMMessage.Req message) {
+            super(src, dst);
+            this.message = message;
+        }
+    }
+
+    public static class Resp extends Message {
+
+        public final DMMessage.Resp message;
+
+        public Resp(Address src, Address dst, DMMessage.Resp message) {
+            super(src, dst);
+            this.message = message;
+        }
     }
 }

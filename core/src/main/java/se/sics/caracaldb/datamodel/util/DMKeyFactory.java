@@ -23,7 +23,9 @@ package se.sics.caracaldb.datamodel.util;
 import com.google.common.io.Closer;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
@@ -35,19 +37,27 @@ import se.sics.caracaldb.KeyRange;
  */
 //TYPE METADATA
 //dbId.1.typeId                                 - typeKey        - <key, typeName>
-//dbId.2.typeId.fieldId                         - tmFieldKey     - <key, <fieldName, fieldTypem, indexed>>
+//dbId.2.typeId.fieldId                         - tmFieldKey     - <key, <fieldName, fieldType, indexed>>
 //DATA
 //dbId.3.typeId.objNrId                         - DataKey  - <key, data>
 //INDEXES
-//dbId.4.typeId.idxId.idxVal.objNrId    - indexKey     - <key, "">
+//dbId.4.typeId.idxId.idxVal.objNrId - indexKey     - <key, "">
 public class DMKeyFactory {
+
     public static final int MAX_INDEXVAL_SIZE = 127;
-    public static final byte[] MAX_STRING;
-    
+    public static final int INT_SIZE = 4;
+    public static final int LONG_SIZE = 8;
+    public static final byte[] MAX_IDXVAL;
+
+    private static final byte STRING_END = (byte) 255;
+    private static final byte INDEXVAL_INT = (byte) 0;
+    private static final byte INDEXVAL_LONG = (byte) 1;
+    private static final byte INDEXVAL_STRING = (byte) 2;
+
     static {
         byte[] maxString = new byte[127];
-        Arrays.fill(maxString, (byte)255);
-        MAX_STRING = maxString;
+        Arrays.fill(maxString, (byte) 255);
+        MAX_IDXVAL = maxString;
     }
 
     static final byte typeKF = (byte) 1;
@@ -55,6 +65,7 @@ public class DMKeyFactory {
     static final byte dataKF = (byte) 3;
     static final byte indexKF = (byte) 4;
 
+    //data model key serialization into Key
     public static Key getTypeKey(ByteId dbId, ByteId typeId) throws IOException {
         Closer closer = Closer.create();
         try {
@@ -114,7 +125,28 @@ public class DMKeyFactory {
         }
     }
 
-    private static Key getIndexKey(ByteId dbId, ByteId typeId, ByteId indexId, byte[] indexValue, ByteId objNrId) throws IOException {
+    // make sure that a compareTo b <=> a.serialized compareTo b.serialized
+    //indexVal is prepended with a byte indexType: 0 for int, 1 for long, 2 for string
+    public static Key getIndexKey(ByteId dbId, ByteId typeId, ByteId indexId, Object indexValue, ByteId objNrId) throws IOException {
+        byte[] idxVal;
+        if (indexValue instanceof Integer) {
+            idxVal = serializeLexico((Integer) indexValue);
+        } else if (indexValue instanceof Long) {
+            idxVal = serializeLexico((Long) indexValue);
+        } else if (indexValue instanceof String) {
+            idxVal = serializeLexico((String) indexValue);
+//        } else if (indexValue instanceof byte[]) {
+//            idxVal = (byte[]) indexValue;
+//            if (idxVal.length > MAX_INDEXVAL_SIZE) {
+//                throw new IOException("KeyFactory - indexValue max 127 bytes");
+//            }
+        } else {
+            throw new IOException("KeyFactory - indexValue is not of type int/long/String");
+        }
+        return getIndexKeyByte(dbId, typeId, indexId, idxVal, objNrId);
+    }
+
+    private static Key getIndexKeyByte(ByteId dbId, ByteId typeId, ByteId indexId, byte[] indexValue, ByteId objNrId) throws IOException {
         Closer closer = Closer.create();
         try {
             ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
@@ -135,24 +167,92 @@ public class DMKeyFactory {
             closer.close();
         }
     }
-    
-    // make sure that a compareTo b <=> a.serialized compareTo b.serialized
-    public static Key getIndexKey(ByteId dbId, ByteId typeId, ByteId indexId, int indexValue, ByteId objNrId) throws IOException {
-        byte[] idxVal = serializeLexico(indexValue);
-        return getIndexKey(dbId, typeId, indexId, idxVal, objNrId);
+
+    //data model key deserialization int KeyComponents
+    public static DMKeyComponents getKeyComponents(Key key) throws IOException {
+        Closer closer = Closer.create();
+        try {
+            ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(key.getArray()));
+            DataInputStream r = closer.register(new DataInputStream(bais));
+            
+            ByteId dbId = deserializeByteId(r);
+            byte keyType = r.readByte();
+            ByteId typeId = deserializeByteId(r);
+
+            if (keyType == DMKeyFactory.typeKF) {
+                return new TypeKeyComp(dbId, typeId);
+            } else if (keyType == DMKeyFactory.tmFieldKF) {
+                readTMFieldKey(r, dbId, typeId);
+            } else if (keyType == DMKeyFactory.dataKF) {
+                readDataKey(r, dbId, typeId);
+            } else if (keyType == DMKeyFactory.indexKF) {
+                readIndexKey(r, dbId, typeId);
+            } else {
+                throw new IOException("getKeyComponents - unknown type of key");
+            }
+        } catch (Throwable e) {
+            throw closer.rethrow(e);
+        } finally {
+            closer.close();
+        }
+        return null;
+    }
+
+    private static DMKeyComponents readTMFieldKey(DataInputStream r, ByteId dbId, ByteId typeId) throws IOException {
+        ByteId fieldId = deserializeByteId(r);
+        return new TMFieldKeyComp(dbId, typeId, fieldId);
+    }
+
+    private static DMKeyComponents readDataKey(DataInputStream r, ByteId dbId, ByteId typeId) throws IOException {
+        ByteId objId = deserializeByteId(r);
+        return new TMFieldKeyComp(dbId, typeId, objId);
+    }
+
+    private static DMKeyComponents readIndexKey(DataInputStream r, ByteId dbId, ByteId typeId) throws IOException {
+        ByteId indexId = deserializeByteId(r);
+        Object indexVal = deserializeIndexVal(r);
+        ByteId objId = deserializeByteId(r);
+        
+        return new IndexKeyComp(dbId, typeId, indexId, indexVal, objId);
     }
     
+    //serialize/deserialize helper methods
+    private static ByteId deserializeByteId(DataInputStream r) throws IOException {
+        int byteIdSize = r.readByte();
+        byte[] b_byteId = new byte[byteIdSize];
+        b_byteId[0] = (byte) byteIdSize;
+        r.read(b_byteId, 1, byteIdSize - 1);
+        return new ByteId(b_byteId);
+    }
+    
+    private static Object deserializeIndexVal(DataInputStream r) throws IOException {
+        byte b = r.readByte();
+
+        if (b == INDEXVAL_INT) {
+            return deserializeLexicoInt(r);
+        } else if (b == INDEXVAL_LONG) {
+            return deserializeLexicoLong(r);
+        } else if (b == INDEXVAL_STRING) {
+            return deserializeLexicoString(r);
+        } else {
+            throw new IOException("deserializeIndexVal - unknown value type");
+        }
+    }
+
     private static byte[] serializeLexico(int val) throws IOException {
         Closer closer = Closer.create();
         try {
             ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
             DataOutputStream w = closer.register(new DataOutputStream(baos));
-            
-            byte sign = (val < 0 ? (byte) 0 : (byte)1); 
+
+            byte sign = (val < 0 ? (byte) 0 : (byte) 1);
             int absVal = Math.abs(val);
             byte[] iVal = Ints.toByteArray(absVal);
+
+            w.write(INDEXVAL_INT);
             w.write(sign);
             w.write(iVal);
+
             w.flush();
 
             return baos.toByteArray();
@@ -162,24 +262,32 @@ public class DMKeyFactory {
             closer.close();
         }
     }
-    
-    // make sure that a compareTo b <=> a.serialized compareTo b.serialized
-    public static Key getIndexKey(ByteId dbId, ByteId typeId, ByteId indexId, long indexValue, ByteId objNrId) throws IOException {
-        byte[] idxVal = serializeLexico(indexValue);
-        return getIndexKey(dbId, typeId, indexId, idxVal, objNrId);
+
+    private static Integer deserializeLexicoInt(DataInputStream r) throws IOException {
+        byte b_sign = r.readByte();
+        byte[] b_int = new byte[4];
+        r.read(b_int);
+        Integer val = Ints.fromByteArray(b_int);
+        if (b_sign == (byte) 0) { //negative
+            val = val * (-1);
+        }
+        return val;
     }
-    
+
     private static byte[] serializeLexico(long val) throws IOException {
         Closer closer = Closer.create();
         try {
             ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
             DataOutputStream w = closer.register(new DataOutputStream(baos));
-            
-            byte sign = (val < 0 ? (byte) 0 : (byte)1); 
+
+            byte sign = (val < 0 ? (byte) 0 : (byte) 1);
             long absVal = Math.abs(val);
             byte[] iVal = Longs.toByteArray(absVal);
+
+            w.write(INDEXVAL_LONG);
             w.write(sign);
             w.write(iVal);
+
             w.flush();
 
             return baos.toByteArray();
@@ -189,16 +297,62 @@ public class DMKeyFactory {
             closer.close();
         }
     }
-    
-    // make sure that a compareTo b <=> a.serialized compareTo b.serialized
-    public static Key getIndexKey(ByteId dbId, ByteId typeId, ByteId indexId, String indexValue, ByteId objNrId) throws IOException {
-        if (indexValue.length() > MAX_INDEXVAL_SIZE) {
-            throw new IOException("KeyFactory - indexValue max 127 bytes");
+
+    private static Long deserializeLexicoLong(DataInputStream r) throws IOException {
+        byte b_sign = r.readByte();
+        byte[] b_long = new byte[8];
+        r.read(b_long);
+        Long val = Longs.fromByteArray(b_long);
+        if (b_sign == (byte) 0) { //negative
+            val = val * (-1);
         }
-        byte[] idxVal = indexValue.getBytes("UTF8");
-        return getIndexKey(dbId, typeId, indexId, idxVal, objNrId);
+        return val;
     }
-    
+
+    private static byte[] serializeLexico(String val) throws IOException {
+        Closer closer = Closer.create();
+        try {
+            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
+            DataOutputStream w = closer.register(new DataOutputStream(baos));
+            if (val.length() > MAX_INDEXVAL_SIZE) {
+                throw new IOException("KeyFactory - indexValue max 127 chars");
+            }
+            w.write(INDEXVAL_STRING); //string
+            w.write(val.getBytes("UTF8"));
+            w.write(STRING_END); //stop
+            w.flush();
+
+            return baos.toByteArray();
+        } catch (Throwable e) {
+            throw closer.rethrow(e);
+        } finally {
+            closer.close();
+        }
+    }
+
+    private static String deserializeLexicoString(DataInputStream r) throws IOException {
+        Closer closer = Closer.create();
+        try {
+            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
+            DataOutputStream w = closer.register(new DataOutputStream(baos));
+
+            do {
+                byte b = r.readByte();
+                if (b == STRING_END) {
+                    break;
+                }
+                baos.write(b);
+            } while (true);
+            w.flush();
+
+            return new String(baos.toByteArray(), "UTF8");
+        } catch (Throwable e) {
+            throw closer.rethrow(e);
+        } finally {
+            closer.close();
+        }
+    }
+
     //*****Ranges*****
     // ["dbId.1.byteIdMin","dbId.1.byteIdMax"]
     public static KeyRange getAllTypesRange(ByteId dbId) throws IOException {
@@ -215,12 +369,9 @@ public class DMKeyFactory {
         KeyRange range = KeyRange.closed(begin).closed(end);
         return range;
     }
-    
-    public static KeyRange getIndexRange(ByteId dbId, ByteId typeId, ByteId idxId, int indexValue, IdxRangeType idxRangeType) throws IOException {
-        
-    }
+
     // ["dbId.4.typeId.idxId.idxVal.byteIdMin", "dbId.4.typeId.idxId.idxVal.byteIdMax"]
-    public static KeyRange getIndexRangeIS(ByteId dbId, ByteId typeId, ByteId idxId, byte[] idxVal) throws IOException {
+    public static KeyRange getIndexRangeIS(ByteId dbId, ByteId typeId, ByteId idxId, Object idxVal) throws IOException {
         Key begin = getIndexKey(dbId, typeId, idxId, idxVal, ByteIdFactory.MIN_BYTE_ID);
         Key end = getIndexKey(dbId, typeId, idxId, idxVal, ByteIdFactory.MAX_BYTE_ID);
         KeyRange range = KeyRange.closed(begin).closed(end);
@@ -228,7 +379,7 @@ public class DMKeyFactory {
     }
 
     // ["dbId.4.typeId.idxId.idxValMin.byteIdMin", "dbId.4.typeId.idxId.idxVal.byteIdMax"]
-    public static KeyRange getIndexRangeLTE(ByteId dbId, ByteId typeId, ByteId idxId, byte[] idxVal) throws IOException {
+    public static KeyRange getIndexRangeLTE(ByteId dbId, ByteId typeId, ByteId idxId, Object idxVal) throws IOException {
         Key begin = getIndexKey(dbId, typeId, idxId, new byte[]{(byte) 0}, ByteIdFactory.MIN_BYTE_ID);
         Key end = getIndexKey(dbId, typeId, idxId, idxVal, ByteIdFactory.MAX_BYTE_ID);
         KeyRange range = KeyRange.closed(begin).closed(end);
@@ -236,7 +387,7 @@ public class DMKeyFactory {
     }
 
     // ["dbId.4.typeId.idxId.idxValMin.byteIdMin", "dbId.4.typeId.idxId.idxVal.byteIdMin")
-    public static KeyRange getIndexRangeLT(ByteId dbId, ByteId typeId, ByteId idxId, byte[] idxVal) throws IOException {
+    public static KeyRange getIndexRangeLT(ByteId dbId, ByteId typeId, ByteId idxId, Object idxVal) throws IOException {
         Key begin = getIndexKey(dbId, typeId, idxId, new byte[]{(byte) 0}, ByteIdFactory.MIN_BYTE_ID);
         Key end = getIndexKey(dbId, typeId, idxId, idxVal, ByteIdFactory.MIN_BYTE_ID);
         KeyRange range = KeyRange.closed(begin).open(end);
@@ -244,165 +395,75 @@ public class DMKeyFactory {
     }
 
     // ["dbId.4.typeId.idxId.idxVal.byteIdMin", "dbId.4.typeId.idxId.idxValMax.byteIdMax"]
-    public static KeyRange getIndexRangeGTE(ByteId dbId, ByteId typeId, ByteId idxId, byte[] idxVal) throws IOException {
+    public static KeyRange getIndexRangeGTE(ByteId dbId, ByteId typeId, ByteId idxId, Object idxVal) throws IOException {
         Key begin = getIndexKey(dbId, typeId, idxId, idxVal, ByteIdFactory.MIN_BYTE_ID);
-        Key end = getDataIndexKey(dbId, typeId, nextIdxId, new byte[]{(byte) 0}, ByteIdFactory.getMinByteId());
-
-        Token beginT = TokenFactory.newToken(begin.getBytes());
-        Token endT = TokenFactory.newToken(end.getBytes());
-        Token.IntervalBounds bounds = Token.IntervalBounds.CLOSED_OPEN;
-        return new GeneralRange(beginT, endT, bounds);
+        Key end = getIndexKey(dbId, typeId, idxId, MAX_IDXVAL, ByteIdFactory.MAX_BYTE_ID);
+        KeyRange range = KeyRange.closed(begin).closed(end);
+        return range;
     }
-//
-//	/**
-//	 * ("dbId.typeId.idxId.idxVal.byteIdMax", "dbId.typeId.idxId+1.idxValMin.byteIdMin")
-//	 */
-//	public static GeneralRange getIdxValueRangeGT(ByteId dbId, ByteId typeId, ByteId idxId, byte[] idxVal) throws BadInputException, IOException {
-//		Key begin = getDataIndexKey(dbId, typeId, idxId, idxVal, ByteIdFactory.getMaxByteId());
-//		ByteId nextIdxId;
-//		try {
-//			nextIdxId = ByteIdFactory.nextId(idxId);
-//		} catch (BadInputException e) {
-//			/*TODO Alex RuntimeException - to fix
-//			 * if idxId is already maxId what to do
-//			 */
-//			throw new RuntimeException("KeyFactory - max idxId reached");
-//		}
-//		Key end = getDataIndexKey(dbId, typeId, nextIdxId, new byte[]{(byte)0}, ByteIdFactory.getMinByteId());
-//
-//		Token beginT = TokenFactory.newToken(begin.getBytes());
-//		Token endT = TokenFactory.newToken(end.getBytes());
-//		Token.IntervalBounds bounds = Token.IntervalBounds.OPEN_OPEN;
-//		return new GeneralRange(beginT, endT, bounds);
-//	}
-//
-//	/*****Keys Parser*****/
-//	public static Key getKey(Token token) throws BadInputException {
-//		if(!(token instanceof StringToken)) {
-//			throw new BadInputException("Expected StringToken");
-//		}
-//		KeyComponents keyComponents = getKeyComponents(((StringToken)token).getBytes());
-//		return new Key(((StringToken)token).getBytes(), keyComponents);
-//	}
-//
-//	public static KeyComponents getKeyComponents(byte[] key) throws BadInputException {
-//		ByteBuffer byteSource = ByteBuffer.wrap(key);
-//
-//		ByteId dbId = ByteIdParser.decode(byteSource);
-//		byte keyFlag = getByte(byteSource);
-//		if(keyFlag == typeKeyFlag) {
-//			return getTypeKey(byteSource, dbId);
-//		} else if(keyFlag == tmKeyFlag) {
-//			return getTMKey(byteSource, dbId);
-//		} else if(keyFlag == dataKeyFlag) {
-//			return getDataKey(byteSource, dbId);
-//		} else {
-//			throw new BadInputException("Expected TypeKey / TMKey / DataKey");
-//		}
-//	}
-//
-//	private static KeyComponents getTypeKey(ByteBuffer byteSource, ByteId dbId) throws BadInputException {
-//		ByteId typeId = ByteIdParser.decode(byteSource);
-//		if(byteSource.hasRemaining()) {
-//			throw new BadInputException("Source contained a TypeKey and more");
-//		}
-//		return new KeyComponents(new byte[]{typeKeyFlag}, ImmutableList.of(dbId, typeId));
-//	}
-//
-//	private static KeyComponents getTMKey(ByteBuffer byteSource, ByteId dbId) throws BadInputException {
-//		ByteId typeId = ByteIdParser.decode(byteSource);
-//		byte keyFlag = getByte(byteSource);
-//		if(keyFlag == tmFieldNameFlag) {
-//			return getFieldNameKey(byteSource, dbId, typeId);
-//		} else if(keyFlag == tmFieldTypeFlag) {
-//			return getFieldTypeKey(byteSource, dbId, typeId);
-//		} else if(keyFlag == tmIndexFlag) {
-//			return getIndexIdKey(byteSource, dbId, typeId);
-//		} else {
-//			throw new BadInputException("Expected TypeKey");
-//		}
-//	}
-//
-//	private static KeyComponents getFieldNameKey(ByteBuffer byteSource, ByteId dbId, ByteId typeId) throws BadInputException {
-//		ByteId fieldId = ByteIdParser.decode(byteSource);
-//		if(byteSource.hasRemaining()) {
-//			throw new BadInputException("Source contained a TMKey and more");
-//		}
-//		return new KeyComponents(new byte[]{tmKeyFlag, tmFieldNameFlag}, ImmutableList.of(dbId, typeId, fieldId));
-//	}
-//
-//	private static KeyComponents getFieldTypeKey(ByteBuffer byteSource, ByteId dbId, ByteId typeId) throws BadInputException {
-//		ByteId fieldId = ByteIdParser.decode(byteSource);
-//		if(byteSource.hasRemaining()) {
-//			throw new BadInputException("Source contained a TMKey and more");
-//		}
-//		return new KeyComponents(new byte[]{tmKeyFlag, tmFieldTypeFlag}, ImmutableList.of(dbId, typeId, fieldId));
-//	}
-//
-//	private static KeyComponents getIndexIdKey(ByteBuffer byteSource, ByteId dbId, ByteId typeId) throws BadInputException {
-//		ByteId indexId = ByteIdParser.decode(byteSource);
-//		if(byteSource.hasRemaining()) {
-//			throw new BadInputException("Source contained a TMKey and more");
-//		}
-//		return new KeyComponents(new byte[]{tmKeyFlag, tmIndexFlag}, ImmutableList.of(dbId, typeId, indexId));
-//	}
-//
-//	private static KeyComponents getDataKey(ByteBuffer byteSource, ByteId dbId) throws BadInputException {
-//		ByteId typeId = ByteIdParser.decode(byteSource);
-//		byte keyFlag = getByte(byteSource);
-//		if(keyFlag == dataObjectFlag) {
-//			return getDataObjectKey(byteSource, dbId, typeId);
-//		} else if(keyFlag == dataIndexFlag) {
-//			return getDataIndexValueKey(byteSource, dbId, typeId);
-//		} else {
-//			throw new BadInputException("Expected DataKey");
-//		}
-//	}
-//
-//	private static KeyComponents getDataObjectKey(ByteBuffer byteSource, ByteId dbId, ByteId typeId) throws BadInputException {
-//		ByteId objNrId = ByteIdParser.decode(byteSource);
-//		if(byteSource.hasRemaining()) {
-//			throw new BadInputException("Source contained a DataKey and more");
-//		}
-//		return new KeyComponents(new byte[]{dataKeyFlag, dataObjectFlag}, ImmutableList.of(dbId, typeId, objNrId));
-//	}
-//
-//	private static KeyComponents getDataIndexValueKey(ByteBuffer byteSource, ByteId dbId, ByteId typeId) throws BadInputException {
-//		ByteId indexId = ByteIdParser.decode(byteSource);
-//		byte indexValueLength = getByte(byteSource);
-//		byte[] indexValue = getByteArray(byteSource, indexValueLength);
-//		ByteId objNrId = ByteIdParser.decode(byteSource);
-//		if(byteSource.hasRemaining()) {
-//			throw new BadInputException("Source contained a DataKey and more");
-//		}
-//		return new KeyComponents(new byte[]{dataKeyFlag, dataIndexFlag}, ImmutableList.of(dbId, typeId, indexId, objNrId), ImmutableList.of(indexValue));
-//	}
-//
-//	/*****/
-//	private static byte getByte(ByteBuffer byteSource) throws BadInputException {
-//		int mark = byteSource.position();
-//		try {
-//			return byteSource.get();
-//		} catch(BufferUnderflowException e) {
-//			byteSource.position(mark);
-//			throw new BadInputException(e);
-//		}
-//	}
-//
-//	private static byte[] getByteArray(ByteBuffer byteSource, int length) throws BadInputException {
-//		int mark = byteSource.position();
-//		try {
-//			byte[] byteArray = new byte[length];
-//			byteSource.get(byteArray);
-//			return byteArray;
-//		} catch(BufferUnderflowException e) {
-//			byteSource.position(mark);
-//			throw new BadInputException(e);
-//		}
-//	}
-//}
-    
-    public static enum IdxRangeType {
-        IS, LT, LTE, GT, GTE;
+
+    // ("dbId.typeId.idxId.idxVal.byteIdMax", "dbId.typeId.idxId.idxValMax.byteIdMax"]
+    public static KeyRange getIndexRangeGT(ByteId dbId, ByteId typeId, ByteId idxId, Object idxVal) throws IOException {
+        Key begin = getIndexKey(dbId, typeId, idxId, idxVal, ByteIdFactory.MAX_BYTE_ID);
+        Key end = getIndexKey(dbId, typeId, idxId, MAX_IDXVAL, ByteIdFactory.MAX_BYTE_ID);
+        KeyRange range = KeyRange.open(begin).closed(end);
+        return range;
+    }
+
+    public static interface DMKeyComponents {
+    }
+
+    public static class TypeKeyComp implements DMKeyComponents {
+
+        public final ByteId dbId;
+        public final ByteId typeId;
+
+        public TypeKeyComp(ByteId dbId, ByteId typeId) {
+            this.dbId = dbId;
+            this.typeId = typeId;
+        }
+    }
+
+    public static class TMFieldKeyComp implements DMKeyComponents {
+
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId fieldId;
+
+        public TMFieldKeyComp(ByteId dbId, ByteId typeId, ByteId fieldId) {
+            this.dbId = dbId;
+            this.typeId = typeId;
+            this.fieldId = fieldId;
+        }
+    }
+
+    public static class DataKeyComp implements DMKeyComponents {
+
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId objId;
+
+        public DataKeyComp(ByteId dbId, ByteId typeId, ByteId objId) {
+            this.dbId = dbId;
+            this.typeId = typeId;
+            this.objId = objId;
+        }
+    }
+
+    public static class IndexKeyComp implements DMKeyComponents {
+
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId indexId;
+        public final Object indexValue;
+        public final ByteId objId;
+
+        public IndexKeyComp(ByteId dbId, ByteId typeId, ByteId indexId, Object indexValue, ByteId objId) {
+            this.dbId = dbId;
+            this.typeId = typeId;
+            this.indexId = indexId;
+            this.indexValue = indexValue;
+            this.objId = objId;
+        }
     }
 }

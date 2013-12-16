@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,18 +18,43 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
+package se.sics.caracaldb.datamodel.msg;
 
-import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.kompics.PortType;
+import se.sics.caracaldb.datamodel.util.ByteId;
+import se.sics.caracaldb.datamodel.util.TypeInfo;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DataModelPort extends PortType {
+public class PutType {
 
-    {
-        request(DMMessage.Req.class);
-        indication(DMMessage.Resp.class);
+    public static class Req extends DMMessage.Req {
+
+        public final TypeInfo typeInfo;
+
+        public Req(long id, TypeInfo typeInfo) {
+            super(id);
+            this.typeInfo = typeInfo;
+        }
+
+        @Override
+        public String toString() {
+            return "DM_PUT_TYPE_REQ(" + id + ")";
+        }
+    }
+
+    public static class Resp extends DMMessage.Resp {
+
+        public final ByteId typeId;
+
+        public Resp(long id, DMMessage.ResponseCode opResult, ByteId typeId) {
+            super(id, opResult);
+            this.typeId = typeId;
+        }
+
+        @Override
+        public String toString() {
+            return "DM_PUT_TYPE_RESP(" + id + ")";
+        }
     }
 }

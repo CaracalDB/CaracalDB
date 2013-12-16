@@ -1,4 +1,4 @@
-/*
+/* 
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,13 +18,18 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+package se.sics.caracaldb.datamodel.operations;
 
-package se.sics.caracaldb.datamodel;
+import se.sics.kompics.Event;
 
 /**
- *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public enum ResponseCode {
-    SUCCESS
+public interface DMOperationsMaster {
+
+    public void send(long opId, long reqId, Event req);
+
+    public void childFinished(long opId, DMOperation.Result result);
+
+    public void droppedMessage(Event msg);
 }
