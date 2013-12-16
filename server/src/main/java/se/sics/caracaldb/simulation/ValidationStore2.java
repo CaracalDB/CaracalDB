@@ -205,7 +205,7 @@ public class ValidationStore2 {
                 }
                 col.processResponse(rqResp);
                 if (col.isDone()) {
-                    TreeMap<Key, byte[]> result = col.getResult();
+                    TreeMap<Key, byte[]> result = col.getResult().getValue1();
                     if (result.size() != expectedResult.size()) {
                         LOG.debug("operation {} failed with different number of returned elements");
                         throw new ValidatorException();

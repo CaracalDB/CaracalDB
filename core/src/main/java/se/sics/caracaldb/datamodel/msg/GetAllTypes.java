@@ -23,7 +23,6 @@ package se.sics.caracaldb.datamodel.msg;
 
 import java.util.Map;
 import se.sics.caracaldb.datamodel.util.ByteId;
-import se.sics.caracaldb.datamodel.util.TypeInfo;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -45,12 +44,13 @@ public class GetAllTypes {
     }
 
     public static class Resp extends DMMessage.Resp {
+        public final ByteId dbId;
+        public final Map<String, ByteId> typesMap;
 
-        public final Map<ByteId, TypeInfo> typesMap;
-
-        public Resp(long id, DMMessage.ResponseCode opResult, Map<ByteId, TypeInfo> tmMap) {
+        public Resp(long id, DMMessage.ResponseCode opResult, ByteId dbId, Map<String, ByteId> typesMap) {
             super(id, opResult);
-            this.typesMap = tmMap;
+            this.dbId = dbId;
+            this.typesMap = typesMap;
         }
 
 		@Override

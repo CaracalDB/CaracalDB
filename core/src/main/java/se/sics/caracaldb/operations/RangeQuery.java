@@ -106,18 +106,14 @@ public class RangeQuery {
             this.readLimit = event.readLimit;
         }
 
-        /**
-         * used when operation is successful
-         */
+        //used when operation is successful
         public Response(long id, KeyRange range, SortedMap<Key, byte[]> data, boolean readLimit) {
             super(id, ResponseCode.SUCCESS);
             this.data = data;
             this.readLimit = readLimit;
         }
 
-        /**
-         * used when the operation is unsuccessful
-         */
+        // used when the operation is unsuccessful
         public Response(long id, ResponseCode code, KeyRange range) {
             super(id, code);
             this.data = null;
@@ -141,7 +137,8 @@ public class RangeQuery {
         public final Request req;
         private final TreeMap<Key, byte[]> results;
         private boolean done;
-        TreeMap<Key, KeyRange> pendingSubRanges;
+        private final TreeMap<Key, KeyRange> pendingSubRanges;
+        private KeyRange coveredRange;
 
         public SeqCollector(Request req) {
             this.req = req;
@@ -154,8 +151,8 @@ public class RangeQuery {
             return done;
         }
 
-        public TreeMap<Key, byte[]> getResult() {
-            return results;
+        public Pair<KeyRange, TreeMap<Key, byte[]>> getResult() {
+            return Pair.with(coveredRange, results);
         }
 
         /**
@@ -175,6 +172,9 @@ public class RangeQuery {
             results.putAll(resp.data);
             if (pendingSubRanges.isEmpty()) {
                 done = true;
+                if(coveredRange == null) {
+                    coveredRange = req.subRange;
+                }
             }
         }
 
@@ -204,6 +204,11 @@ public class RangeQuery {
         private void checkReadLimit(boolean readLimit, Key end) {
             if (readLimit) {
                 SortedMap<Key, KeyRange> rest = pendingSubRanges.tailMap(end);
+                if (rest.isEmpty()) {
+                    coveredRange = req.subRange;
+                } else {
+                    coveredRange = KeyRange.startFrom(req.subRange).open(rest.firstKey());
+                }
                 for (Key key : rest.keySet()) {
                     pendingSubRanges.remove(key);
                 }

@@ -20,41 +20,59 @@
  */
 package se.sics.caracaldb.datamodel.operations;
 
+import static se.sics.caracaldb.datamodel.operations.DMOperation.LOG;
+import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
-import se.sics.kompics.Event;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public abstract class DMSequentialOp extends DMOperation implements DMOperationsMaster {
+public abstract class DMSequentialOp extends DMOperation implements DMOperationsManager {
 
-    protected final DMOperationsMaster operationsMaster;
-
+    protected final DMOperationsManager operationsManager;
     protected DMOperation pendingOp;
 
-    protected DMSequentialOp(long id, DMOperationsMaster operationsMaster) {
+    protected DMSequentialOp(long id, DMOperationsManager operationsManager) {
         super(id);
-        this.operationsMaster = operationsMaster;
+        this.operationsManager = operationsManager;
+        this.done = false;
     }
 
-    //*****OMOperation*****
+    //*****DMOperation*****
     @Override
-    public void handleMessage(CaracalResponse resp) {
-        if (pendingOp != null) {
-            pendingOp.handleMessage(resp);
-        } else {
-            operationsMaster.droppedMessage(resp);
+    public final void handleMessage(CaracalResponse resp) {
+        if (done) {
+            LOG.debug("Operation {} - finished and will not process further messages", toString());
+            operationsManager.droppedMessage(resp);
+            return;
         }
+        if (pendingOp == null) {
+            LOG.warn("Operation {} logic error", toString());
+            operationsManager.droppedMessage(resp);
+            return;
+        }
+        pendingOp.handleMessage(resp);
     }
 
-    //*****OMOperator*****
+    //*****DMOperationManager*****
     @Override
-    public void send(long opId, long reqId, Event req) {
-        operationsMaster.send(id, reqId, req);
+    public final void send(long opId, long reqId, CaracalOp req) {
+        operationsManager.send(id, reqId, req);
     }
 
     @Override
-    public void droppedMessage(Event message) {
-        operationsMaster.droppedMessage(message);
+    public final void droppedMessage(CaracalOp resp) {
+        operationsManager.droppedMessage(resp);
+    }
+
+    //***** *****
+    protected final void fullCleanup() {
+        pendingOp = null;
+    }
+    
+    protected final void finish(DMOperation.Result result) {
+        LOG.debug("Operation {} - finished {}", new Object[]{toString(), result.responseCode});
+        done = true;
+        operationsManager.childFinished(id, result);
     }
 }

@@ -20,12 +20,11 @@
  */
 package se.sics.caracaldb.datamodel.operations;
 
+import se.sics.caracaldb.datamodel.operations.primitives.DMGetOp;
 import java.io.IOException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.datamodel.DataModel;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
+import se.sics.caracaldb.datamodel.msg.GetGsonObj;
 import se.sics.caracaldb.datamodel.util.ByteId;
 import se.sics.caracaldb.datamodel.util.DMKeyFactory;
 
@@ -34,13 +33,11 @@ import se.sics.caracaldb.datamodel.util.DMKeyFactory;
  */
 public class DMGetObjOp extends DMSequentialOp {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DataModel.class);
-
     private final ByteId dbId;
     private final ByteId typeId;
     private final ByteId objId;
 
-    public DMGetObjOp(long id, DMOperationsMaster operationsMaster, ByteId dbId, ByteId typeId, ByteId objId) {
+    public DMGetObjOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId, ByteId objId) {
         super(id, operationsMaster);
         this.dbId = dbId;
         this.typeId = typeId;
@@ -49,44 +46,72 @@ public class DMGetObjOp extends DMSequentialOp {
 
     //*****DMOperations*****
     @Override
-    public void start() {
-        LOG.debug("Operation {} DM_GETOBJ - started", id);
+    public void startHook() {
+        LOG.debug("Operation {} - started", toString());
 
         Key key;
         try {
             key = DMKeyFactory.getDataKey(dbId, typeId, objId);
         } catch (IOException ex) {
-            finish(new Result(DMMessage.ResponseCode.FAILURE, null));
+            finish(new Result(DMMessage.ResponseCode.FAILURE, dbId, typeId, objId, null));
             return;
         }
-        pendingOp = new DMGetOp(id, operationsMaster, key);
+        pendingOp = new DMGetOp(id, operationsManager, key);
         pendingOp.start();
     }
 
     @Override
     public void childFinished(long opId, DMOperation.Result result) {
+        if(done) {
+            LOG.warn("Operation {} - logical error", toString());
+            return;
+        }
         if (result instanceof DMGetOp.Result) {
             if (result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
-                finish(new Result(DMMessage.ResponseCode.SUCCESS, ((DMGetOp.Result)result).value));
+                success(((DMGetOp.Result)result).value);
+                return;
+            } else {
+                fail(DMMessage.ResponseCode.FAILURE);
                 return;
             }
         }
-        finish(new Result(DMMessage.ResponseCode.FAILURE, null));
+        LOG.warn("Operation {} - received unknown child result {}", new Object[]{toString(), result});
+        fail(DMMessage.ResponseCode.FAILURE);
     }
 
     //***** *****
-    private void finish(Result result) {
-        LOG.debug("Operation {} DM_GETOBJ - finished {}", new Object[]{id, result.responseCode});
-        operationsMaster.childFinished(id, result);
+    @Override
+    public String toString() {
+        return "DM_GET_OBJ " + id;
+    }
+    
+    private void fail(DMMessage.ResponseCode respCode) {
+        Result result = new Result(respCode, dbId, typeId, objId, null);
+        finish(result);
     }
 
+    private void success(byte[] value) {
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, dbId, typeId, objId, value);
+        finish(result);
+    }
+    
     public static class Result extends DMOperation.Result {
-
-        public final byte[] b_obj;
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId objId;
+        public final byte[] value;
         
-        public Result(DMMessage.ResponseCode respCode, byte[] b_obj) {
+        public Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, ByteId objId, byte[] value) {
             super(respCode);
-            this.b_obj = b_obj;
+            this.dbId = dbId;
+            this.typeId = typeId;
+            this.objId = objId;
+            this.value = value;
+        }
+
+        @Override
+        public DMMessage.Resp getMsg(long msgId) {
+            return new GetGsonObj.Resp(msgId, responseCode, dbId, typeId, objId, value);
         }
     }
 }

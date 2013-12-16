@@ -18,15 +18,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel.operations;
+package se.sics.caracaldb.datamodel.operations.primitives;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.datamodel.DataModel;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
 import se.sics.caracaldb.datamodel.operations.DMOperation;
-import se.sics.caracaldb.datamodel.operations.DMOperationsMaster;
+import se.sics.caracaldb.datamodel.operations.DMOperationsManager;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.PutResponse;
@@ -37,47 +34,72 @@ import se.sics.caracaldb.operations.ResponseCode;
  */
 public class DMPutOp extends DMOperation {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DataModel.class);
-
-    private final DMOperationsMaster operationsMaster;
+    private final DMOperationsManager operationsManager;
     private final PutRequest req;
 
-    public DMPutOp(long id, DMOperationsMaster operationsMaster, Key key, byte[] value) {
+    public DMPutOp(long id, DMOperationsManager operationsManager, Key key, byte[] value) {
         super(id);
-        this.operationsMaster = operationsMaster;
+        this.operationsManager = operationsManager;
         this.req = new PutRequest(id, key, value);
     }
 
     @Override
-    public void start() {
-        LOG.debug("Operation {} DM_PUT - started", id);
-        operationsMaster.send(id, req.id, req);
+    protected void startHook() {
+        LOG.debug("Operation DM_PUT {} - started", id);
+        operationsManager.send(id, req.id, req);
     }
 
     @Override
     public void handleMessage(CaracalResponse resp) {
+        if(done) {
+            LOG.debug("Operation {} - finished and will not process further messages", toString());
+            operationsManager.droppedMessage(resp);
+            return;
+        }
         if (resp instanceof PutResponse) {
             if (resp.code.equals(ResponseCode.SUCCESS)) {
-                Result result = new Result(DMMessage.ResponseCode.SUCCESS);
-                finish(result);
+                success();
             } else {
-                Result result = new Result(DMMessage.ResponseCode.FAILURE);
-                finish(result);
+                fail(DMMessage.ResponseCode.FAILURE);
             }
         } else {
-            operationsMaster.droppedMessage(resp);
+            operationsManager.droppedMessage(resp);
         }
     }
     
     //***** *****
+    @Override
+    public String toString() {
+        return "DM_PUT " + id;
+    }
+    
     private void finish(Result result) {
-        LOG.debug("Operation {} DM_PUT - finished {}", new Object[]{id, result.responseCode});
-        operationsMaster.childFinished(id, result);
+        LOG.debug("Operation {} - finished {}", new Object[]{toString(), result.responseCode});
+        done = true;
+        operationsManager.childFinished(id, result);
+    }
+    
+    private void fail(DMMessage.ResponseCode respCode) {
+        Result result = new Result(respCode, req.key);
+        finish(result);
+    }
+
+    private void success() {
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, req.key);
+        finish(result);
     }
 
     public static class Result extends DMOperation.Result {
-        public Result(DMMessage.ResponseCode respCode) {
+        public final Key key;
+        
+        public Result(DMMessage.ResponseCode respCode, Key key) {
             super(respCode);
+            this.key = key;
+        }
+
+        @Override
+        public DMMessage.Resp getMsg(long msgId) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
     }
 }

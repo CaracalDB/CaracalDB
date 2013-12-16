@@ -20,7 +20,6 @@
  */
 package se.sics.caracaldb.datamodel.msg;
 
-import com.google.gson.Gson;
 import se.sics.caracaldb.datamodel.util.ByteId;
 
 /**
@@ -31,13 +30,13 @@ public class GetGsonObj {
     public static class Req extends DMMessage.Req {
 
         public final ByteId dbId;
-        public final String typeName;
+        public final ByteId typeId;
         public final ByteId objId;
 
-        public Req(long id, ByteId dbId, String typeName, ByteId objId) {
+        public Req(long id, ByteId dbId, ByteId typeId, ByteId objId) {
             super(id);
             this.dbId = dbId;
-            this.typeName = typeName;
+            this.typeId = typeId;
             this.objId = objId;
         }
 
@@ -48,12 +47,17 @@ public class GetGsonObj {
     }
 
     public static class Resp extends DMMessage.Resp {
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId objId;
+        public final byte[] value;
 
-        public final Gson obj;
-
-        public Resp(long id, DMMessage.ResponseCode opResult, Gson obj) {
+        public Resp(long id, DMMessage.ResponseCode opResult, ByteId dbId, ByteId typeId, ByteId objId, byte[] value) {
             super(id, opResult);
-            this.obj = obj;
+            this.dbId = dbId;
+            this.typeId = typeId;
+            this.objId = objId;
+            this.value = value;
         }
 
         @Override

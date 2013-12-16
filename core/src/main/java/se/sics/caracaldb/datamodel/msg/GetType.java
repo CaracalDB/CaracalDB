@@ -21,7 +21,7 @@
 package se.sics.caracaldb.datamodel.msg;
 
 import se.sics.caracaldb.datamodel.util.ByteId;
-import se.sics.caracaldb.datamodel.util.TypeInfo;
+import se.sics.caracaldb.datamodel.util.TempTypeInfo;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -31,12 +31,12 @@ public class GetType {
     public static class Req extends DMMessage.Req {
 
         public final ByteId dbId;
-        public final String typeName;
+        public final ByteId typeId;
 
-        public Req(long id, ByteId dbId, String typeName) {
+        public Req(long id, ByteId dbId, ByteId typeId) {
             super(id);
             this.dbId = dbId;
-            this.typeName = typeName;
+            this.typeId = typeId;
         }
 
         @Override
@@ -46,10 +46,9 @@ public class GetType {
     }
 
     public static class Resp extends DMMessage.Resp {
+        public final TempTypeInfo typeInfo;
 
-        public final TypeInfo typeInfo;
-
-        public Resp(long id, DMMessage.ResponseCode opResult, TypeInfo typeInfo) {
+        public Resp(long id, DMMessage.ResponseCode opResult, TempTypeInfo typeInfo) {
             super(id, opResult);
             this.typeInfo = typeInfo;
         }

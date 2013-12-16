@@ -20,15 +20,14 @@
  */
 package se.sics.caracaldb.datamodel.operations;
 
+import se.sics.caracaldb.datamodel.operations.primitives.DMCRQOp;
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
-import se.sics.caracaldb.datamodel.DataModel;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
+import se.sics.caracaldb.datamodel.msg.GetType;
 import se.sics.caracaldb.datamodel.util.ByteId;
 import se.sics.caracaldb.datamodel.util.DMKeyFactory;
 import se.sics.caracaldb.datamodel.util.TempTypeInfo;
@@ -38,34 +37,36 @@ import se.sics.caracaldb.datamodel.util.TempTypeInfo;
  */
 public class DMGetTypeOp extends DMSequentialOp {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DataModel.class);
-
     private final ByteId dbId;
     private final ByteId typeId;
 
-    public DMGetTypeOp(long id, DMOperationsMaster operationsMaster, ByteId dbId, ByteId typeId) {
+    public DMGetTypeOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId) {
         super(id, operationsMaster);
         this.dbId = dbId;
         this.typeId = typeId;
     }
 
     @Override
-    public void start() {
-        LOG.debug("Operation {} DM_GET_TYPE - started", id);
+    public final void startHook() {
+        LOG.debug("Operation {} - started", toString());
 
         KeyRange range;
         try {
             range = DMKeyFactory.getTMRange(dbId, typeId);
         } catch (IOException ex) {
-            finish(new Result(DMMessage.ResponseCode.FAILURE, null));
+            fail(DMMessage.ResponseCode.FAILURE);
             return;
         }
-        pendingOp = new DMCRQOp(id, operationsMaster, range);
+        pendingOp = new DMCRQOp(id, operationsManager, range);
         pendingOp.start();
     }
 
     @Override
     public void childFinished(long opId, DMOperation.Result result) {
+        if(done) {
+            LOG.warn("Operation {} - logical error", toString());
+            return;
+        }
         if (result instanceof DMCRQOp.Result) {
             if (result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
                 TreeMap<Key, byte[]> b_results = ((DMCRQOp.Result) result).results;
@@ -77,34 +78,53 @@ public class DMGetTypeOp extends DMSequentialOp {
                         if (comp instanceof DMKeyFactory.TMFieldKeyComp) {
                             typeInfo.deserializeField(e.getValue());
                         } else {
-                            finish(new Result(DMMessage.ResponseCode.FAILURE, null));
+                            fail(DMMessage.ResponseCode.FAILURE);
                             return;
                         }
                     } catch (IOException ex) {
-                        finish(new Result(DMMessage.ResponseCode.FAILURE, null));
+                        fail(DMMessage.ResponseCode.FAILURE);
                         return;
                     }
                 }
-                finish(new Result(DMMessage.ResponseCode.SUCCESS, typeInfo));
+                fail(DMMessage.ResponseCode.SUCCESS);
                 return;
             }
         }
-        finish(new Result(DMMessage.ResponseCode.FAILURE, null));
+        LOG.warn("Operation {} - received unknown child result {}", new Object[]{toString(), result});
+        fail(DMMessage.ResponseCode.FAILURE);
     }
 
     //***** *****
-    private void finish(Result result) {
-        LOG.debug("Operation {} DM_GETTYPE - finished {}", new Object[]{id, result.responseCode});
-        operationsMaster.childFinished(id, result);
+    @Override
+    public String toString() {
+        return "DM_GET_TYPE " + id;
+    }
+    
+    private void fail(DMMessage.ResponseCode respCode) {
+        Result result = new Result(respCode, dbId, typeId, null);
+        finish(result);
+    }
+
+    private void success(TempTypeInfo typeInfo) {
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, dbId, typeId, typeInfo);
+        finish(result);
     }
 
     public static class Result extends DMOperation.Result {
-
+        public final ByteId dbId;
+        public final ByteId typeId;
         public final TempTypeInfo typeInfo;
 
-        public Result(DMMessage.ResponseCode respCode, TempTypeInfo typeInfo) {
+        public Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, TempTypeInfo typeInfo) {
             super(respCode);
+            this.dbId = dbId;
+            this.typeId = typeId;
             this.typeInfo = typeInfo;
+        }
+
+        @Override
+        public DMMessage.Resp getMsg(long msgId) {
+            return new GetType.Resp(msgId, responseCode, typeInfo);
         }
     }
 }

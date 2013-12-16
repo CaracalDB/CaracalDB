@@ -20,8 +20,7 @@
  */
 package se.sics.caracaldb.datamodel.msg;
 
-import se.sics.caracaldb.datamodel.util.ByteId;
-import se.sics.caracaldb.datamodel.util.TypeInfo;
+import se.sics.caracaldb.datamodel.util.TempTypeInfo;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -30,9 +29,9 @@ public class PutType {
 
     public static class Req extends DMMessage.Req {
 
-        public final TypeInfo typeInfo;
+        public final TempTypeInfo typeInfo;
 
-        public Req(long id, TypeInfo typeInfo) {
+        public Req(long id, TempTypeInfo typeInfo) {
             super(id);
             this.typeInfo = typeInfo;
         }
@@ -44,12 +43,11 @@ public class PutType {
     }
 
     public static class Resp extends DMMessage.Resp {
+        public final TempTypeInfo typeInfo;
 
-        public final ByteId typeId;
-
-        public Resp(long id, DMMessage.ResponseCode opResult, ByteId typeId) {
+        public Resp(long id, DMMessage.ResponseCode opResult, TempTypeInfo typeInfo) {
             super(id, opResult);
-            this.typeId = typeId;
+            this.typeInfo = typeInfo;
         }
 
         @Override

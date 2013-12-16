@@ -20,6 +20,9 @@
  */
 package se.sics.caracaldb.datamodel.operations;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.datamodel.DataModel;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
 import se.sics.caracaldb.operations.CaracalResponse;
 
@@ -27,31 +30,38 @@ import se.sics.caracaldb.operations.CaracalResponse;
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public abstract class DMOperation {
+
+    protected static final Logger LOG = LoggerFactory.getLogger(DataModel.class);
+
     public final long id;
-    
+    protected boolean done;
+
     public DMOperation(long id) {
         this.id = id;
+        this.done = false;
     }
-    
-    public abstract void start();
+
+    public final void start() {
+        if (done) {
+            LOG.warn("Operation {} - finished and cannot be started again", toString());
+            return;
+        }
+
+        startHook();
+    }
+
+    protected abstract void startHook();
 
     public abstract void handleMessage(CaracalResponse resp);
 
     public static abstract class Result {
+
         public final DMMessage.ResponseCode responseCode;
-        
+
         public Result(DMMessage.ResponseCode responseCode) {
             this.responseCode = responseCode;
         }
-    }
-    
-    public static abstract class ResultBuilder {
-        private DMMessage.ResponseCode responseCode;
         
-        public void setResponseCode(DMMessage.ResponseCode responseCode) {
-            this.responseCode = responseCode;
-        }
-        
-        public abstract Result build();
+        public abstract DMMessage.Resp getMsg(long msgId);
     }
 }

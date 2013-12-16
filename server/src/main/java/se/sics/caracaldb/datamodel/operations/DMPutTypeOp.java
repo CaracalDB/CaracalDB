@@ -20,13 +20,12 @@
  */
 package se.sics.caracaldb.datamodel.operations;
 
+import se.sics.caracaldb.datamodel.operations.primitives.DMPutOp;
 import java.io.IOException;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.datamodel.DataModel;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
+import se.sics.caracaldb.datamodel.msg.PutType;
 import se.sics.caracaldb.datamodel.util.ByteId;
 import se.sics.caracaldb.datamodel.util.DMKeyFactory;
 import se.sics.caracaldb.datamodel.util.TempTypeInfo;
@@ -37,18 +36,16 @@ import se.sics.caracaldb.utils.TimestampIdFactory;
  */
 public class DMPutTypeOp extends DMParallelOp {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DataModel.class);
-
     private final TempTypeInfo typeInfo;
 
-    public DMPutTypeOp(long id, DMOperationsMaster operationsMaster, TempTypeInfo typeInfo) {
+    public DMPutTypeOp(long id, DMOperationsManager operationsMaster, TempTypeInfo typeInfo) {
         super(id, operationsMaster);
         this.typeInfo = typeInfo;
     }
 
     @Override
-    public void start() {
-        LOG.debug("Operation {} DM_PUT_TYPE - started", id);
+    public final void startHook() {
+        LOG.debug("Operation {} - started", toString());
         ByteId dbId = typeInfo.dbId;
         ByteId typeId = typeInfo.typeId;
         TimestampIdFactory tidFactory = TimestampIdFactory.get();
@@ -60,7 +57,7 @@ public class DMPutTypeOp extends DMParallelOp {
                 key = DMKeyFactory.getTMFieldKey(dbId, typeId, e.getKey());
                 value = TempTypeInfo.serializeField(e.getValue());
             } catch (IOException ex) {
-                finish(new Result(DMMessage.ResponseCode.FAILURE));
+                fail(DMMessage.ResponseCode.FAILURE);
                 return;
             }
             
@@ -72,28 +69,51 @@ public class DMPutTypeOp extends DMParallelOp {
 
     @Override
     public void childFinished(long opId, DMOperation.Result result) {
+        if(done) {
+            LOG.warn("Operation {} - logical error", toString());
+            return;
+        }
         if (result instanceof DMPutOp.Result) {
             if (result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
                 pendingOps.remove(opId);
                 if(pendingOps.isEmpty()) {
-                    finish(new Result(DMMessage.ResponseCode.SUCCESS));
+                    success();
+                    return;
                 }
                 return;
             }
         }
-        finish(new Result(DMMessage.ResponseCode.FAILURE));
+        LOG.warn("Operation {} - received unknown child result {}", new Object[]{toString(), result});
+        fail(DMMessage.ResponseCode.FAILURE);
     }
 
     //***** *****
-    private void finish(Result result) {
-        LOG.debug("Operation {} DM_PUTTYPE - finished {}", new Object[]{id, result.responseCode});
-        operationsMaster.childFinished(id, result);
+     @Override
+    public String toString() {
+        return "DM_PUT_TYPE " + id;
+    }
+    
+    private void fail(DMMessage.ResponseCode respCode) {
+        Result result = new Result(respCode, typeInfo);
+        finish(result);
+    }
+
+    private void success() {
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, typeInfo);
+        finish(result);
     }
 
     public static class Result extends DMOperation.Result {
-
-        public Result(DMMessage.ResponseCode respCode) {
+        public final TempTypeInfo typeInfo;
+        
+        public Result(DMMessage.ResponseCode respCode, TempTypeInfo typeInfo) {
             super(respCode);
+            this.typeInfo = typeInfo;
+        }
+
+        @Override
+        public DMMessage.Resp getMsg(long msgId) {
+            return new PutType.Resp(msgId, responseCode, typeInfo);
         }
     }
 }

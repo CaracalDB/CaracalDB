@@ -20,16 +20,16 @@
  */
 package se.sics.caracaldb.datamodel.operations;
 
-import se.sics.kompics.Event;
+import se.sics.caracaldb.operations.CaracalOp;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public interface DMOperationsMaster {
+public interface DMOperationsManager {
 
-    public void send(long opId, long reqId, Event req);
+    public void send(long opId, long reqId, CaracalOp req);
 
     public void childFinished(long opId, DMOperation.Result result);
 
-    public void droppedMessage(Event msg);
+    public void droppedMessage(CaracalOp msg);
 }

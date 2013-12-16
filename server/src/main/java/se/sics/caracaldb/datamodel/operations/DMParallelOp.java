@@ -21,54 +21,86 @@
 package se.sics.caracaldb.datamodel.operations;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.kompics.Event;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public abstract class DMParallelOp extends DMOperation implements DMOperationsMaster {
-    protected final DMOperationsMaster operationsMaster;
+public abstract class DMParallelOp extends DMOperation implements DMOperationsManager {
+    protected final DMOperationsManager operationsManager;
 
     protected Map<Long, DMOperation> pendingOps; //<opId, op>
     protected Map<Long, Long> pendingReqs; //<reqId, opId>
 
-    DMParallelOp(long id, DMOperationsMaster operationsMaster) {
+    DMParallelOp(long id, DMOperationsManager operationsManager) {
         super(id);
-        this.operationsMaster = operationsMaster;
+        this.operationsManager = operationsManager;
         this.pendingOps = new HashMap<Long, DMOperation>();
         this.pendingReqs = new HashMap<Long, Long>();
     }
 
     //*****DMOperation*****
     @Override
-    public void handleMessage(CaracalResponse resp) {
+    public final void handleMessage(CaracalResponse resp) {
+        if(done) {
+            LOG.debug("Operation {} - finished and will not process further messages", toString());
+            operationsManager.droppedMessage(resp);
+            return;
+        }
         if (pendingReqs == null || pendingOps == null) {
-            operationsMaster.droppedMessage(resp);
+            LOG.warn("Operation {} logic error", toString());
+            operationsManager.droppedMessage(resp);
             return;
         }
         Long opId = pendingReqs.get(resp.id);
         if (opId == null) {
-            operationsMaster.droppedMessage(resp);
+            operationsManager.droppedMessage(resp);
             return;
         }
         DMOperation op = pendingOps.get(opId);
         if (op == null) {
-            throw new RuntimeException("op null - should never happen");
+            LOG.warn("Operation {} cleanup error", toString());
+            return;
         }
         op.handleMessage(resp);
     }
 
     //*****DMOperationsMaster****
     @Override
-    public void send(long opId, long reqId, Event req) {
+    public void send(long opId, long reqId, CaracalOp req) {
         pendingReqs.put(reqId, opId);
-        operationsMaster.send(id, reqId, req);
+        operationsManager.send(id, reqId, req);
     }
 
     @Override
-    public void droppedMessage(Event message) {
-        operationsMaster.droppedMessage(message);
+    public void droppedMessage(CaracalOp resp) {
+        operationsManager.droppedMessage(resp);
+    }
+    
+    //***** *****
+    protected final void cleanChildOp(long opId) {
+        pendingOps.remove(opId);
+        Iterator<Map.Entry<Long, Long>> it = pendingReqs.entrySet().iterator();
+        while(it.hasNext()) {
+            Map.Entry<Long, Long> e = it.next();
+            if(e.getValue() == opId) {
+                it.remove();
+            }
+        }
+    }
+    
+    protected final void fullCleanup() {
+        pendingOps = null;
+        pendingReqs = null;
+    }
+    
+    protected final void finish(DMOperation.Result result) {
+        LOG.debug("Operation {} - finished {}", new Object[]{toString(), result.responseCode});
+        done = true;
+        operationsManager.childFinished(id, result);
     }
 }
