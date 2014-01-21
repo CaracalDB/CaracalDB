@@ -39,11 +39,11 @@ public class DMMessage {
     public static class Resp extends Event {
 
         public final long id;
-        public final ResponseCode opResult;
+        public final ResponseCode respCode;
 
-        public Resp(long id, ResponseCode opResult) {
+        public Resp(long id, ResponseCode respCode) {
             this.id = id;
-            this.opResult = opResult;
+            this.respCode = respCode;
         }
     }
 

@@ -26,5 +26,5 @@ import se.sics.caracaldb.simulation.common.cmd.OperationsCmd;
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DMCmd extends OperationsCmd {
+public abstract class DMCmd extends OperationsCmd {
 }

@@ -21,6 +21,7 @@
 package se.sics.caracaldb.simulation.main;
 
 import se.sics.caracaldb.simulation.common.cmd.Cmd;
+import se.sics.caracaldb.simulation.operations.datamodel.cmd.DMExp1Cmd;
 import se.sics.caracaldb.simulation.operations.datamodel.cmd.DMTestCmd;
 import se.sics.caracaldb.simulation.system.cmd.BootCmd;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
@@ -68,7 +69,34 @@ public class SimulationGen {
 
         return scen;
     }
-    
+
+    public static SimulationScenario expScenario(final int boot) {
+        SimulationScenario scen = new SimulationScenario() {
+            {
+                SimulationScenario.StochasticProcess bootProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(constant(0));
+                        raise(1, opBoot(boot));
+                    }
+                };
+
+                SimulationScenario.StochasticProcess expProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(constant(500));
+                        raise(1, expCmd());
+                    }
+                };
+
+                bootProc.start();
+                expProc.startAfterTerminationOf(10000, bootProc);
+                terminateAfterTerminationOf(20000, expProc);
+            }
+        };
+
+        scen.setSeed(seed);
+        return scen;
+    }
+
     public static Operation<BootCmd> opBoot(final int n) {
         return new Operation<BootCmd>() {
             @Override
@@ -77,12 +105,24 @@ public class SimulationGen {
             }
         };
     }
+
     public static Operation<Cmd> testCmd() {
         return new Operation<Cmd>() {
 
             @Override
             public Cmd generate() {
                 return new DMTestCmd();
+            }
+
+        };
+    }
+    
+    public static Operation<Cmd> expCmd() {
+        return new Operation<Cmd>() {
+
+            @Override
+            public Cmd generate() {
+                return new DMExp1Cmd();
             }
 
         };

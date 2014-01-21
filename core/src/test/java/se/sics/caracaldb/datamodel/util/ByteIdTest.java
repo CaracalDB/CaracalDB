@@ -33,44 +33,47 @@ import se.sics.kompics.address.IdUtils;
 @RunWith(JUnit4.class)
 public class ByteIdTest {
 
-//    @Test
-//    public void testFactory() {
-//        ByteIdFactory bif = new ByteIdFactory();
-//        Assert.assertEquals(new ByteId(new byte[]{1, 1}), bif.nextId());
-//        Assert.assertEquals(new ByteId(new byte[]{1, 2}), bif.nextId());
-//        for (int i = 0; i < 253; i++) {
-//            bif.nextId();
-//        }
-//        Assert.assertEquals(new ByteId(new byte[]{2, 1, 0}), bif.nextId());
-//        Assert.assertEquals(new ByteId(new byte[]{2, 1, 1}), bif.nextId());
-//        for (int i = 0; i < 253; i++) {
-//            bif.nextId();
-//        }
-//        for (int j = 1; j <= 255; j++) {
-//            for (int i = 0; i < 255; i++) {
-//                bif.nextId();
-//            }
-//        }
-//        Assert.assertEquals(new ByteId(new byte[]{3, 1, 0, 0}), bif.nextId());
-//    }
-//    
-//    @Test
-//    public void test() {
-//        ByteIdFactory bif = new ByteIdFactory();
-//        
-//        ByteId b1 = bif.nextId();
-//        ByteId b2 = bif.nextId();
-//        for (int i = 0; i < 253; i++) {
-//            bif.nextId();
-//        }
-//        ByteId b3 = bif.nextId();
-//        ByteId b4 = bif.nextId();
-//        ByteId b5 = ByteIdFactory.nextId(b3);
-//        Assert.assertTrue(b1.compareTo(b2) < 0);
-//        Assert.assertTrue(b2.compareTo(b3) < 0);
-//        Assert.assertEquals(b4, b5);
-    
-    @Test public void test() {
-        System.out.println(IdUtils.printFormat(Ints.toByteArray(1)));
+    @Test
+    public void testFactory() {
+        ByteIdFactory bif = new ByteIdFactory();
+        Assert.assertEquals(new ByteId(new byte[]{1, 1}), bif.nextId());
+        Assert.assertEquals(new ByteId(new byte[]{1, 2}), bif.nextId());
+        for (int i = 0; i < 253; i++) {
+            bif.nextId();
+        }
+        Assert.assertEquals(new ByteId(new byte[]{2, 1, 0}), bif.nextId());
+        Assert.assertEquals(new ByteId(new byte[]{2, 1, 1}), bif.nextId());
+        for (int i = 0; i < 253; i++) {
+            bif.nextId();
+        }
+        for (int j = 1; j <= 255; j++) {
+            for (int i = 0; i < 255; i++) {
+                bif.nextId();
+            }
+        }
+        Assert.assertEquals(new ByteId(new byte[]{3, 1, 0, 0}), bif.nextId());
     }
+    
+    @Test
+    public void test() {
+        ByteIdFactory bif = new ByteIdFactory();
+        
+        ByteId b1 = bif.nextId();
+        ByteId b2 = bif.nextId();
+        for (int i = 0; i < 253; i++) {
+            bif.nextId();
+        }
+        ByteId b3 = bif.nextId();
+        ByteId b4 = bif.nextId();
+        ByteId b5 = ByteIdFactory.nextId(b3);
+        Assert.assertTrue(b1.compareTo(b2) < 0);
+        Assert.assertTrue(b2.compareTo(b3) < 0);
+        Assert.assertEquals(b4, b5);
+ 
+    }
+    
+//    @Test 
+//    public void test() {
+//        System.out.println(IdUtils.printFormat(Ints.toByteArray(1)));
+//    }
 }

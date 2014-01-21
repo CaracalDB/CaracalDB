@@ -42,7 +42,7 @@ public class ByteId implements Comparable<ByteId> {
         this.id = Bytes.toArray(id);
     }
     
-    ByteId(byte[] id) {
+    public ByteId(byte[] id) {
         this.id = Arrays.copyOf(id, id.length);
     }
 

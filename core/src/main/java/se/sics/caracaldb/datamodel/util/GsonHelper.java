@@ -18,44 +18,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+package se.sics.caracaldb.datamodel.util;
 
-package se.sics.caracaldb.datamodel.msg;
-
-import java.util.Map;
-import se.sics.caracaldb.datamodel.util.ByteId;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 /**
+ *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class GetAllTypes {
-    public static class Req extends DMMessage.Req {
+public class GsonHelper {
 
-        public final ByteId dbId;
-        
-        public Req(long id, ByteId dbId) {
-            super(id);
-            this.dbId = dbId;
-        }
-        
-        @Override
-        public String toString() {
-            return "GET_ALLTYPES - request(" + id + ")";
-        }
-    }
+    private static Gson gson = null;
 
-    public static class Resp extends DMMessage.Resp {
-        public final ByteId dbId;
-        public final Map<String, ByteId> types;
-
-        public Resp(long id, DMMessage.ResponseCode opResult, ByteId dbId, Map<String, ByteId> typesMap) {
-            super(id, opResult);
-            this.dbId = dbId;
-            this.types = typesMap;
+    public static Gson getGson() {
+        if (gson == null) {
+            GsonBuilder gsonBuilder = new GsonBuilder();
+            gsonBuilder.registerTypeAdapter(TempTypeInfo.class, new TempTypeInfo.GsonTypeAdapter());
+            gson = gsonBuilder.create();
         }
-
-		@Override
-        public String toString() {
-            return "GET_ALLTYPES - response(" + id + ")";
-        }
+        return gson;
     }
 }

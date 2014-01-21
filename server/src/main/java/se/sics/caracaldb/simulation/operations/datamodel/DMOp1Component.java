@@ -33,8 +33,8 @@ import se.sics.caracaldb.datamodel.msg.DMNetworkMessage;
 import se.sics.caracaldb.simulation.common.msg.ConnectNode;
 import se.sics.caracaldb.simulation.common.msg.TerminateMsg;
 import se.sics.caracaldb.simulation.operations.cmd.OpValidateCmd;
-import se.sics.caracaldb.simulation.operations.datamodel.cmd.DMTestCmd;
-import se.sics.caracaldb.utils.TimestampIdFactory;
+import se.sics.caracaldb.simulation.operations.datamodel.cmd.DMExp1Cmd;
+import se.sics.caracaldb.simulation.operations.datamodel.cmd.DMExpCmd;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
@@ -56,6 +56,7 @@ public class DMOp1Component extends ComponentDefinition {
     public Address target = null;
     private final Random randGen;
 
+    private DMExperiment exp;
     
     private final Map<Long, DMMessage.Req> pendingMsg = new HashMap<Long, DMMessage.Req>();
     private Set<DMMessage.Req> bufferedMsg = new HashSet<DMMessage.Req>();
@@ -68,8 +69,8 @@ public class DMOp1Component extends ComponentDefinition {
 
         subscribe(terminateHandler, opExecutor);
         subscribe(connectNodeHandler, opExecutor);
-        subscribe(testCommandHandler, opExecutor);
         subscribe(respHandler, network);
+        subscribe(expHandler, opExecutor);
     }
 
     Handler<TerminateMsg.Req> terminateHandler = new Handler<TerminateMsg.Req>() {
@@ -101,21 +102,15 @@ public class DMOp1Component extends ComponentDefinition {
 
     };
 
-    Handler<DMTestCmd> testCommandHandler = new Handler<DMTestCmd>() {
+    Handler<DMExpCmd> expHandler = new Handler<DMExpCmd>() {
 
         @Override
-        public void handle(DMTestCmd event) {
+        public void handle(DMExpCmd event) {
              if (terminated) {
                 LOG.debug("terminated - dropping msg...");
                 return;
             }
-            LOG.debug("testing");
-            DMMessage.Req req = new DMMessage.Req(TimestampIdFactory.get().newId());
-            if (sendMsg(req)) {
-                pendingMsg.put(req.id, req);
-            } else {
-                bufferedMsg.add(req);
-            }
+            LOG.debug("Experiment 1 starting...");
         }
     };
     
@@ -147,34 +142,26 @@ public class DMOp1Component extends ComponentDefinition {
 
     };
 
-    private boolean sendMsg(DMMessage.Req req) {
+    private void sendMsg(DMMessage.Req req) {
         if (self == null || target == null) {
             LOG.debug("{}: cannot send msg {}, buffering", new Object[]{self, req});
-            return false;
+            bufferedMsg.add(req);
+            return;
         }
         LOG.debug("sending datamodel req {} from {} to {}", new Object[]{req, self, target});
         trigger(new DMNetworkMessage.Req(self, target, req), network);
-        return true;
     }
 
     private void tryResendingBuffered() {
         if (bufferedMsg.isEmpty()) {
             return;
         }
-
-        Set<DMMessage.Req> auxBuffer = new HashSet<DMMessage.Req>();
-        for (DMMessage.Req req : bufferedMsg) {
-            if (sendMsg(req)) {
-                pendingMsg.put(req.id, req);
-            } else {
-                auxBuffer.add(req);
-            }
+        
+        Set<DMMessage.Req> auxBuff = bufferedMsg;
+        bufferedMsg = new HashSet<DMMessage.Req>();
+        for (DMMessage.Req req : auxBuff) {
+            sendMsg(req);
         }
-
-        if (!auxBuffer.isEmpty()) {
-            LOG.warn("sending of messages might be wrong");
-        }
-        bufferedMsg = auxBuffer;
     }
 
     private void handleTestResp(DMMessage.Resp resp) {
