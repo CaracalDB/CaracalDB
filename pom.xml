@@ -254,27 +254,15 @@
         <repository>
             <id>sics-release-repository</id>
             <name>SICS Repository</name>
-            <url>scpexe://kompics.sics.se/home/maven2/repository</url>
+            <url>scpexe://kompics.i.sics.se/home/maven/repository</url>
         </repository>
         <snapshotRepository>
             <id>sics-snapshot-repository</id>
             <name>SICS Snapshot Repository</name>
-            <url>scpexe://kompics.sics.se/home/maven2/snapshotrepository</url>
+            <url>scpexe://kompics.i.sics.se/home/maven/snapshotrepository</url>
         </snapshotRepository>
         <downloadUrl>http://kompics.sics.se/maven/repository</downloadUrl>
     </distributionManagement>
-
-    <!--
-   	<mailingLists>
-                                                          		<mailingList>
-                                                                                                                 			<name>Kompics Mailing List</name>
-                                                                                                                 			<subscribe>https://list.sics.se/sympa/subscribe/kompics</subscribe>
-                                                                                                                 			<unsubscribe>https://list.sics.se/sympa/sigrequest/kompics</unsubscribe>
-                                                                                                                 			<post>kompics@sics.se</post>
-                                                                                                                 			<archive>https://list.sics.se/sympa/arc/kompics</archive>
-                                                          		</mailingList>
-   	</mailingLists>
-   	//-->
 
     <developers>
         <developer>
@@ -292,33 +280,5 @@
         </developer>
     </developers>
 
-    <!--
-   	<contributors>
-                                                          		<contributor>
-                                                                                                                 			<name>Ali Ghodsi</name>
-                                                                                                                 			<email>ali&gt;sics.se</email>
-                                                                                                                 			<url>http://www.sics.se/~ali</url>
-                                                                                                                 			<organization>Swedish Institute of Computer Science (SICS)</organization>
-                                                                                                                 			<organizationUrl>http://www.sics.se/</organizationUrl>
-                                                                                                                 			<timezone>+1</timezone>
-                                                          		</contributor>
-                                                          		<contributor>
-                                                                                                                 			<name>Tallat Shafaat</name>
-                                                                                                                 			<email>tallat&gt;sics.se</email>
-                                                                                                                 			<url>http://www.sics.se/~tallat</url>
-                                                                                                                 			<organization>Swedish Institute of Computer Science (SICS)</organization>
-                                                                                                                 			<organizationUrl>http://www.sics.se/</organizationUrl>
-                                                                                                                 			<timezone>+1</timezone>
-                                                          		</contributor>
-                                                          		<contributor>
-                                                                                                                 			<name>Roberto Roverso</name>
-                                                                                                                 			<email>roberto&gt;sics.se</email>
-                                                                                                                 			<url>http://www.sics.se/~roberto</url>
-                                                                                                                 			<organization>Swedish Institute of Computer Science (SICS)</organization>
-                                                                                                                 			<organizationUrl>http://www.sics.se/</organizationUrl>
-                                                                                                                 			<timezone>+1</timezone>
-                                                          		</contributor>
-   	</contributors>
-   	//-->
 
 </project>
