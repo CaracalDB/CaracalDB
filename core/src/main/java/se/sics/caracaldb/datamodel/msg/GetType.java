@@ -21,7 +21,6 @@
 package se.sics.caracaldb.datamodel.msg;
 
 import se.sics.caracaldb.datamodel.util.ByteId;
-import se.sics.caracaldb.datamodel.util.TempTypeInfo;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -46,9 +45,9 @@ public class GetType {
     }
 
     public static class Resp extends DMMessage.Resp {
-        public final TempTypeInfo typeInfo;
+        public final byte[] typeInfo;
 
-        public Resp(long id, DMMessage.ResponseCode opResult, TempTypeInfo typeInfo) {
+        public Resp(long id, DMMessage.ResponseCode opResult, byte[] typeInfo) {
             super(id, opResult);
             this.typeInfo = typeInfo;
         }

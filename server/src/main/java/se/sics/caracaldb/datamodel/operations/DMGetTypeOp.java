@@ -24,13 +24,17 @@ import se.sics.caracaldb.datamodel.operations.primitives.DMCRQOp;
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
 import se.sics.caracaldb.datamodel.msg.GetType;
+import se.sics.caracaldb.datamodel.operations.primitives.DMGetOp;
 import se.sics.caracaldb.datamodel.util.ByteId;
 import se.sics.caracaldb.datamodel.util.DMKeyFactory;
 import se.sics.caracaldb.datamodel.util.TempTypeInfo;
+import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -46,54 +50,88 @@ public class DMGetTypeOp extends DMSequentialOp {
         this.typeId = typeId;
     }
 
+//    @Override
+//    public final void startHook() {
+//        LOG.debug("Operation {} - started", toString());
+//
+//        KeyRange range;
+//        try {
+//            range = DMKeyFactory.getTMRange(dbId, typeId);
+//        } catch (IOException ex) {
+//            fail(DMMessage.ResponseCode.FAILURE);
+//            return;
+//        }
+//        pendingOp = new DMCRQOp(id, operationsManager, range);
+//        pendingOp.start();
+//    }
+
     @Override
     public final void startHook() {
         LOG.debug("Operation {} - started", toString());
-
-        KeyRange range;
+        Key typeKey;
         try {
-            range = DMKeyFactory.getTMRange(dbId, typeId);
+            typeKey = DMKeyFactory.getTypeKey(dbId, typeId);
         } catch (IOException ex) {
             fail(DMMessage.ResponseCode.FAILURE);
             return;
         }
-        pendingOp = new DMCRQOp(id, operationsManager, range);
+        TimestampIdFactory tidFactory = TimestampIdFactory.get();
+        pendingOp = new DMGetOp(tidFactory.newId(), this, typeKey);
         pendingOp.start();
     }
+    
+//    @Override
+//    public void childFinished(long opId, DMOperation.Result result) {
+//        if(done) {
+//            LOG.warn("Operation {} - logical error", toString());
+//            return;
+//        }
+//        if (result instanceof DMCRQOp.Result) {
+//            if (result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
+//                TreeMap<Key, byte[]> b_results = ((DMCRQOp.Result) result).results;
+//                TempTypeInfo typeInfo = new TempTypeInfo(dbId, typeId);
+//
+//                for (Map.Entry<Key, byte[]> e : b_results.entrySet()) {
+//                    try {
+//                        DMKeyFactory.DMKeyComponents comp = DMKeyFactory.getKeyComponents(e.getKey());
+//                        if (comp instanceof DMKeyFactory.TMFieldKeyComp) {
+//                            typeInfo.deserializeField(e.getValue());
+//                        } else {
+//                            fail(DMMessage.ResponseCode.FAILURE);
+//                            return;
+//                        }
+//                    } catch (IOException ex) {
+//                        fail(DMMessage.ResponseCode.FAILURE);
+//                        return;
+//                    }
+//                }
+//                fail(DMMessage.ResponseCode.SUCCESS);
+//                return;
+//            }
+//        }
+//        LOG.warn("Operation {} - received unknown child result {}", new Object[]{toString(), result});
+//        fail(DMMessage.ResponseCode.FAILURE);
+//    }
 
-    @Override
+    @Override 
     public void childFinished(long opId, DMOperation.Result result) {
         if(done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
         }
-        if (result instanceof DMCRQOp.Result) {
+        if (result instanceof DMGetOp.Result) {
             if (result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
-                TreeMap<Key, byte[]> b_results = ((DMCRQOp.Result) result).results;
-                TempTypeInfo typeInfo = new TempTypeInfo(dbId, typeId);
-
-                for (Map.Entry<Key, byte[]> e : b_results.entrySet()) {
-                    try {
-                        DMKeyFactory.DMKeyComponents comp = DMKeyFactory.getKeyComponents(e.getKey());
-                        if (comp instanceof DMKeyFactory.TMFieldKeyComp) {
-                            typeInfo.deserializeField(e.getValue());
-                        } else {
-                            fail(DMMessage.ResponseCode.FAILURE);
-                            return;
-                        }
-                    } catch (IOException ex) {
-                        fail(DMMessage.ResponseCode.FAILURE);
-                        return;
-                    }
-                }
-                fail(DMMessage.ResponseCode.SUCCESS);
+                success(((DMGetOp.Result) result).value);
+                return;
+            } else {
+                fail(result.responseCode);
                 return;
             }
         }
         LOG.warn("Operation {} - received unknown child result {}", new Object[]{toString(), result});
         fail(DMMessage.ResponseCode.FAILURE);
     }
-
+    
     //***** *****
     @Override
     public String toString() {
@@ -105,7 +143,7 @@ public class DMGetTypeOp extends DMSequentialOp {
         finish(result);
     }
 
-    private void success(TempTypeInfo typeInfo) {
+    private void success(byte[] typeInfo) {
         Result result = new Result(DMMessage.ResponseCode.SUCCESS, dbId, typeId, typeInfo);
         finish(result);
     }
@@ -113,9 +151,9 @@ public class DMGetTypeOp extends DMSequentialOp {
     public static class Result extends DMOperation.Result {
         public final ByteId dbId;
         public final ByteId typeId;
-        public final TempTypeInfo typeInfo;
+        public final byte[] typeInfo;
 
-        public Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, TempTypeInfo typeInfo) {
+        public Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, byte[] typeInfo) {
             super(respCode);
             this.dbId = dbId;
             this.typeId = typeId;

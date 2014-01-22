@@ -100,7 +100,7 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
         @Override
         public void handle(PutType.Req req) {
             long opId = tidFactory.newId();
-            DMOperation op = new DMPutTypeOp(opId, operationsManager, req.typeInfo);
+            DMOperation op = new DMPutTypeOp(opId, operationsManager, req.dbId, req.typeId, req.typeInfo);
             pendingOps.put(opId, op);
             op.start();
         }

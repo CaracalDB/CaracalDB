@@ -1,4 +1,4 @@
-/*
+/* 
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,35 +18,36 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel.util;
+package se.sics.caracaldb.simulation.operations.datamodel.validators;
 
-import com.google.gson.Gson;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.Assert;
+import se.sics.caracaldb.datamodel.msg.DMMessage;
+import se.sics.caracaldb.datamodel.msg.PutType;
 
 /**
- *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-@RunWith(JUnit4.class)
-public class TypeInfoTest {
+public class PutTypeValidator implements RespValidator {
+    private final long id;
+    private final DMMessage.ResponseCode respCode;
 
-    @Test
-    public void typeInfoGsonTest() {
-        Gson g = GsonHelper.getGson();
+    public PutTypeValidator(long id, DMMessage.ResponseCode respCode) {
+        this.id = id;
+        this.respCode = respCode;
+    }
+    
+    @Override
+    public void validate(DMMessage.Resp resp) {
+        Assert.assertEquals("Wrong message", id, resp.id);
+        if (!(resp instanceof PutType.Resp)) {
+            Assert.assertTrue(false);
+        }
 
-        ByteId dbId = new ByteId(new byte[]{1, 1});
-        ByteId typeId = new ByteId(new byte[]{1, 2});
-        TempTypeInfo typeInfo = new TempTypeInfo(dbId, typeId);
-      
-        ByteIdFactory bif = new ByteIdFactory();
-        typeInfo.addField("field1", FieldInfo.FieldType.FLOAT, true);
-        typeInfo.addField("field2", FieldInfo.FieldType.STRING, false);
-        typeInfo.addField("field3", FieldInfo.FieldType.FLOAT, true);
-        
-        System.out.println(typeInfo);
-        System.out.println(g.toJson(typeInfo));
-        System.out.println(g.fromJson(g.toJson(typeInfo), TempTypeInfo.class));
+        Assert.assertEquals("Wrong ResponseCode", respCode, resp.respCode);
+    }
+    
+    @Override
+    public String toString() {
+        return "PUT_TYPE - validator(" + id + ")";
     }
 }

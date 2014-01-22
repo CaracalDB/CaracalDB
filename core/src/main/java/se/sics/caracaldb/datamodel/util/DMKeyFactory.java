@@ -36,12 +36,11 @@ import se.sics.caracaldb.KeyRange;
  * @author Alex Ormenisan <aaor@sics.se>
  */
 //TYPE METADATA
-//dbId.1.typeId                                 - typeKey        - <key, typeName>
-//dbId.2.typeId.fieldId                         - tmFieldKey     - <key, <fieldName, fieldType, indexed>>
+//dbId.1.typeId                                 - typeKey  - <key, typeMetadata>
 //DATA
 //dbId.3.typeId.objNrId                         - DataKey  - <key, data>
 //INDEXES
-//dbId.4.typeId.idxId.idxVal.objNrId - indexKey     - <key, "">
+//dbId.4.typeId.idxId.idxVal.objNrId - indexKey - <key, "">
 public class DMKeyFactory {
 
     public static final int MAX_INDEXVAL_SIZE = 127;
@@ -61,7 +60,7 @@ public class DMKeyFactory {
     }
 
     static final byte typeKF = (byte) 1;
-    static final byte tmFieldKF = (byte) 2;
+//    static final byte tmFieldKF = (byte) 2;
     static final byte dataKF = (byte) 3;
     static final byte indexKF = (byte) 4;
 
@@ -85,25 +84,25 @@ public class DMKeyFactory {
         }
     }
 
-    public static Key getTMFieldKey(ByteId dbId, ByteId typeId, ByteId fieldId) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-            DataOutputStream w = closer.register(new DataOutputStream(baos));
-
-            w.write(dbId.getId());
-            w.writeByte(tmFieldKF);
-            w.write(typeId.getId());
-            w.write(fieldId.getId());
-            w.flush();
-
-            return new Key(baos.toByteArray());
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
-        }
-    }
+//    public static Key getTMFieldKey(ByteId dbId, ByteId typeId, ByteId fieldId) throws IOException {
+//        Closer closer = Closer.create();
+//        try {
+//            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
+//            DataOutputStream w = closer.register(new DataOutputStream(baos));
+//
+//            w.write(dbId.getId());
+//            w.writeByte(tmFieldKF);
+//            w.write(typeId.getId());
+//            w.write(fieldId.getId());
+//            w.flush();
+//
+//            return new Key(baos.toByteArray());
+//        } catch (Throwable e) {
+//            throw closer.rethrow(e);
+//        } finally {
+//            closer.close();
+//        }
+//    }
 
     public static Key getDataKey(ByteId dbId, ByteId typeId, ByteId objNrId) throws IOException {
         Closer closer = Closer.create();
@@ -181,8 +180,8 @@ public class DMKeyFactory {
 
             if (keyType == DMKeyFactory.typeKF) {
                 return new TypeKeyComp(dbId, typeId);
-            } else if (keyType == DMKeyFactory.tmFieldKF) {
-                readTMFieldKey(r, dbId, typeId);
+//            } else if (keyType == DMKeyFactory.tmFieldKF) {
+//                readTMFieldKey(r, dbId, typeId);
             } else if (keyType == DMKeyFactory.dataKF) {
                 readDataKey(r, dbId, typeId);
             } else if (keyType == DMKeyFactory.indexKF) {
@@ -362,13 +361,13 @@ public class DMKeyFactory {
         return range;
     }
 
-    // ["dbId.2.typeId.byteIdMin","dbId.2.typeId.byteIdMax"]
-    public static KeyRange getTMRange(ByteId dbId, ByteId typeId) throws IOException {
-        Key begin = getTMFieldKey(dbId, typeId, ByteIdFactory.MIN_BYTE_ID);
-        Key end = getTMFieldKey(dbId, typeId, ByteIdFactory.MAX_BYTE_ID);
-        KeyRange range = KeyRange.closed(begin).closed(end);
-        return range;
-    }
+//    // ["dbId.2.typeId.byteIdMin","dbId.2.typeId.byteIdMax"]
+//    public static KeyRange getTMRange(ByteId dbId, ByteId typeId) throws IOException {
+//        Key begin = getTMFieldKey(dbId, typeId, ByteIdFactory.MIN_BYTE_ID);
+//        Key end = getTMFieldKey(dbId, typeId, ByteIdFactory.MAX_BYTE_ID);
+//        KeyRange range = KeyRange.closed(begin).closed(end);
+//        return range;
+//    }
 
     // ["dbId.4.typeId.idxId.idxVal.byteIdMin", "dbId.4.typeId.idxId.idxVal.byteIdMax"]
     public static KeyRange getIndexRangeIS(ByteId dbId, ByteId typeId, ByteId idxId, Object idxVal) throws IOException {

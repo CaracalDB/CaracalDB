@@ -21,22 +21,14 @@
 package se.sics.caracaldb.datamodel.util;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -47,14 +39,21 @@ public class TempTypeInfo {
     public final ByteId dbId;
     public final ByteId typeId;
     public final Map<ByteId, TempFieldInfo> fieldMap;
+    public final ByteIdFactory bif;
 
     public TempTypeInfo(ByteId dbId, ByteId typeId) {
         this.dbId = dbId;
         this.typeId = typeId;
         this.fieldMap = new TreeMap<ByteId, TempFieldInfo>();
+        this.bif = new ByteIdFactory();
     }
     
-    public TempTypeInfo addField(TempFieldInfo field) {
+    public TempTypeInfo addField(String fieldName, FieldInfo.FieldType fieldType, boolean indexed) {
+        TempFieldInfo fi = new TempFieldInfo(bif.nextId(), fieldName, fieldType, indexed);
+        fieldMap.put(fi.fieldId, fi);
+        return this;
+    }
+    private TempTypeInfo addField(TempFieldInfo field) {
         fieldMap.put(field.fieldId, field);
         return this;
     }
@@ -207,7 +206,7 @@ public class TempTypeInfo {
             writer.name("fieldMap");
             writer.beginArray();
             for(Map.Entry<ByteId, TempFieldInfo> e : t.fieldMap.entrySet()) {
-                gson.toJson(gson.toJsonTree(e), writer);
+                gson.toJson(gson.toJsonTree(e.getValue()), writer);
             }
             writer.endArray();
             writer.endObject();
@@ -258,14 +257,17 @@ public class TempTypeInfo {
             }
             reader.beginArray();
             
+            TempTypeInfo typeInfo = new TempTypeInfo(dbId, typeId);
+            
             while(reader.peek() != JsonToken.END_ARRAY) {
                 TempFieldInfo fi = gson.fromJson(reader, TempFieldInfo.class);
+                typeInfo.addField(fi);
             }
             
             reader.endArray();
             
             reader.endObject();
-            return new TempTypeInfo(dbId, typeId);
+            return typeInfo;
         }
     }
 
