@@ -38,6 +38,7 @@ import se.sics.caracaldb.datamodel.operations.DMOperationsManager;
 import se.sics.caracaldb.datamodel.operations.DMPutObjOp;
 import se.sics.caracaldb.datamodel.operations.DMPutTypeOp;
 import se.sics.caracaldb.operations.CaracalOp;
+import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -62,13 +63,15 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
         operationsManager = this;
         pendingOps = new HashMap<Long, DMOperation>();
         pendingReqs = new HashMap<Long, Long>();
-        
+
 //        subscribe(requestHandler, dataModel);
         subscribe(getAllTypesHandler, dataModel);
         subscribe(getTypeHandler, dataModel);
         subscribe(putTypeHandler, dataModel);
         subscribe(getGsonObjHandler, dataModel);
         subscribe(putGsonObjHandler, dataModel);
+
+        subscribe(caracalResponseHandler, dataModel);
     }
 
     Handler<GetAllTypes.Req> getAllTypesHandler = new Handler<GetAllTypes.Req>() {
@@ -87,9 +90,8 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(GetType.Req req) {
-            long opId = tidFactory.newId();
-            DMOperation op = new DMGetTypeOp(opId, operationsManager, req.dbId, req.typeId);
-            pendingOps.put(opId, op);
+            DMOperation op = new DMGetTypeOp(req.id, operationsManager, req.dbId, req.typeId);
+            pendingOps.put(op.id, op);
             op.start();
         }
 
@@ -99,9 +101,8 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(PutType.Req req) {
-            long opId = tidFactory.newId();
-            DMOperation op = new DMPutTypeOp(opId, operationsManager, req.dbId, req.typeId, req.typeInfo);
-            pendingOps.put(opId, op);
+            DMOperation op = new DMPutTypeOp(req.id, operationsManager, req.dbId, req.typeId, req.typeInfo);
+            pendingOps.put(op.id, op);
             op.start();
         }
 
@@ -131,10 +132,23 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
     };
 
+    Handler<CaracalResponse> caracalResponseHandler = new Handler<CaracalResponse>() {
+
+        @Override
+        public void handle(CaracalResponse event) {
+            long opId = pendingReqs.remove(event.id);
+            DMOperation op = pendingOps.get(opId);
+            op.handleMessage(event);
+        }
+
+    };
+
     //*****DMOperationsManager*****
     @Override
     public void send(long opId, long reqId, CaracalOp req) {
+        LOG.debug("sending " + req.toString());
         pendingReqs.put(reqId, opId);
+        trigger(req, dataModel);
     }
 
     @Override
@@ -147,13 +161,13 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
     public void droppedMessage(CaracalOp resp) {
         LOG.warn("Dropping message {}", resp);
     }
-    
+
     private void cleanOp(long opId) {
         pendingOps.remove(opId);
         Iterator<Map.Entry<Long, Long>> it = pendingReqs.entrySet().iterator();
-        while(it.hasNext()) {
+        while (it.hasNext()) {
             Map.Entry<Long, Long> e = it.next();
-            if(e.getValue() == opId) {
+            if (e.getValue() == opId) {
                 it.remove();
             }
         }

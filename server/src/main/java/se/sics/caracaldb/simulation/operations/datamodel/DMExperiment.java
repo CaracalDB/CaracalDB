@@ -40,7 +40,7 @@ public class DMExperiment {
     }
 
     public boolean isDone() {
-        return msgs.size() == currentMsg;
+        return msgs.size() == currentMsg + 1;
     }
     
     public DMMessage.Req nextReq() {

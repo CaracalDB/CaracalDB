@@ -23,9 +23,20 @@ package se.sics.caracaldb.datamodel;
 import se.sics.caracaldb.datamodel.msg.DMNetworkMessage;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Key;
+import se.sics.caracaldb.global.ForwardMessage;
+import se.sics.caracaldb.global.ForwardToAny;
+import se.sics.caracaldb.operations.CaracalMsg;
+import se.sics.caracaldb.operations.CaracalOp;
+import se.sics.caracaldb.operations.CaracalResponse;
+import se.sics.caracaldb.operations.GetRequest;
+import se.sics.caracaldb.operations.PutRequest;
+import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Positive;
@@ -45,14 +56,18 @@ public class ServerInterface extends ComponentDefinition {
     Positive<DataModelPort> dataModel = requires(DataModelPort.class);
 
     private final Map<Long, Address> pendingRequests; //<reqId, src>
+    private final Set<Long> pendingCaracalRequests;
     private final Address self;
 
     public ServerInterface(ServerInterfaceInit init) {
         this.pendingRequests = new HashMap<Long, Address>();
+        this.pendingCaracalRequests = new HashSet<Long>();
         this.self = init.self;
-        
+
         subscribe(networkRequestHandler, network);
         subscribe(localResponseHandler, dataModel);
+        subscribe(caracalRequestHandler, dataModel);
+        subscribe(caracalResponseHandler, network);
     }
 
     Handler<DMNetworkMessage.Req> networkRequestHandler = new Handler<DMNetworkMessage.Req>() {
@@ -74,5 +89,46 @@ public class ServerInterface extends ComponentDefinition {
             LOG.debug("{}: sent response {} to {}", new Object[]{self, localResp, reqSrc});
             trigger(new DMNetworkMessage.Resp(self, reqSrc, localResp), network);
         }
+    };
+
+    Handler<CaracalOp> caracalRequestHandler = new Handler<CaracalOp>() {
+
+        @Override
+        public void handle(CaracalOp op) {
+            //should get rid of this
+            Key key;
+            if (op instanceof PutRequest) {
+                key = ((PutRequest) op).key;
+            } else if (op instanceof RangeQuery.Request) {
+                key = ((RangeQuery.Request) op).initRange.begin;
+            } else if (op instanceof GetRequest) {
+                key = ((GetRequest) op).key;
+            } else {
+                LOG.error("unexpected op - logic error");
+                System.exit(1);
+                return;
+            }
+            CaracalMsg msg = new CaracalMsg(self, self, op);
+            ForwardMessage fMsg = new ForwardMessage(self, self, key, msg);
+
+            LOG.debug("sending " + fMsg);
+            pendingCaracalRequests.add(op.id);
+            trigger(fMsg, network);
+        }
+    };
+
+    Handler<CaracalMsg> caracalResponseHandler = new Handler<CaracalMsg>() {
+
+        @Override
+        public void handle(CaracalMsg event) {
+            if (event.op instanceof CaracalResponse) {
+                if (pendingCaracalRequests.contains(event.op.id)) {
+                    pendingCaracalRequests.remove(event.op.id);
+                    LOG.debug("received " + event.op);
+                    trigger(event.op, dataModel);
+                }
+            }
+        }
+
     };
 }

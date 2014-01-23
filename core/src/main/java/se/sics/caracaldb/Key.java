@@ -139,7 +139,7 @@ public class Key implements Comparable<Key> {
         byte[] newData  = Arrays.copyOf(data, data.length);
         for (int i = newData.length-1; i >= 0; i--) {
             int oldVal = UnsignedBytes.toInt(newData[i]);
-            System.out.println(oldVal + " != " + UnsignedBytes.MAX_VALUE);
+            //System.out.println(oldVal + " != " + UnsignedBytes.MAX_VALUE);
             if (oldVal != BYTE_KEY_SIZE) {
                 newData[i] = UnsignedBytes.checkedCast(oldVal+1);
                 return new Key(newData);

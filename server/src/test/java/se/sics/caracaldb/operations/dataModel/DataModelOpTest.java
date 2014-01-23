@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,21 +18,32 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
+package se.sics.caracaldb.operations.dataModel;
 
-import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.caracaldb.operations.CaracalOp;
-import se.sics.kompics.PortType;
+import org.junit.Before;
+import org.junit.Test;
+import se.sics.caracaldb.simulation.main.DataModelLauncher;
+import se.sics.caracaldb.simulation.main.SimulationGen;
+import se.sics.caracaldb.system.Launcher;
+import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 
 /**
+ *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class DataModelPort extends PortType {
 
-    {
-        request(DMMessage.Req.class);
-        request(CaracalOp.class);
-        indication(CaracalOp.class);
-        indication(DMMessage.Resp.class);
+public class DataModelOpTest {
+    private static final int BOOT_NUM = 6;
+
+    @Before
+    public void setUp() {
+        Launcher.reset();
+    }
+
+    @Test
+    public void testExp1() {
+        DataModelLauncher.connectDataModel();
+        SimulationScenario exp1Scen = SimulationGen.exp1Scenario(BOOT_NUM);
+        Launcher.newSimulate(exp1Scen);
     }
 }

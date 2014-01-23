@@ -69,8 +69,8 @@ public class SimulationGen {
 
         return scen;
     }
-
-    public static SimulationScenario expScenario(final int boot) {
+    
+    public static SimulationScenario exp1Scenario(final int boot) {
         SimulationScenario scen = new SimulationScenario() {
             {
                 SimulationScenario.StochasticProcess bootProc = new SimulationScenario.StochasticProcess() {
@@ -83,7 +83,7 @@ public class SimulationGen {
                 SimulationScenario.StochasticProcess expProc = new SimulationScenario.StochasticProcess() {
                     {
                         eventInterArrivalTime(constant(500));
-                        raise(1, expCmd());
+                        raise(1, exp1Cmd());
                     }
                 };
 
@@ -94,8 +94,36 @@ public class SimulationGen {
         };
 
         scen.setSeed(seed);
+
         return scen;
     }
+
+//    public static SimulationScenario expScenario(final int boot) {
+//        SimulationScenario scen = new SimulationScenario() {
+//            {
+//                SimulationScenario.StochasticProcess bootProc = new SimulationScenario.StochasticProcess() {
+//                    {
+//                        eventInterArrivalTime(constant(0));
+//                        raise(1, opBoot(boot));
+//                    }
+//                };
+//
+//                SimulationScenario.StochasticProcess expProc = new SimulationScenario.StochasticProcess() {
+//                    {
+//                        eventInterArrivalTime(constant(500));
+//                        raise(1, expCmd());
+//                    }
+//                };
+//
+//                bootProc.start();
+//                expProc.startAfterTerminationOf(10000, bootProc);
+//                terminateAfterTerminationOf(20000, expProc);
+//            }
+//        };
+//
+//        scen.setSeed(seed);
+//        return scen;
+//    }
 
     public static Operation<BootCmd> opBoot(final int n) {
         return new Operation<BootCmd>() {
@@ -117,7 +145,7 @@ public class SimulationGen {
         };
     }
     
-    public static Operation<Cmd> expCmd() {
+    public static Operation<Cmd> exp1Cmd() {
         return new Operation<Cmd>() {
 
             @Override

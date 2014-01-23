@@ -21,6 +21,7 @@
 package se.sics.caracaldb.datamodel.util;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
@@ -36,12 +37,14 @@ import java.util.TreeMap;
  */
 public class TempTypeInfo {
 
+    public final String typeName;
     public final ByteId dbId;
     public final ByteId typeId;
     public final Map<ByteId, TempFieldInfo> fieldMap;
     public final ByteIdFactory bif;
 
-    public TempTypeInfo(ByteId dbId, ByteId typeId) {
+    public TempTypeInfo(String typeName, ByteId dbId, ByteId typeId) {
+        this.typeName = typeName;
         this.dbId = dbId;
         this.typeId = typeId;
         this.fieldMap = new TreeMap<ByteId, TempFieldInfo>();
@@ -71,6 +74,7 @@ public class TempTypeInfo {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+        sb.append("typeName: ").append(typeName).append("\n");
         sb.append("dbId: ").append(dbId).append("\n");
         sb.append("typeId: ").append(typeId).append("\n");
         for (Map.Entry<ByteId, TempFieldInfo> e : fieldMap.entrySet()) {
@@ -82,7 +86,7 @@ public class TempTypeInfo {
     public static byte[] serializeField(TempFieldInfo fieldInfo) throws UnsupportedEncodingException {
         Gson gson = new Gson();
         String s = gson.toJson(fieldInfo);
-        return s.getBytes("UTF8");
+        return s.getBytes("UTF-8");
     }
 
     public static class TempFieldInfo {
@@ -199,6 +203,8 @@ public class TempTypeInfo {
             Gson gson = GsonHelper.getGson();
 
             writer.beginObject();
+            writer.name("typeName");
+            writer.value(t.typeName);
             writer.name("dbId");
             gson.toJson(gson.toJsonTree(t.dbId), writer);
             writer.name("typeId");
@@ -210,7 +216,6 @@ public class TempTypeInfo {
             }
             writer.endArray();
             writer.endObject();
-
         }
 
         @Override
@@ -228,7 +233,18 @@ public class TempTypeInfo {
 
             reader.beginObject();
 
+            String typeName;
             ByteId dbId, typeId;
+
+            if (reader.peek() != JsonToken.NAME) {
+                return null;
+            }
+            if (!reader.nextName().equals("typeName")) {
+                return null;
+            }
+            
+            typeName = gson.fromJson(reader, String.class);
+            
             if (reader.peek() != JsonToken.NAME) {
                 return null;
             }
@@ -257,7 +273,7 @@ public class TempTypeInfo {
             }
             reader.beginArray();
             
-            TempTypeInfo typeInfo = new TempTypeInfo(dbId, typeId);
+            TempTypeInfo typeInfo = new TempTypeInfo(typeName, dbId, typeId);
             
             while(reader.peek() != JsonToken.END_ARRAY) {
                 TempFieldInfo fi = gson.fromJson(reader, TempFieldInfo.class);

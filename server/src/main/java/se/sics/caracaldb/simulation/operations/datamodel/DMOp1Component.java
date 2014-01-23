@@ -106,11 +106,19 @@ public class DMOp1Component extends ComponentDefinition {
 
         @Override
         public void handle(DMExpCmd event) {
-             if (terminated) {
+            if(exp != null) {
+                LOG.error("Cannot run two experiment commands");
+                throw new RuntimeException();
+            }
+            
+            if (terminated) {
                 LOG.debug("terminated - dropping msg...");
                 return;
             }
-            LOG.debug("Experiment 1 starting...");
+            LOG.debug(event.toString() + " starting...");
+            
+            exp = event.getExp();
+            sendMsg(exp.nextReq());
         }
     };
     
@@ -166,5 +174,9 @@ public class DMOp1Component extends ComponentDefinition {
 
     private void handleTestResp(DMMessage.Resp resp) {
         LOG.debug("processing resp {}", resp);
+        exp.validate(resp);
+        if(!exp.isDone()) {
+            sendMsg(exp.nextReq());
+        }
     }
 }

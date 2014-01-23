@@ -38,7 +38,7 @@ public class TypeInfoTest {
 
         ByteId dbId = new ByteId(new byte[]{1, 1});
         ByteId typeId = new ByteId(new byte[]{1, 2});
-        TempTypeInfo typeInfo = new TempTypeInfo(dbId, typeId);
+        TempTypeInfo typeInfo = new TempTypeInfo("type1", dbId, typeId);
       
         ByteIdFactory bif = new ByteIdFactory();
         typeInfo.addField("field1", FieldInfo.FieldType.FLOAT, true);
