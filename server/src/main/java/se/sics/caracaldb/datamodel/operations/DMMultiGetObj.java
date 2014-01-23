@@ -47,7 +47,7 @@ public class DMMultiGetObj extends DMParallelOp {
 
         TimestampIdFactory tidFactory = TimestampIdFactory.get();
         for (ByteId objId : resultBuilder.objs.keySet()) {
-            DMOperation pendingOp = new DMGetObjOp(tidFactory.newId(), operationsManager, resultBuilder.dbId, resultBuilder.typeId, objId);
+            DMOperation pendingOp = new DMGetObjOp(tidFactory.newId(), this, resultBuilder.dbId, resultBuilder.typeId, objId);
             pendingOps.put(pendingOp.id, pendingOp);
             pendingOp.start();
         }

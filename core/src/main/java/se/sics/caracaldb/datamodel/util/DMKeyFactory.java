@@ -183,9 +183,9 @@ public class DMKeyFactory {
 //            } else if (keyType == DMKeyFactory.tmFieldKF) {
 //                readTMFieldKey(r, dbId, typeId);
             } else if (keyType == DMKeyFactory.dataKF) {
-                readDataKey(r, dbId, typeId);
+                return readDataKey(r, dbId, typeId);
             } else if (keyType == DMKeyFactory.indexKF) {
-                readIndexKey(r, dbId, typeId);
+                return readIndexKey(r, dbId, typeId);
             } else {
                 throw new IOException("getKeyComponents - unknown type of key");
             }
@@ -194,7 +194,6 @@ public class DMKeyFactory {
         } finally {
             closer.close();
         }
-        return null;
     }
 
     private static DMKeyComponents readTMFieldKey(DataInputStream r, ByteId dbId, ByteId typeId) throws IOException {
@@ -218,9 +217,9 @@ public class DMKeyFactory {
     //serialize/deserialize helper methods
     private static ByteId deserializeByteId(DataInputStream r) throws IOException {
         int byteIdSize = r.readByte();
-        byte[] b_byteId = new byte[byteIdSize];
+        byte[] b_byteId = new byte[byteIdSize+1];
         b_byteId[0] = (byte) byteIdSize;
-        r.read(b_byteId, 1, byteIdSize - 1);
+        r.read(b_byteId, 1, byteIdSize);
         return new ByteId(b_byteId);
     }
     

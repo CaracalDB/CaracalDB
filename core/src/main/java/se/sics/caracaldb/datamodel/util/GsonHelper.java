@@ -35,6 +35,8 @@ public class GsonHelper {
         if (gson == null) {
             GsonBuilder gsonBuilder = new GsonBuilder();
             gsonBuilder.registerTypeAdapter(TempTypeInfo.class, new TempTypeInfo.GsonTypeAdapter());
+            gsonBuilder.registerTypeAdapter(TempObject.Value.class, new TempObject.Value.GsonTypeAdapter());
+            gsonBuilder.registerTypeAdapter(TempObject.ValueHolder.class, new TempObject.ValueHolder.GsonTypeAdapter());
             gson = gsonBuilder.create();
         }
         return gson;

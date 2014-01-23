@@ -21,39 +21,43 @@
 package se.sics.caracaldb.simulation.operations.datamodel.validators;
 
 import java.util.Arrays;
+import java.util.Map;
 import org.junit.Assert;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.caracaldb.datamodel.msg.GetType;
+import se.sics.caracaldb.datamodel.msg.QueryObj;
+import se.sics.caracaldb.datamodel.util.ByteId;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
 
-public class GetTypeValidator implements RespValidator {
+public class QueryObjValidator implements RespValidator {
     private final long id;
     private final DMMessage.ResponseCode respCode;
-    private final byte[] typeInfo;
-
-    public GetTypeValidator(long id, DMMessage.ResponseCode respCode, byte[] typeInfo) {
+    private final Map<ByteId, byte[]> objs;
+    
+    public QueryObjValidator(long id, DMMessage.ResponseCode respCode, Map<ByteId, byte[]> objs) {
         this.id = id;
         this.respCode = respCode;
-        this.typeInfo = typeInfo;
+        this.objs = objs;
     }
     
     @Override
     public void validate(DMMessage.Resp resp) {
-        Assert.assertEquals("Wrong message", id, resp.id);
-        if (!(resp instanceof GetType.Resp)) {
-            Assert.assertTrue(false);
+        Assert.assertEquals("Wrong message id", id, resp.id);
+        if(!(resp instanceof QueryObj.Resp)) {
+            Assert.assertTrue("Wrong message type", false);
         }
         Assert.assertEquals("Wrong ResponseCode", respCode, resp.respCode);
         
-        GetType.Resp typedResp = (GetType.Resp) resp;
-        Assert.assertTrue("Type value is not the same", Arrays.equals(typeInfo, typedResp.typeInfo));
-    }
- 
-    @Override
-    public String toString() {
-        return "GET_TYPE - validator(" + id + ")";
+        QueryObj.Resp typedResp = (QueryObj.Resp) resp;
+        if(objs == typedResp.objs) {
+            return;
+        }
+        Assert.assertEquals("Wrong results", objs.size(), typedResp.objs.size());
+        for(Map.Entry<ByteId, byte[]> e : objs.entrySet()) {
+            byte[] obj = typedResp.objs.get(e.getKey());
+            Assert.assertTrue("Wrong results - objects are not equal", Arrays.equals(e.getValue(), obj));
+        }
     }
 }

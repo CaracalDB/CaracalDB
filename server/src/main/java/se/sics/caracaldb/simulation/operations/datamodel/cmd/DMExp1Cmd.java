@@ -22,17 +22,28 @@ package se.sics.caracaldb.simulation.operations.datamodel.cmd;
 
 import com.google.gson.Gson;
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
+import se.sics.caracaldb.datamodel.msg.GetObj;
 import se.sics.caracaldb.datamodel.msg.GetType;
+import se.sics.caracaldb.datamodel.msg.PutObj;
 import se.sics.caracaldb.datamodel.msg.PutType;
+import se.sics.caracaldb.datamodel.msg.QueryObj;
 import se.sics.caracaldb.datamodel.util.ByteId;
 import se.sics.caracaldb.datamodel.util.ByteIdFactory;
 import se.sics.caracaldb.datamodel.util.FieldInfo;
 import se.sics.caracaldb.datamodel.util.GsonHelper;
+import se.sics.caracaldb.datamodel.util.TempObject;
 import se.sics.caracaldb.datamodel.util.TempTypeInfo;
 import se.sics.caracaldb.simulation.operations.datamodel.DMExperiment;
+import se.sics.caracaldb.simulation.operations.datamodel.validators.GetObjValidator;
 import se.sics.caracaldb.simulation.operations.datamodel.validators.GetTypeValidator;
+import se.sics.caracaldb.simulation.operations.datamodel.validators.PutObjValidator;
 import se.sics.caracaldb.simulation.operations.datamodel.validators.PutTypeValidator;
+import se.sics.caracaldb.simulation.operations.datamodel.validators.QueryObjValidator;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
@@ -68,6 +79,26 @@ public class DMExp1Cmd extends DMExpCmd {
         GetTypeValidator getType_val3 = new GetTypeValidator(getType_req3.id, DMMessage.ResponseCode.SUCCESS, byteTypeInfo);
         builder.add(getType_req3, getType_val3);
         
+        TempObject obj = createObj_1(typeInfo, new ByteId(new byte[]{1,2}));
+        byte[] byteObjValue;
+        try {
+            byteObjValue = gson.toJson(obj.objValue).getBytes("UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
+        }
+        PutObj.Req putObj_req4 = new PutObj.Req(tidFactory.newId(), typeInfo.dbId, typeInfo.typeId, obj.objId, byteObjValue, obj.getIndexValue());
+        PutObjValidator putObj_val4 = new PutObjValidator(putObj_req4.id, DMMessage.ResponseCode.SUCCESS);
+        builder.add(putObj_req4, putObj_val4);
+        
+        GetObj.Req getObj_req4 = new GetObj.Req(tidFactory.newId(), typeInfo.dbId, typeInfo.typeId, obj.objId);
+        GetObjValidator getObj_val4 = new GetObjValidator(getObj_req4.id, DMMessage.ResponseCode.SUCCESS, byteObjValue);
+        builder.add(getObj_req4, getObj_val4);
+        
+        QueryObj.Req queryObj_req5 = new QueryObj.Req(tidFactory.newId(), typeInfo.dbId, typeInfo.typeId, typeInfo.getFieldId("field3"), 15);
+        Map<ByteId, byte[]> objs = new HashMap<ByteId, byte[]>();
+        objs.put(obj.objId, byteObjValue);
+        QueryObjValidator queryObj_val5 = new QueryObjValidator(queryObj_req5.id, DMMessage.ResponseCode.SUCCESS,objs);
+        builder.add(queryObj_req5, queryObj_val5);
         return builder.build();
     }
     
@@ -77,6 +108,15 @@ public class DMExp1Cmd extends DMExpCmd {
         typeInfo.addField("field2", FieldInfo.FieldType.STRING, false);
         typeInfo.addField("field3", FieldInfo.FieldType.INTEGER, true);
         return typeInfo;
+    }
+    
+    private TempObject createObj_1(TempTypeInfo typeInfo, ByteId objId) {
+        TempObject obj = new TempObject(typeInfo, objId);
+        obj.objValue.fieldMap.put(typeInfo.getFieldId("field1"), 17.2);
+        obj.objValue.fieldMap.put(typeInfo.getFieldId("field2"), "test");
+        obj.objValue.fieldMap.put(typeInfo.getFieldId("field3"), 15);
+        
+        return obj;
     }
     
     @Override

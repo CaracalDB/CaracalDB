@@ -21,38 +21,43 @@
 package se.sics.caracaldb.datamodel.operations;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.caracaldb.datamodel.msg.PutGsonObj;
+import se.sics.caracaldb.datamodel.msg.PutObj;
 import se.sics.caracaldb.datamodel.operations.primitives.DMPutOp;
 import se.sics.caracaldb.datamodel.util.ByteId;
 import se.sics.caracaldb.datamodel.util.DMKeyFactory;
+import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-
-
-public class DMPutObjOp extends DMSequentialOp {
+public class DMPutObjOp extends DMParallelOp {
 
     private final ByteId dbId;
     private final ByteId typeId;
     private final ByteId objId;
     private final byte[] value;
+    private final Map<ByteId, Object> indexValues;
 
-    public DMPutObjOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId, ByteId objId, byte[] value) {
+    public DMPutObjOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId, ByteId objId, byte[] value, Map<ByteId, Object> indexValues) {
         super(id, operationsMaster);
         this.dbId = dbId;
         this.typeId = typeId;
         this.objId = objId;
         this.value = value;
+        this.indexValues = indexValues;
     }
 
     //*****DMOperations*****
     @Override
     public final void startHook() {
         LOG.debug("Operation {} - started", toString());
-
+        TimestampIdFactory tidFactory = TimestampIdFactory.get();
+        
         Key key;
         try {
             key = DMKeyFactory.getDataKey(dbId, typeId, objId);
@@ -60,19 +65,39 @@ public class DMPutObjOp extends DMSequentialOp {
             fail(DMMessage.ResponseCode.FAILURE);
             return;
         }
-        pendingOp = new DMPutOp(id, operationsManager, key, value);
-        pendingOp.start();
+        
+        DMPutOp putOp = new DMPutOp(tidFactory.newId(), this, key, value);
+        pendingOps.put(putOp.id, putOp);
+        putOp.start();
+
+        for (Map.Entry<ByteId, Object> e : indexValues.entrySet()) {
+            Key indexKey;
+            try {
+                indexKey = DMKeyFactory.getIndexKey(dbId, typeId, e.getKey(), e.getValue(), objId);
+            } catch (IOException ex) {
+                fail(DMMessage.ResponseCode.FAILURE);
+                return;
+            }
+            
+            DMPutOp indexOp = new DMPutOp(tidFactory.newId(), this, indexKey, "".getBytes());
+            pendingOps.put(indexOp.id, indexOp);
+            indexOp.start();
+        }
+
     }
 
     @Override
     public void childFinished(long opId, DMOperation.Result result) {
-        if(done) {
+        if (done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
         }
         if (result instanceof DMPutOp.Result) {
             if (result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
-                success();
+                pendingOps.remove(opId);
+                if(pendingOps.isEmpty()) {
+                    success();
+                }
                 return;
             }
         }
@@ -85,7 +110,7 @@ public class DMPutObjOp extends DMSequentialOp {
     public String toString() {
         return "DM_PUT_OBJ " + id;
     }
-    
+
     private void fail(DMMessage.ResponseCode respCode) {
         Result result = new Result(respCode, dbId, typeId, objId);
         finish(result);
@@ -97,10 +122,11 @@ public class DMPutObjOp extends DMSequentialOp {
     }
 
     public static class Result extends DMOperation.Result {
+
         public final ByteId dbId;
         public final ByteId typeId;
         public final ByteId objId;
-        
+
         public Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, ByteId objId) {
             super(respCode);
             this.dbId = dbId;
@@ -110,7 +136,7 @@ public class DMPutObjOp extends DMSequentialOp {
 
         @Override
         public DMMessage.Resp getMsg(long msgId) {
-            return new PutGsonObj.Resp(msgId, responseCode, dbId, typeId, objId);
+            return new PutObj.Resp(msgId, responseCode, dbId, typeId, objId);
         }
     }
 }

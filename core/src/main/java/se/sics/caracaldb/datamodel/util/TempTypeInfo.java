@@ -56,11 +56,21 @@ public class TempTypeInfo {
         fieldMap.put(fi.fieldId, fi);
         return this;
     }
+    
     private TempTypeInfo addField(TempFieldInfo field) {
         fieldMap.put(field.fieldId, field);
         return this;
     }
 
+    public ByteId getFieldId(String fieldName) {
+        for(TempFieldInfo fi : fieldMap.values()) {
+            if(fi.fieldName.equals(fieldName)) {
+                return fi.fieldId;
+            }
+        }
+        return null;
+    }
+    
     public void deserializeField(byte[] bFieldInfo) throws UnsupportedEncodingException {
         deserializeField(new String(bFieldInfo, "UTF8"));
     }
@@ -91,13 +101,10 @@ public class TempTypeInfo {
 
     public static class TempFieldInfo {
 
-        private ByteId fieldId;
-        private String fieldName;
-        private FieldInfo.FieldType fieldType;
-        private boolean indexed;
-
-        TempFieldInfo() {
-        }
+        public final ByteId fieldId;
+        public final String fieldName;
+        public final FieldInfo.FieldType fieldType;
+        public final boolean indexed;
 
         TempFieldInfo(ByteId fieldId, String fieldName, FieldInfo.FieldType fieldType, boolean indexed) {
             this.fieldId = fieldId;
@@ -111,92 +118,92 @@ public class TempTypeInfo {
             return "fieldId: " + fieldId + " fieldType: " + fieldType + " fieldName: " + fieldName + " indexed: " + indexed;
         }
 
-        public static class GsonTypeAdapter extends TypeAdapter<TempFieldInfo> {
-
-            @Override
-            public void write(JsonWriter writer, TempFieldInfo t) throws IOException {
-                Gson gson = GsonHelper.getGson();
-
-                writer.beginObject();
-                writer.name("fieldId");
-                gson.toJson(gson.toJsonTree(t.fieldId), writer);
-                writer.name("fieldName");
-                gson.toJson(t.fieldName);
-                writer.name("fieldType");
-                writer.value(t.fieldType.toString());
-                writer.name("indexed");
-                writer.value(t.indexed);
-                writer.endObject();
-            }
-
-            @Override
-            public TempFieldInfo read(JsonReader reader) throws IOException {
-                Gson gson = GsonHelper.getGson();
-
-                JsonToken token = reader.peek();
-                if (token == JsonToken.NULL) {
-                    reader.nextNull();
-                    return null;
-                }
-                if (token != JsonToken.BEGIN_OBJECT) {
-                    return null;
-                }
-
-                reader.beginObject();
-
-                ByteId fieldId;
-                String fieldName;
-                FieldInfo.FieldType fieldType;
-                boolean indexed;
-                
-                if (reader.peek() != JsonToken.NAME) {
-                    return null;
-                }
-                if (!reader.nextName().equals("fieldId")) {
-                    return null;
-                }
-
-                fieldId = gson.fromJson(reader, ByteId.class);
-
-                if (reader.peek() != JsonToken.NAME) {
-                    return null;
-                }
-                if (!reader.nextName().equals("fieldName")) {
-                    return null;
-                }
-                fieldName = reader.nextString();
-                
-                if (reader.peek() != JsonToken.NAME) {
-                    return null;
-                }
-                if (!reader.nextName().equals("fieldType")) {
-                    return null;
-                }
-                try {
-                    fieldType = FieldInfo.FieldType.parseString(reader.nextString());
-                } catch (TypeInfo.InconsistencyException ex) {
-                    return null;
-                }
-                
-                if (reader.peek() != JsonToken.NAME) {
-                    return null;
-                }
-                if (!reader.nextName().equals("indexed")) {
-                    return null;
-                }
-                indexed = Boolean.parseBoolean(reader.nextString());
-
-                reader.endObject();
-                return new TempFieldInfo(fieldId, fieldName, fieldType, indexed);
-            }
-
-        }
+//        public static class GsonTypeAdapter2 extends TypeAdapter<TempFieldInfo> {
+//
+//            public GsonTypeAdapter2() {
+//            }
+//            
+//            @Override
+//            public void write(JsonWriter writer, TempFieldInfo t) throws IOException {
+//                Gson gson = GsonHelper.getGson();
+//
+//                writer.beginObject();
+//                writer.name("fieldId");
+//                gson.toJson(gson.toJsonTree(t.fieldId), writer);
+//                writer.name("fieldName");
+//                gson.toJson(t.fieldName);
+//                writer.name("fieldType");
+//                writer.value(t.fieldType.toString());
+//                writer.name("indexed");
+//                writer.value(t.indexed);
+//                writer.endObject();
+//            }
+//
+//            @Override
+//            public TempFieldInfo read(JsonReader reader) throws IOException {
+//                Gson gson = GsonHelper.getGson();
+//
+//                JsonToken token = reader.peek();
+//                if (token == JsonToken.NULL) {
+//                    reader.nextNull();
+//                    return null;
+//                }
+//                if (token != JsonToken.BEGIN_OBJECT) {
+//                    return null;
+//                }
+//
+//                reader.beginObject();
+//
+//                ByteId fieldId;
+//                String fieldName;
+//                FieldInfo.FieldType fieldType;
+//                boolean indexed;
+//                
+//                if (reader.peek() != JsonToken.NAME) {
+//                    return null;
+//                }
+//                if (!reader.nextName().equals("fieldId")) {
+//                    return null;
+//                }
+//
+//                fieldId = gson.fromJson(reader, ByteId.class);
+//
+//                if (reader.peek() != JsonToken.NAME) {
+//                    return null;
+//                }
+//                if (!reader.nextName().equals("fieldName")) {
+//                    return null;
+//                }
+//                fieldName = reader.nextString();
+//                
+//                if (reader.peek() != JsonToken.NAME) {
+//                    return null;
+//                }
+//                if (!reader.nextName().equals("fieldType")) {
+//                    return null;
+//                }
+//                try {
+//                    fieldType = FieldInfo.FieldType.parseString(reader.nextString());
+//                } catch (TypeInfo.InconsistencyException ex) {
+//                    return null;
+//                }
+//                
+//                if (reader.peek() != JsonToken.NAME) {
+//                    return null;
+//                }
+//                if (!reader.nextName().equals("indexed")) {
+//                    return null;
+//                }
+//                indexed = Boolean.parseBoolean(reader.nextString());
+//
+//                reader.endObject();
+//                return new TempFieldInfo(fieldId, fieldName, fieldType, indexed);
+//            }
+//
+//        }
     }
 
     public static class GsonTypeAdapter extends TypeAdapter<TempTypeInfo> {
-
-        public GsonTypeAdapter() {
-        }
 
         @Override
         public void write(JsonWriter writer, TempTypeInfo t) throws IOException {
@@ -230,42 +237,27 @@ public class TempTypeInfo {
             if (token != JsonToken.BEGIN_OBJECT) {
                 return null;
             }
-
             reader.beginObject();
 
             String typeName;
             ByteId dbId, typeId;
 
-            if (reader.peek() != JsonToken.NAME) {
+            if (reader.peek() != JsonToken.NAME || !reader.nextName().equals("typeName")) {
                 return null;
             }
-            if (!reader.nextName().equals("typeName")) {
-                return null;
-            }
-            
             typeName = gson.fromJson(reader, String.class);
             
-            if (reader.peek() != JsonToken.NAME) {
+            if (reader.peek() != JsonToken.NAME || !reader.nextName().equals("dbId")) {
                 return null;
             }
-            if (!reader.nextName().equals("dbId")) {
-                return null;
-            }
-
             dbId = gson.fromJson(reader, ByteId.class);
 
-            if (reader.peek() != JsonToken.NAME) {
-                return null;
-            }
-            if (!reader.nextName().equals("typeId")) {
+            if (reader.peek() != JsonToken.NAME || !reader.nextName().equals("typeId")) {
                 return null;
             }
             typeId = gson.fromJson(reader, ByteId.class);
 
-            if(reader.peek() != JsonToken.NAME) {
-                return null;
-            }
-            if(!reader.nextName().equals("fieldMap")) {
+            if(reader.peek() != JsonToken.NAME || !reader.nextName().equals("fieldMap")) {
                 return null;
             }
             if(reader.peek() != JsonToken.BEGIN_ARRAY) {

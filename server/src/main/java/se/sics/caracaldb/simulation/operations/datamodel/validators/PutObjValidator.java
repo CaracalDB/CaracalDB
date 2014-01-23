@@ -20,40 +20,35 @@
  */
 package se.sics.caracaldb.simulation.operations.datamodel.validators;
 
-import java.util.Arrays;
 import org.junit.Assert;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.caracaldb.datamodel.msg.GetType;
+import se.sics.caracaldb.datamodel.msg.PutObj;
 
 /**
- * @author Alex Ormenisan <aaor@sics.se>
+ * @author Alex
  */
 
-public class GetTypeValidator implements RespValidator {
+
+public class PutObjValidator implements RespValidator {
     private final long id;
     private final DMMessage.ResponseCode respCode;
-    private final byte[] typeInfo;
-
-    public GetTypeValidator(long id, DMMessage.ResponseCode respCode, byte[] typeInfo) {
+    
+    public PutObjValidator(long id, DMMessage.ResponseCode respCode) {
         this.id = id;
         this.respCode = respCode;
-        this.typeInfo = typeInfo;
     }
-    
+
     @Override
     public void validate(DMMessage.Resp resp) {
         Assert.assertEquals("Wrong message", id, resp.id);
-        if (!(resp instanceof GetType.Resp)) {
+        if (!(resp instanceof PutObj.Resp)) {
             Assert.assertTrue(false);
         }
         Assert.assertEquals("Wrong ResponseCode", respCode, resp.respCode);
-        
-        GetType.Resp typedResp = (GetType.Resp) resp;
-        Assert.assertTrue("Type value is not the same", Arrays.equals(typeInfo, typedResp.typeInfo));
     }
- 
+    
     @Override
     public String toString() {
-        return "GET_TYPE - validator(" + id + ")";
+        return "PUT_OBJ - validator(" + id + ")";
     }
 }

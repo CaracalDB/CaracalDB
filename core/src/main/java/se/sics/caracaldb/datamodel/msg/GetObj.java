@@ -25,7 +25,7 @@ import se.sics.caracaldb.datamodel.util.ByteId;
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class GetGsonObj {
+public class GetObj {
 
     public static class Req extends DMMessage.Req {
 

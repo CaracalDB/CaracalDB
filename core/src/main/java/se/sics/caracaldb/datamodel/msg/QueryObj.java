@@ -21,48 +21,45 @@
 
 package se.sics.caracaldb.datamodel.msg;
 
+import java.util.Map;
 import se.sics.caracaldb.datamodel.util.ByteId;
 
 /**
+ *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class PutGsonObj {
+public class QueryObj {
     public static class Req extends DMMessage.Req {
         public final ByteId dbId;
         public final ByteId typeId;
-        public final ByteId objId;
+        public final ByteId indexId;
+        public final Object indexVal;
         
-        public final byte[] value;
-
-        public Req(long id, ByteId dbId, ByteId typeId, ByteId objId, byte[] value) {
+        public Req(long id, ByteId dbId, ByteId typeId, ByteId indexId, Object indexVal) {
             super(id);
             this.dbId = dbId;
             this.typeId = typeId;
-            this.objId = objId;
-            this.value = value;
+            this.indexId = indexId;
+            this.indexVal = indexVal;
         }
-
+        
         @Override
         public String toString() {
-            return "DM_PUT_GSONOBJ_REQ(" + id + ")";
+            return "DM_QUERY_OBJ_REQ(" + id + ")";
         }
     }
-
+    
     public static class Resp extends DMMessage.Resp {
-        public final ByteId dbId;
-        public final ByteId typeId; 
-        public final ByteId objId;
+        public final Map<ByteId, byte[]> objs;
         
-        public Resp(long id, DMMessage.ResponseCode opResult, ByteId dbId, ByteId typeId, ByteId objId) {
-            super(id, opResult);
-            this.dbId = dbId;
-            this.typeId = typeId;
-            this.objId = objId;
+        public Resp(long id, DMMessage.ResponseCode respCode, Map<ByteId, byte[]> objs) {
+            super(id, respCode);
+            this.objs = objs;
         }
-
+        
         @Override
         public String toString() {
-            return "DM_PUT_GSONOBJ_RESP(" + id + ")";
+            return "DM_QUERY_OBJ_RESP(" + id + ")";
         }
     }
 }

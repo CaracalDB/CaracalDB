@@ -26,10 +26,11 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.datamodel.msg.GetAllTypes;
-import se.sics.caracaldb.datamodel.msg.GetGsonObj;
+import se.sics.caracaldb.datamodel.msg.GetObj;
 import se.sics.caracaldb.datamodel.msg.GetType;
-import se.sics.caracaldb.datamodel.msg.PutGsonObj;
+import se.sics.caracaldb.datamodel.msg.PutObj;
 import se.sics.caracaldb.datamodel.msg.PutType;
+import se.sics.caracaldb.datamodel.msg.QueryObj;
 import se.sics.caracaldb.datamodel.operations.DMGetAllTypesOp;
 import se.sics.caracaldb.datamodel.operations.DMGetObjOp;
 import se.sics.caracaldb.datamodel.operations.DMGetTypeOp;
@@ -37,6 +38,7 @@ import se.sics.caracaldb.datamodel.operations.DMOperation;
 import se.sics.caracaldb.datamodel.operations.DMOperationsManager;
 import se.sics.caracaldb.datamodel.operations.DMPutObjOp;
 import se.sics.caracaldb.datamodel.operations.DMPutTypeOp;
+import se.sics.caracaldb.datamodel.operations.DMQueryObjOp;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.utils.TimestampIdFactory;
@@ -68,8 +70,9 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
         subscribe(getAllTypesHandler, dataModel);
         subscribe(getTypeHandler, dataModel);
         subscribe(putTypeHandler, dataModel);
-        subscribe(getGsonObjHandler, dataModel);
-        subscribe(putGsonObjHandler, dataModel);
+        subscribe(getObjHandler, dataModel);
+        subscribe(putObjHandler, dataModel);
+        subscribe(queryObjHandler, dataModel);
 
         subscribe(caracalResponseHandler, dataModel);
     }
@@ -78,9 +81,8 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(GetAllTypes.Req req) {
-            long opId = tidFactory.newId();
-            DMOperation op = new DMGetAllTypesOp(opId, operationsManager, req.dbId);
-            pendingOps.put(opId, op);
+            DMOperation op = new DMGetAllTypesOp(req.id, operationsManager, req.dbId);
+            pendingOps.put(op.id, op);
             op.start();
         }
 
@@ -108,28 +110,37 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
     };
 
-    Handler<GetGsonObj.Req> getGsonObjHandler = new Handler<GetGsonObj.Req>() {
+    Handler<GetObj.Req> getObjHandler = new Handler<GetObj.Req>() {
 
         @Override
-        public void handle(GetGsonObj.Req req) {
-            long opId = tidFactory.newId();
-            DMOperation op = new DMGetObjOp(opId, operationsManager, req.dbId, req.typeId, req.objId);
-            pendingOps.put(opId, op);
+        public void handle(GetObj.Req req) {
+            DMOperation op = new DMGetObjOp(req.id, operationsManager, req.dbId, req.typeId, req.objId);
+            pendingOps.put(op.id, op);
             op.start();
         }
 
     };
 
-    Handler<PutGsonObj.Req> putGsonObjHandler = new Handler<PutGsonObj.Req>() {
+    Handler<PutObj.Req> putObjHandler = new Handler<PutObj.Req>() {
 
         @Override
-        public void handle(PutGsonObj.Req req) {
-            long opId = tidFactory.newId();
-            DMOperation op = new DMPutObjOp(opId, operationsManager, req.dbId, req.typeId, req.objId, req.value);
-            pendingOps.put(opId, op);
+        public void handle(PutObj.Req req) {
+            DMOperation op = new DMPutObjOp(req.id, operationsManager, req.dbId, req.typeId, req.objId, req.value, req.indexValue);
+            pendingOps.put(op.id, op);
             op.start();
         }
 
+    };
+    
+    Handler<QueryObj.Req> queryObjHandler = new Handler<QueryObj.Req>() {
+
+        @Override
+        public void handle(QueryObj.Req req) {
+            DMOperation op = new DMQueryObjOp(req.id, operationsManager, req.dbId, req.typeId, req.indexId, req.indexVal);
+            pendingOps.put(op.id, op);
+            op.start();
+        }
+        
     };
 
     Handler<CaracalResponse> caracalResponseHandler = new Handler<CaracalResponse>() {

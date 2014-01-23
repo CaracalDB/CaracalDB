@@ -24,7 +24,7 @@ import se.sics.caracaldb.datamodel.operations.primitives.DMGetOp;
 import java.io.IOException;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
-import se.sics.caracaldb.datamodel.msg.GetGsonObj;
+import se.sics.caracaldb.datamodel.msg.GetObj;
 import se.sics.caracaldb.datamodel.util.ByteId;
 import se.sics.caracaldb.datamodel.util.DMKeyFactory;
 
@@ -56,7 +56,7 @@ public class DMGetObjOp extends DMSequentialOp {
             finish(new Result(DMMessage.ResponseCode.FAILURE, dbId, typeId, objId, null));
             return;
         }
-        pendingOp = new DMGetOp(id, operationsManager, key);
+        pendingOp = new DMGetOp(id, this, key);
         pendingOp.start();
     }
 
@@ -111,7 +111,7 @@ public class DMGetObjOp extends DMSequentialOp {
 
         @Override
         public DMMessage.Resp getMsg(long msgId) {
-            return new GetGsonObj.Resp(msgId, responseCode, dbId, typeId, objId, value);
+            return new GetObj.Resp(msgId, responseCode, dbId, typeId, objId, value);
         }
     }
 }
