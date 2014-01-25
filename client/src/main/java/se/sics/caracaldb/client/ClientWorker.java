@@ -26,6 +26,8 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.datamodel.msg.DMMessage;
+import se.sics.caracaldb.datamodel.msg.DMNetworkMessage;
 import se.sics.caracaldb.global.ForwardMessage;
 import se.sics.caracaldb.global.Sample;
 import se.sics.caracaldb.global.SampleRequest;
@@ -59,6 +61,7 @@ public class ClientWorker extends ComponentDefinition {
     Positive<Timer> timer = requires(Timer.class);
     // Instance
     private final BlockingQueue<CaracalResponse> responseQ;
+    private final BlockingQueue<DMMessage.Resp> dataModelQ;
     private final Address self;
     private final Address bootstrapServer;
     private final SortedSet<Address> knownNodes = new TreeSet<Address>();
@@ -68,6 +71,7 @@ public class ClientWorker extends ComponentDefinition {
 
     public ClientWorker(ClientWorkerInit init) {
         responseQ = init.q;
+        dataModelQ = init.dataModelQ;
         self = init.self;
         bootstrapServer = init.bootstrapServer;
         sampleSize = init.sampleSize;
@@ -80,6 +84,8 @@ public class ClientWorker extends ComponentDefinition {
         subscribe(getHandler, client);
         subscribe(rqHandler, client);
         subscribe(responseHandler, net);
+        subscribe(dataModelReqHandler, client);
+        subscribe(dataModelRespHandler, net);
     }
     Handler<Start> startHandler = new Handler<Start>() {
         @Override
@@ -164,7 +170,6 @@ public class ClientWorker extends ComponentDefinition {
                     return;
                 }
                 enqueue(resp);
-                
 
                 return;
             }
@@ -172,8 +177,37 @@ public class ClientWorker extends ComponentDefinition {
         }
     };
 
+    Handler<DMMessage.Req> dataModelReqHandler = new Handler<DMMessage.Req>() {
+
+        @Override
+        public void handle(DMMessage.Req event) {
+            Address target = randomNode();
+            currentRequestId = event.id;
+            DMNetworkMessage.Req msg = new DMNetworkMessage.Req(self, target, event);
+            LOG.debug("MSG: {}", msg);
+            trigger(msg, net);
+        }
+    };
+    Handler<DMNetworkMessage.Resp> dataModelRespHandler = new Handler<DMNetworkMessage.Resp>() {
+
+        @Override
+        public void handle(DMNetworkMessage.Resp resp) {
+            LOG.debug("Handling Message {}", resp);
+            if (resp.message.id != currentRequestId) {
+                LOG.debug("Ignoring {} as it has already been received.", resp.message);
+                return;
+            }
+            dmEnqueue(resp.message);
+        }
+
+    };
+
     public void triggerOnSelf(CaracalOp op) {
         trigger(op, client.getPair());
+    }
+
+    public void dataModelTrigger(DMMessage.Req req) {
+        trigger(req, client.getPair());
     }
 
     private Address randomNode() {
@@ -192,6 +226,13 @@ public class ClientWorker extends ComponentDefinition {
         currentRequestId = -1l;
         trigger(resp, client);
         if (responseQ != null && !responseQ.offer(resp)) {
+            LOG.warn("Could not insert {} into responseQ. It's overflowing. Clean up this mess!");
+        }
+    }
+
+    private void dmEnqueue(DMMessage.Resp resp) {
+        currentRequestId = -1l;
+        if (dataModelQ != null && !dataModelQ.offer(resp)) {
             LOG.warn("Could not insert {} into responseQ. It's overflowing. Clean up this mess!");
         }
     }

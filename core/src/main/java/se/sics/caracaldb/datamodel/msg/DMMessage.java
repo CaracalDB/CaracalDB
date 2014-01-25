@@ -49,6 +49,6 @@ public class DMMessage {
 
     public static enum ResponseCode {
 
-        SUCCESS, FAILURE;
+        SUCCESS, FAILURE, TIMEOUT;
     }
 }

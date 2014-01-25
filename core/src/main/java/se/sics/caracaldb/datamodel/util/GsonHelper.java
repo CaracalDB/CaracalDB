@@ -22,6 +22,10 @@ package se.sics.caracaldb.datamodel.util;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientGetObjGson;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientGetTypeGson;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientPutObjGson;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientQueryObjGson;
 
 /**
  *
@@ -37,6 +41,10 @@ public class GsonHelper {
             gsonBuilder.registerTypeAdapter(TempTypeInfo.class, new TempTypeInfo.GsonTypeAdapter());
             gsonBuilder.registerTypeAdapter(TempObject.Value.class, new TempObject.Value.GsonTypeAdapter());
             gsonBuilder.registerTypeAdapter(TempObject.ValueHolder.class, new TempObject.ValueHolder.GsonTypeAdapter());
+            gsonBuilder.registerTypeAdapter(ClientGetTypeGson.class, new ClientGetTypeGson.GsonTypeAdapter());
+            gsonBuilder.registerTypeAdapter(ClientGetObjGson.class, new ClientGetObjGson.GsonTypeAdapter());
+            gsonBuilder.registerTypeAdapter(ClientQueryObjGson.class, new ClientQueryObjGson.GsonTypeAdapter());
+            gsonBuilder.registerTypeAdapter(ClientPutObjGson.class, new ClientPutObjGson.GsonTypeAdapter());
             gson = gsonBuilder.create();
         }
         return gson;

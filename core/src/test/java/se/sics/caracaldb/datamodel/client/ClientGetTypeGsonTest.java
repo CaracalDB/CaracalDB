@@ -19,41 +19,29 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package se.sics.caracaldb.datamodel.util;
+package se.sics.caracaldb.datamodel.client;
 
 import com.google.gson.Gson;
+import junit.framework.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import se.sics.caracaldb.datamodel.util.ByteId;
+import se.sics.caracaldb.datamodel.util.GsonHelper;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientGetTypeGson;
 
 /**
- * @author Alex
+ *
+ * @author Alex Ormenisan <aaor@sics.se>
  */
-@RunWith(JUnit4.class)
-public class ObjectTest {
+public class ClientGetTypeGsonTest {
     @Test
-    public void objGsonTest() {
+    public void test() {
         Gson gson = GsonHelper.getGson();
-
         ByteId dbId = new ByteId(new byte[]{1, 1});
         ByteId typeId = new ByteId(new byte[]{1, 2});
-        TempTypeInfo typeInfo = new TempTypeInfo("type1", dbId, typeId);
-      
-        ByteIdFactory bif = new ByteIdFactory();
-        typeInfo.addField("field1", FieldInfo.FieldType.FLOAT, true);
-        typeInfo.addField("field2", FieldInfo.FieldType.STRING, false);
-        typeInfo.addField("field3", FieldInfo.FieldType.INTEGER, true);
-        
-        ByteId objId = new ByteId(new byte[]{1,3});
-        TempObject obj = new TempObject(typeInfo, objId);
-        
-        obj.objValue.fieldMap.put(typeInfo.getField("field1"), 17.2);
-        obj.objValue.fieldMap.put(typeInfo.getField("field2"), "test");
-        obj.objValue.fieldMap.put(typeInfo.getField("field3"), 12);
-        
-        System.out.println(typeInfo);
-        System.out.println(obj);
-        System.out.println(gson.toJson(obj.objValue));
-        System.out.println(gson.fromJson(gson.toJson(obj.objValue), TempObject.ValueHolder.class).getValue(typeInfo));
+        ClientGetTypeGson c = new ClientGetTypeGson(dbId, typeId);
+        System.out.println(c);
+        ClientGetTypeGson cc = gson.fromJson("{\"dbId\":{\"id\":[1,1]},\"typeId\":{\"id\":[1,2]}}", ClientGetTypeGson.class);
+        System.out.println(cc);
+        Assert.assertEquals(c, cc);
     }
 }

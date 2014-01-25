@@ -62,13 +62,17 @@ public class TempTypeInfo {
         return this;
     }
 
-    public ByteId getFieldId(String fieldName) {
+    public ByteId getField(String fieldName) {
         for(TempFieldInfo fi : fieldMap.values()) {
             if(fi.fieldName.equals(fieldName)) {
                 return fi.fieldId;
             }
         }
         return null;
+    }
+    
+    public TempFieldInfo getField(ByteId fieldId) {
+        return fieldMap.get(fieldId);
     }
     
     public void deserializeField(byte[] bFieldInfo) throws UnsupportedEncodingException {

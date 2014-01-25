@@ -31,6 +31,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import se.sics.caracaldb.datamodel.msg.DMMessage;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.Component;
@@ -133,12 +134,13 @@ public class ClientManager extends ComponentDefinition {
         try {
             Address adr = addVNode();
             BlockingQueue<CaracalResponse> q = new LinkedBlockingQueue<CaracalResponse>();
-            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, adr, bootstrapServer, sampleSize));
+            BlockingQueue<DMMessage.Resp> dataModelQ = new LinkedBlockingQueue<DMMessage.Resp>();
+            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, dataModelQ, adr, bootstrapServer, sampleSize));
             vnc.addConnection(adr.getId(), cw.getNegative(Network.class));
             connect(timer.getPositive(Timer.class), cw.getNegative(Timer.class));
             trigger(Start.event, cw.control());
             ClientWorker worker = (ClientWorker) cw.getComponent();
-            return new BlockingClient(q, worker);
+            return new BlockingClient(q, dataModelQ, worker);
         } finally {
             lock.writeLock().unlock();
         }

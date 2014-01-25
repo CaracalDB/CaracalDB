@@ -20,12 +20,33 @@
  */
 package se.sics.caracaldb.client;
 
+import com.google.gson.Gson;
+import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.datamodel.msg.DMMessage;
+import se.sics.caracaldb.datamodel.msg.GetObj;
+import se.sics.caracaldb.datamodel.msg.GetType;
+import se.sics.caracaldb.datamodel.msg.PutObj;
+import se.sics.caracaldb.datamodel.msg.PutType;
+import se.sics.caracaldb.datamodel.msg.QueryObj;
+import se.sics.caracaldb.datamodel.util.ByteId;
+import se.sics.caracaldb.datamodel.util.FieldInfo;
+import se.sics.caracaldb.datamodel.util.GsonHelper;
+import se.sics.caracaldb.datamodel.util.TempObject;
+import se.sics.caracaldb.datamodel.util.TempTypeInfo;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientGetObjGson;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientGetTypeGson;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientPutObjGson;
+import se.sics.caracaldb.datamodel.util.gsonextra.ClientQueryObjGson;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
 import se.sics.caracaldb.operations.GetResponse;
@@ -49,11 +70,16 @@ public class BlockingClient {
     private static final TimeUnit TIMEUNIT = TimeUnit.SECONDS;
     // instance
     private final BlockingQueue<CaracalResponse> responseQueue;
+    private final BlockingQueue<DMMessage.Resp> dataModelQueue;
     private final ClientWorker worker;
 
-    BlockingClient(BlockingQueue<CaracalResponse> responseQueue, ClientWorker worker) {
+    private final Map<ByteId, TempTypeInfo> types;
+
+    BlockingClient(BlockingQueue<CaracalResponse> responseQueue, BlockingQueue<DMMessage.Resp> dataModelQueue, ClientWorker worker) {
         this.responseQueue = responseQueue;
+        this.dataModelQueue = dataModelQueue;
         this.worker = worker;
+        this.types = new HashMap<ByteId, TempTypeInfo>();
     }
 
     public ResponseCode put(Key k, byte[] value) {
@@ -91,7 +117,7 @@ public class BlockingClient {
             return new GetResponse(id, k, null, ResponseCode.CLIENT_TIMEOUT);
         }
     }
-    
+
     public RangeResponse rangeRequest(KeyRange range) {
         LOG.debug("RangeRequest for {}", range);
         long id = TimestampIdFactory.get().newId();
@@ -109,6 +135,161 @@ public class BlockingClient {
         } catch (InterruptedException ex) {
             LOG.error("Couldn't get a response.", ex);
             return new RangeResponse(id, range, ResponseCode.CLIENT_TIMEOUT, null, null);
+        }
+    }
+
+    public DMMessage.ResponseCode putType(String putType) {
+        LOG.debug("PutType for {}", putType);
+        long id = TimestampIdFactory.get().newId();
+        Gson gson = GsonHelper.getGson();
+        TempTypeInfo typeInfo = gson.fromJson(putType, TempTypeInfo.class);
+        PutType.Req req;
+        try {
+            req = new PutType.Req(id, typeInfo.dbId, typeInfo.typeId, putType.getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
+        }
+        worker.dataModelTrigger(req);
+        try {
+            DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
+            if (resp == null) {
+                return DMMessage.ResponseCode.TIMEOUT;
+            }
+            if (resp instanceof PutType.Resp) {
+                return ((PutType.Resp) resp).respCode;
+            }
+            throw new RuntimeException("Bad Response Type");
+        } catch (InterruptedException ex) {
+            LOG.error("Couldn't get a response.", ex);
+            return DMMessage.ResponseCode.TIMEOUT;
+        }
+    }
+
+    public GetType.Resp getType(String getType) {
+        LOG.debug("GetType for {}", getType);
+        long id = TimestampIdFactory.get().newId();
+        Gson gson = GsonHelper.getGson();
+        ClientGetTypeGson getTypeGson = gson.fromJson(getType, ClientGetTypeGson.class);
+        GetType.Req req = new GetType.Req(id, getTypeGson.dbId, getTypeGson.typeId);
+        worker.dataModelTrigger(req);
+        try {
+            DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
+            if (resp == null) {
+                return new GetType.Resp(id, DMMessage.ResponseCode.TIMEOUT, null);
+            }
+            if (resp instanceof GetType.Resp) {
+                return (GetType.Resp) resp;
+            }
+            throw new RuntimeException("Bad Response Type");
+        } catch (InterruptedException ex) {
+            LOG.error("Couldn't get a response.", ex);
+            return new GetType.Resp(id, DMMessage.ResponseCode.TIMEOUT, null);
+        }
+    }
+
+    public DMMessage.ResponseCode putObj(String putObj) {
+        LOG.debug("PutObj for {}", putObj);
+        long id = TimestampIdFactory.get().newId();
+        Gson gson = GsonHelper.getGson();
+        ClientPutObjGson putObjGson = gson.fromJson(putObj, ClientPutObjGson.class);
+        for (TempTypeInfo typeInfo : types.values()) {
+            if (typeInfo.dbId.equals(putObjGson.dbId)) {
+                TempObject.Value objValue = putObjGson.objValue.getValue(typeInfo);
+                try {
+                    PutObj.Req req = new PutObj.Req(id, putObjGson.dbId, putObjGson.typeId, putObjGson.objId, gson.toJson(objValue).getBytes("UTF-8"), getIndexValue(objValue, typeInfo));
+                } catch (UnsupportedEncodingException ex) {
+                    throw new RuntimeException(ex);
+                }
+                worker.dataModelTrigger(null);
+                try {
+                    DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
+                    if (resp == null) {
+                        return DMMessage.ResponseCode.TIMEOUT;
+                    }
+                    if (resp instanceof PutObj.Resp) {
+                        return ((PutObj.Resp) resp).respCode;
+                    }
+                    throw new RuntimeException("Bad Response Type");
+                } catch (InterruptedException ex) {
+                    LOG.error("Couldn't get a response.", ex);
+                    return DMMessage.ResponseCode.TIMEOUT;
+                }
+            }
+        }
+        throw new RuntimeException("No Type"); //change to sent typeReq to caracal
+    }
+
+    private Map<ByteId, Object> getIndexValue(TempObject.Value objValue, TempTypeInfo typeInfo) {
+        Map<ByteId, Object> indexValues = new TreeMap<ByteId, Object>();
+        for (TempTypeInfo.TempFieldInfo fi : typeInfo.fieldMap.values()) {
+            if (fi.indexed) {
+                indexValues.put(fi.fieldId, objValue.fieldMap.get(fi.fieldId));
+            }
+        }
+        return indexValues;
+    }
+
+    public GetObj.Resp getObj(String getObj) {
+        LOG.debug("GetObj for {}", getObj);
+        long id = TimestampIdFactory.get().newId();
+        Gson gson = GsonHelper.getGson();
+        ClientGetObjGson getObjGson = gson.fromJson(getObj, ClientGetObjGson.class);
+        GetObj.Req req = new GetObj.Req(id, getObjGson.dbId, getObjGson.typeId, getObjGson.objId);
+        worker.dataModelTrigger(req);
+        try {
+            DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
+            if (resp == null) {
+                return new GetObj.Resp(id, DMMessage.ResponseCode.TIMEOUT, getObjGson.dbId, getObjGson.typeId, getObjGson.objId, null);
+            }
+            if (resp instanceof GetObj.Resp) {
+                return (GetObj.Resp) resp;
+            }
+            throw new RuntimeException("Bad Response Type");
+        } catch (InterruptedException ex) {
+            LOG.error("Couldn't get a response.", ex);
+            return new GetObj.Resp(id, DMMessage.ResponseCode.TIMEOUT, getObjGson.dbId, getObjGson.typeId, getObjGson.objId, null);
+        }
+    }
+
+    public QueryObj.Resp queryObj(String queryObj) {
+        LOG.debug("QueryObj for {}", queryObj);
+        long id = TimestampIdFactory.get().newId();
+        Gson gson = GsonHelper.getGson();
+        ClientQueryObjGson queryObjGson = gson.fromJson(queryObj, ClientQueryObjGson.class);
+        for (TempTypeInfo typeInfo : types.values()) {
+            if (typeInfo.dbId.equals(queryObjGson.typeId)) {
+                Object indexVal = gson.fromJson(queryObjGson.indexValue, getClass(typeInfo.getField(queryObjGson.indexId).fieldType));
+                QueryObj.Req req = new QueryObj.Req(id, queryObjGson.dbId, queryObjGson.typeId, queryObjGson.indexId, indexVal);
+                worker.dataModelTrigger(req);
+                try {
+                    DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
+                    if (resp == null) {
+                        return new QueryObj.Resp(id, DMMessage.ResponseCode.TIMEOUT, null);
+                    }
+                    if (resp instanceof QueryObj.Resp) {
+                        return (QueryObj.Resp) resp;
+                    }
+                    throw new RuntimeException("Bad Response Type");
+                } catch (InterruptedException ex) {
+                    LOG.error("Couldn't get a response.", ex);
+                    return new QueryObj.Resp(id, DMMessage.ResponseCode.TIMEOUT, null);
+                }
+            }
+        }
+        throw new RuntimeException("No Type");
+    }
+
+    private Class<?> getClass(FieldInfo.FieldType fieldType) {
+        if (fieldType == FieldInfo.FieldType.BOOLEAN) {
+            return Boolean.class;
+        } else if (fieldType == FieldInfo.FieldType.FLOAT) {
+            return Float.class;
+        } else if (fieldType == FieldInfo.FieldType.INTEGER) {
+            return Integer.class;
+        } else if (fieldType == FieldInfo.FieldType.STRING) {
+            return String.class;
+        } else {
+            return null;
         }
     }
 }

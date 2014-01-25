@@ -94,7 +94,7 @@ public class DMExp1Cmd extends DMExpCmd {
         GetObjValidator getObj_val4 = new GetObjValidator(getObj_req4.id, DMMessage.ResponseCode.SUCCESS, byteObjValue);
         builder.add(getObj_req4, getObj_val4);
         
-        QueryObj.Req queryObj_req5 = new QueryObj.Req(tidFactory.newId(), typeInfo.dbId, typeInfo.typeId, typeInfo.getFieldId("field3"), 15);
+        QueryObj.Req queryObj_req5 = new QueryObj.Req(tidFactory.newId(), typeInfo.dbId, typeInfo.typeId, typeInfo.getField("field3"), 15);
         Map<ByteId, byte[]> objs = new HashMap<ByteId, byte[]>();
         objs.put(obj.objId, byteObjValue);
         QueryObjValidator queryObj_val5 = new QueryObjValidator(queryObj_req5.id, DMMessage.ResponseCode.SUCCESS,objs);
@@ -112,9 +112,9 @@ public class DMExp1Cmd extends DMExpCmd {
     
     private TempObject createObj_1(TempTypeInfo typeInfo, ByteId objId) {
         TempObject obj = new TempObject(typeInfo, objId);
-        obj.objValue.fieldMap.put(typeInfo.getFieldId("field1"), 17.2);
-        obj.objValue.fieldMap.put(typeInfo.getFieldId("field2"), "test");
-        obj.objValue.fieldMap.put(typeInfo.getFieldId("field3"), 15);
+        obj.objValue.fieldMap.put(typeInfo.getField("field1"), 17.2);
+        obj.objValue.fieldMap.put(typeInfo.getField("field2"), "test");
+        obj.objValue.fieldMap.put(typeInfo.getField("field3"), 15);
         
         return obj;
     }
