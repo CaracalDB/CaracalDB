@@ -20,6 +20,7 @@ import spray.json.DefaultJsonProtocol._
 import spray.routing.ExceptionHandler
 import akka.actor.Props
 import se.sics.caracaldb.operations.ResponseCode
+import se.sics.caracaldb.datamodel.msg.DMMessage
 import akka.routing._
 import se.sics.caracaldb.api.data._
 import java.nio.charset.Charset
@@ -108,6 +109,48 @@ trait ServiceRouter extends HttpService {
 					}
 				}
 			}
+		} ~ path("type") {
+			entity(as[String]) { value =>
+				post {
+					detachAndRespond { ctx =>
+						ctx.complete {
+							objMGetPutOp(GetTypeRequest(value));
+						}
+					}
+				} ~ put {
+					detachAndRespond { ctx =>
+						ctx.complete {
+							objMGetPutOp(PutTypeRequest(value));
+						}
+					}
+				}
+			}
+		} ~ path("object" / "q") {
+			entity(as[String]) { value =>
+				post {
+					detachAndRespond { ctx =>
+						ctx.complete {
+							objMQuery(value);
+						}
+					}
+				}
+			}
+		} ~ path("object") {
+			entity(as[String]) { value =>
+				post {
+					detachAndRespond { ctx =>
+						ctx.complete {
+							objMGetPutOp(GetObjRequest(value));
+						}
+					}
+				} ~ put {
+					detachAndRespond { ctx =>
+						ctx.complete {
+							objMGetPutOp(PutObjRequest(value));
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -161,6 +204,26 @@ trait ServiceRouter extends HttpService {
 			}
 		} catch {
 			case e: TimeoutException => Right(new Operation(ResponseCode.CLIENT_TIMEOUT));
+		}
+	}
+
+	private def objMGetPutOp(req: CaracalRequest): Either[FormattedResponse, DMOperation] = {
+		val f = workers ? req;
+		val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
+		logger.debug("ObjM OP result was {}", res);
+		res match {
+			case fr: FormattedResponse => return Left(fr);
+			case o: DMOperation => return Right(o);
+		}
+	}
+
+	private def objMQuery(str: String): Either[List[Entry], DMOperation] = {
+		val f = workers ? QueryObjRequest(str);
+		val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
+		logger.debug("ObjM OP result was {}", res);
+		res match {
+			case Entries(l) => return Left(l);
+			case o: DMOperation => return Right(o);
 		}
 	}
 
