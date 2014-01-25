@@ -40,6 +40,8 @@ public class ClientGetTypeGsonTest {
         ByteId typeId = new ByteId(new byte[]{1, 2});
         ClientGetTypeGson c = new ClientGetTypeGson(dbId, typeId);
         System.out.println(c);
+        System.out.println(gson.toJson(c));
+        System.out.println(gson.fromJson(gson.toJson(c), ClientGetTypeGson.class));
         ClientGetTypeGson cc = gson.fromJson("{\"dbId\":{\"id\":[1,1]},\"typeId\":{\"id\":[1,2]}}", ClientGetTypeGson.class);
         System.out.println(cc);
         Assert.assertEquals(c, cc);
