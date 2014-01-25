@@ -41,7 +41,7 @@ public class ClientGetTypeGson {
         this.dbId = dbId;
         this.typeId = typeId;
     }
-    
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -52,17 +52,17 @@ public class ClientGetTypeGson {
 
     @Override
     public boolean equals(Object obj) {
-        if(this == obj) {
+        if (this == obj) {
             return true;
         }
-        if(!(obj instanceof ClientGetTypeGson)) {
+        if (!(obj instanceof ClientGetTypeGson)) {
             return false;
         }
-        ClientGetTypeGson typedObj = (ClientGetTypeGson)obj;
-        if(!dbId.equals(typedObj.dbId)) {
+        ClientGetTypeGson typedObj = (ClientGetTypeGson) obj;
+        if (!dbId.equals(typedObj.dbId)) {
             return false;
         }
-        if(!typeId.equals(typedObj.typeId)) {
+        if (!typeId.equals(typedObj.typeId)) {
             return false;
         }
         return true;
@@ -80,7 +80,14 @@ public class ClientGetTypeGson {
 
         @Override
         public void write(JsonWriter writer, ClientGetTypeGson t) throws IOException {
-            throw new UnsupportedOperationException("Not supported yet.");
+            Gson gson = GsonHelper.getGson();
+
+            writer.beginObject();
+            writer.name("dbId");
+            gson.toJson(gson.toJsonTree(t.dbId), writer);
+            writer.name("typeId");
+            gson.toJson(gson.toJsonTree(t.typeId), writer);
+            writer.endObject();
         }
 
         @Override
@@ -96,16 +103,16 @@ public class ClientGetTypeGson {
                 return null;
             }
             reader.beginObject();
-            if(reader.peek() != JsonToken.NAME || !reader.nextName().equals("dbId")) {
+            if (reader.peek() != JsonToken.NAME || !reader.nextName().equals("dbId")) {
                 return null;
             }
             ByteId dbId = gson.fromJson(reader, ByteId.class);
-            
-            if(reader.peek() != JsonToken.NAME || !reader.nextName().equals("typeId")) {
+
+            if (reader.peek() != JsonToken.NAME || !reader.nextName().equals("typeId")) {
                 return null;
             }
             ByteId typeId = gson.fromJson(reader, ByteId.class);
-            
+
             reader.endObject();
             return new ClientGetTypeGson(dbId, typeId);
         }
