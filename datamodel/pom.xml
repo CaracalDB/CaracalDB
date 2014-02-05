@@ -1,12 +1,17 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>se.sics.caracaldb</groupId>
         <artifactId>caracaldb-parent-pom</artifactId>
-        <version>0.0.5-SNAPSHOT</version>
+        <version>0.0.3-SNAPSHOT</version>
     </parent>
-    
+    <groupId>se.sics.caracaldb</groupId>
+    <artifactId>datamodel</artifactId>
+    <version>0.0.3-SNAPSHOT</version>
+    <name>DataModel Server</name>
+    <url>http://maven.apache.org</url>
     <properties>
         <sigar.version>1.6.5.132</sigar.version>
         <sigar-dist.version.output>1.6.5</sigar-dist.version.output>
@@ -14,23 +19,12 @@
         <sigar-dist.classpath.directory>/hyperic-sigar-${sigar-dist.version.output}/sigar-bin/lib</sigar-dist.classpath.directory>
         <netbeans.hint.license>header</netbeans.hint.license>
     </properties>
-
-    <artifactId>caracaldb-server</artifactId>
-    <packaging>jar</packaging>
-    <name>CaracalDB Server</name>
-
     <dependencies>
         <dependency>
-            <groupId>se.sics.caracaldb</groupId>
-            <artifactId>caracaldb-core</artifactId>
-            <version>0.0.5-SNAPSHOT</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>se.sics.caracaldb</groupId>
-            <artifactId>caracaldb-simulator</artifactId>
-            <version>0.0.5-SNAPSHOT</version>
-            <scope>compile</scope>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.5</version>
+            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>se.sics.kompics</groupId>
@@ -40,13 +34,13 @@
         </dependency>
         <dependency>
             <groupId>se.sics.kompics.basic</groupId>
-            <artifactId>kompics-port-virtual-network</artifactId>
+            <artifactId>kompics-port-virtual-rtscts-network</artifactId>
             <version>${kompics.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>se.sics.kompics.basic</groupId>
-            <artifactId>kompics-component-virtual-netty-network</artifactId>
+            <artifactId>kompics-component-rtscts-grizzly-network</artifactId>
             <version>${kompics.version}</version>
             <scope>compile</scope>
         </dependency>
@@ -63,17 +57,30 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>org.fusesource.leveldbjni</groupId>
-            <artifactId>leveldbjni-all</artifactId>
-            <version>1.1</version>
+            <groupId>se.sics.caracaldb</groupId>
+            <artifactId>caracaldb-core</artifactId>
+            <version>0.0.3-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>org.hyperic</groupId>
-            <artifactId>sigar</artifactId>
-            <version>${sigar.version}</version>
+            <groupId>se.sics.caracaldb</groupId>
+            <artifactId>caracaldb-simulator</artifactId>
+            <version>0.0.3-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.2.4</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>se.sics.caracaldb</groupId>
+            <artifactId>caracaldb-server</artifactId>
+            <version>0.0.3-SNAPSHOT</version>
+            <type>jar</type>
         </dependency>
     </dependencies>
-    
     <build>
         <plugins>
             <plugin>
@@ -129,8 +136,8 @@
                 <version>2.3.2</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>${java.compiler.version}</source>
-                    <target>${java.compiler.version}</target>
+                    <source>1.6</source>
+                    <target>1.6</target>
                     <debug>true</debug>
                     <optimize>true</optimize>
                     <showDeprecations>true</showDeprecations>
@@ -178,7 +185,6 @@
             </plugin>
         </plugins>
     </build>
-
     <repositories>
         <repository>
             <id>sics-release</id>

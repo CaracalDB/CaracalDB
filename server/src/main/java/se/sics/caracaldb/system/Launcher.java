@@ -22,7 +22,7 @@ package se.sics.caracaldb.system;
 
 import se.sics.caracaldb.simulation.SimulationHelper;
 import se.sics.caracaldb.simulation.SimulatorMain;
-import se.sics.caracaldb.simulation.main.DMSimulatorMain;
+import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Scheduler;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
@@ -107,13 +107,14 @@ public abstract class Launcher {
         Kompics.setScheduler(scheduler);
         Kompics.createAndStart(SimulatorMain.class, 1);
     }
-
-    public static void newSimulate(SimulationScenario scenario) {
+    
+    //added by Alex
+    public static void newSimulate(Class<? extends ComponentDefinition> simulatorClass, SimulationScenario scenario) {
         simulation = true;
         config = configBuilder.finalise();
         scheduler = new SimulatorScheduler();
         Launcher.scenario = scenario;
         Kompics.setScheduler(scheduler);
-        Kompics.createAndStart(DMSimulatorMain.class, 1);
+        Kompics.createAndStart(simulatorClass, 1);
     }
 }
