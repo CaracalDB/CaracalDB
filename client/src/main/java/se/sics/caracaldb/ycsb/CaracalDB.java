@@ -25,13 +25,17 @@ import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Vector;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.client.BlockingClient;
 import se.sics.caracaldb.client.ClientManager;
 import se.sics.caracaldb.operations.GetResponse;
+import se.sics.caracaldb.operations.RangeResponse;
 import se.sics.caracaldb.operations.ResponseCode;
+import se.sics.caracaldb.store.Limit;
 
 /**
  *
@@ -61,8 +65,32 @@ public class CaracalDB extends DB {
     }
 
     @Override
-    public int scan(String string, String string1, int i, Set<String> set, Vector<HashMap<String, ByteIterator>> vector) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public int scan(String lower, String upper, int limit, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
+        Key k1 = new Key(lower);
+        Key k2 = new Key(upper);
+        Key lowerK, upperK;
+        if (k1.leq(k2)) {
+            lowerK = k1;
+            upperK = k2;
+        } else {
+            lowerK = k2;
+            upperK = k1;
+        }
+        KeyRange range = KeyRange.closed(lowerK).closed(upperK);
+        RangeResponse resp = client.rangeRequest(range, Limit.toItems(limit));
+        if (resp.code != ResponseCode.SUCCESS) {
+            return 2;
+        }
+        if (resp.results == null || resp.results.isEmpty()) {
+            return 1;
+        }
+        for (Entry<Key, byte[]> e : resp.results.entrySet()) {
+            String key = new String(e.getKey().getArray());
+            HashMap<String, ByteIterator> r = new HashMap<String, ByteIterator>();
+            r.put(key, new ByteArrayByteIterator(e.getValue()));
+            result.add(r);
+        }
+        return 0;
     }
 
     @Override

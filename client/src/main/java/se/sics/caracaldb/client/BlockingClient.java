@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
@@ -55,6 +54,7 @@ import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.operations.RangeResponse;
 import se.sics.caracaldb.operations.ResponseCode;
 import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.store.Limit.LimitTracker;
 import se.sics.caracaldb.store.TFFactory;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 
@@ -119,9 +119,13 @@ public class BlockingClient {
     }
 
     public RangeResponse rangeRequest(KeyRange range) {
+        return rangeRequest(range, Limit.noLimit());
+    }
+    
+    public RangeResponse rangeRequest(KeyRange range, LimitTracker limit) {
         LOG.debug("RangeRequest for {}", range);
         long id = TimestampIdFactory.get().newId();
-        RangeQuery.Request req = new RangeQuery.Request(id, range, Limit.noLimit(), TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
+        RangeQuery.Request req = new RangeQuery.Request(id, range, limit, TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
         worker.triggerOnSelf(req);
         try {
             CaracalResponse resp = responseQueue.poll(TIMEOUT, TIMEUNIT);
