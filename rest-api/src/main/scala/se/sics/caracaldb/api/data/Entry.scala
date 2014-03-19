@@ -1,7 +1,7 @@
 package se.sics.caracaldb.api.data
 
 import se.sics.caracaldb.operations.ResponseCode
-import se.sics.caracaldb.datamodel.msg.DMMessage
+import se.sics.datamodel.msg.DMMessage
 
 trait CaracalResponse
 case class Entry(key: String, value: String) extends CaracalResponse

@@ -2,7 +2,7 @@ package se.sics.caracaldb.api.data
 
 import spray.json._
 import se.sics.caracaldb.operations.ResponseCode
-import se.sics.caracaldb.datamodel.msg.DMMessage
+import se.sics.datamodel.msg.DMMessage
 
 object CaracalJsonProtocol extends DefaultJsonProtocol {
 	import DefaultJsonProtocol._
