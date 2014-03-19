@@ -100,12 +100,7 @@ public abstract class Launcher {
     }
 
     public static void simulate(SimulationScenario scenario) {
-        simulation = true;
-        config = configBuilder.finalise();
-        scheduler = new SimulatorScheduler();
-        Launcher.scenario = scenario;
-        Kompics.setScheduler(scheduler);
-        Kompics.createAndStart(SimulatorMain.class, 1);
+        newSimulate(SimulatorMain.class, scenario);
     }
     
     //added by Alex

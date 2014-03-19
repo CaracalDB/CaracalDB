@@ -18,27 +18,36 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.client;
+package se.sics.datamodel.simulation.validators;
 
-import java.util.concurrent.BlockingQueue;
-import se.sics.caracaldb.operations.CaracalResponse;
-import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
+import org.junit.Assert;
+import se.sics.datamodel.msg.DMMessage;
+import se.sics.datamodel.msg.PutType;
 
 /**
- *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
-public class ClientWorkerInit extends Init<ClientWorker> {
-    public final BlockingQueue<CaracalResponse> q;
-    public final Address self;
-    public final Address bootstrapServer;
-    public final int sampleSize;
+public class PutTypeValidator implements RespValidator {
+    private final long id;
+    private final DMMessage.ResponseCode respCode;
+
+    public PutTypeValidator(long id, DMMessage.ResponseCode respCode) {
+        this.id = id;
+        this.respCode = respCode;
+    }
     
-    public ClientWorkerInit(BlockingQueue<CaracalResponse> q, Address self, Address bootstrapServer, int sampleSize) {
-        this.q = q;
-        this.self = self;
-        this.bootstrapServer = bootstrapServer;
-        this.sampleSize = sampleSize;
+    @Override
+    public void validate(DMMessage.Resp resp) {
+        Assert.assertEquals("Wrong message", id, resp.id);
+        if (!(resp instanceof PutType.Resp)) {
+            Assert.assertTrue(false);
+        }
+
+        Assert.assertEquals("Wrong ResponseCode", respCode, resp.respCode);
+    }
+    
+    @Override
+    public String toString() {
+        return "PUT_TYPE - validator(" + id + ")";
     }
 }

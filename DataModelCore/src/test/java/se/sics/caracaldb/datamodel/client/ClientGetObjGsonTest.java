@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,27 +18,31 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.client;
 
-import java.util.concurrent.BlockingQueue;
-import se.sics.caracaldb.operations.CaracalResponse;
-import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
+package se.sics.caracaldb.datamodel.client;
+
+import com.google.gson.Gson;
+import junit.framework.Assert;
+import org.junit.Test;
+import se.sics.datamodel.util.ByteId;
+import se.sics.datamodel.util.GsonHelper;
+import se.sics.datamodel.util.gsonextra.ClientGetObjGson;
 
 /**
- *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
-public class ClientWorkerInit extends Init<ClientWorker> {
-    public final BlockingQueue<CaracalResponse> q;
-    public final Address self;
-    public final Address bootstrapServer;
-    public final int sampleSize;
-    
-    public ClientWorkerInit(BlockingQueue<CaracalResponse> q, Address self, Address bootstrapServer, int sampleSize) {
-        this.q = q;
-        this.self = self;
-        this.bootstrapServer = bootstrapServer;
-        this.sampleSize = sampleSize;
+public class ClientGetObjGsonTest {
+    @Test
+    public void test() {
+        Gson gson = GsonHelper.getGson();
+        ByteId dbId = new ByteId(new byte[]{1, 1});
+        ByteId typeId = new ByteId(new byte[]{1, 2});
+        ByteId objId = new ByteId(new byte[]{1, 3});
+        
+        ClientGetObjGson c = new ClientGetObjGson(dbId, typeId, objId);
+        System.out.println(c);
+        ClientGetObjGson cc = gson.fromJson("{\"dbId\":{\"id\":[1,1]},\"typeId\":{\"id\":[1,2]},\"objId\":{\"id\":[1,3]}}", ClientGetObjGson.class);
+        System.out.println(cc);
+        Assert.assertEquals(c, cc);
     }
 }

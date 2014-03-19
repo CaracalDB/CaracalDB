@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,27 +18,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.client;
+package se.sics.datamodel.msg;
 
-import java.util.concurrent.BlockingQueue;
-import se.sics.caracaldb.operations.CaracalResponse;
-import se.sics.kompics.Init;
+import se.sics.datamodel.msg.DMMessage;
 import se.sics.kompics.address.Address;
+import se.sics.kompics.network.Message;
 
 /**
- *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
-public class ClientWorkerInit extends Init<ClientWorker> {
-    public final BlockingQueue<CaracalResponse> q;
-    public final Address self;
-    public final Address bootstrapServer;
-    public final int sampleSize;
-    
-    public ClientWorkerInit(BlockingQueue<CaracalResponse> q, Address self, Address bootstrapServer, int sampleSize) {
-        this.q = q;
-        this.self = self;
-        this.bootstrapServer = bootstrapServer;
-        this.sampleSize = sampleSize;
+public class DMNetworkMessage {
+
+    public static class Req extends Message {
+
+        public final DMMessage.Req message;
+
+        public Req(Address src, Address dst, DMMessage.Req message) {
+            super(src, dst);
+            this.message = message;
+        }
+    }
+
+    public static class Resp extends Message {
+
+        public final DMMessage.Resp message;
+
+        public Resp(Address src, Address dst, DMMessage.Resp message) {
+            super(src, dst);
+            this.message = message;
+        }
     }
 }

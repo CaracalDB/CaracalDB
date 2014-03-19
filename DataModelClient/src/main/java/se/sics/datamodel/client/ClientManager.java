@@ -18,7 +18,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.client;
+package se.sics.datamodel.client;
 
 import com.google.common.primitives.Ints;
 import com.typesafe.config.Config;
@@ -31,7 +31,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import se.sics.caracaldb.MessageRegistrator;
+import se.sics.datamodel.msg.DMMessage;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.Component;
@@ -42,14 +42,14 @@ import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.VirtualNetworkChannel;
-import se.sics.kompics.network.netty.NettyInit;
-import se.sics.kompics.network.netty.NettyNetwork;
+import se.sics.kompics.network.grizzly.ConstantQuotaAllocator;
+import se.sics.kompics.network.grizzly.GrizzlyNetwork;
+import se.sics.kompics.network.grizzly.GrizzlyNetworkInit;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.timer.java.JavaTimer;
 
 /**
- *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
 public class ClientManager extends ComponentDefinition {
 
@@ -62,15 +62,11 @@ public class ClientManager extends ComponentDefinition {
     private final int messageBufferSizeMax;
     private final int messageBufferSize;
     private final int sampleSize;
-    private static Config conf = null;
+    private final Config conf;
     private final Address bootstrapServer;
     private final Address self;
-    private final SortedSet<Address> vNodes = new TreeSet<>();
+    private final SortedSet<Address> vNodes = new TreeSet<Address>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
-    static {
-        MessageRegistrator.register();
-    }
 
     public ClientManager() {
         if (INSTANCE == null) {
@@ -78,9 +74,7 @@ public class ClientManager extends ComponentDefinition {
         } else {
             throw new RuntimeException("Don't start the ClientManager twice! You are doing it wrong -.-");
         }
-        if (conf == null) {
-            conf = ConfigFactory.load();
-        }
+        conf = ConfigFactory.load();
         messageBufferSizeMax = conf.getInt("caracal.messageBufferSizeMax") * 1024;
         messageBufferSize = conf.getInt("caracal.messageBufferSize") * 1024;
         sampleSize = conf.getInt("bootstrap.sampleSize");
@@ -100,7 +94,11 @@ public class ClientManager extends ComponentDefinition {
         self = new Address(localIP, localPort, null);
         TimestampIdFactory.init(self);
 
-        network = create(NettyNetwork.class, new NettyInit(self));
+        network = create(GrizzlyNetwork.class, new GrizzlyNetworkInit(self, 8, 0, 0,
+                messageBufferSize, messageBufferSizeMax,
+                Runtime.getRuntime().availableProcessors(),
+                Runtime.getRuntime().availableProcessors(),
+                new ConstantQuotaAllocator(5)));
         timer = create(JavaTimer.class, Init.NONE);
         vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
 
@@ -130,23 +128,17 @@ public class ClientManager extends ComponentDefinition {
         return INSTANCE.addClient();
     }
 
-    public static void setConfig(Config c) {
-        synchronized (ClientManager.class) {
-            conf = c;
-        }
-    }
-
     public BlockingClient addClient() {
         lock.writeLock().lock();
         try {
             Address adr = addVNode();
-            BlockingQueue<CaracalResponse> q = new LinkedBlockingQueue<CaracalResponse>();
-            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, adr, bootstrapServer, sampleSize));
+            BlockingQueue<DMMessage.Resp> dataModelQ = new LinkedBlockingQueue<DMMessage.Resp>();
+            Component cw = create(ClientWorker.class, new ClientWorkerInit(dataModelQ, adr, bootstrapServer, sampleSize));
             vnc.addConnection(adr.getId(), cw.getNegative(Network.class));
             connect(timer.getPositive(Timer.class), cw.getNegative(Timer.class));
             trigger(Start.event, cw.control());
             ClientWorker worker = (ClientWorker) cw.getComponent();
-            return new BlockingClient(q, worker);
+            return new BlockingClient(dataModelQ, worker);
         } finally {
             lock.writeLock().unlock();
         }

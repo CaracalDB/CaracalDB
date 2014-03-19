@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,27 +18,33 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.client;
+package se.sics.caracaldb.datamodel;
 
-import java.util.concurrent.BlockingQueue;
-import se.sics.caracaldb.operations.CaracalResponse;
-import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
+import org.junit.Before;
+import org.junit.Test;
+import se.sics.datamodel.system.DataModelLauncher;
+import se.sics.datamodel.simulation.SimulationGen;
+import se.sics.caracaldb.system.Launcher;
+import se.sics.datamodel.simulation.DMSimulatorMain;
+import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author Alex Ormenisan <aaor@sics.se>
  */
-public class ClientWorkerInit extends Init<ClientWorker> {
-    public final BlockingQueue<CaracalResponse> q;
-    public final Address self;
-    public final Address bootstrapServer;
-    public final int sampleSize;
-    
-    public ClientWorkerInit(BlockingQueue<CaracalResponse> q, Address self, Address bootstrapServer, int sampleSize) {
-        this.q = q;
-        this.self = self;
-        this.bootstrapServer = bootstrapServer;
-        this.sampleSize = sampleSize;
+
+public class DataModelOpTest {
+    private static final int BOOT_NUM = 6;
+
+    //@Before
+    public void setUp() {
+        Launcher.reset();
+    }
+
+    //@Test FIXME once DM thingies are serializable
+    public void testExp1() {
+        DataModelLauncher.connectDataModel();
+        SimulationScenario exp1Scen = SimulationGen.exp1Scenario(BOOT_NUM);
+        Launcher.newSimulate(DMSimulatorMain.class, exp1Scen);
     }
 }

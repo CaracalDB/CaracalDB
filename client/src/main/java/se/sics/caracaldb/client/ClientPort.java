@@ -20,7 +20,6 @@
  */
 package se.sics.caracaldb.client;
 
-import se.sics.caracaldb.datamodel.msg.DMMessage;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.kompics.PortType;
@@ -32,8 +31,6 @@ import se.sics.kompics.PortType;
 public class ClientPort extends PortType {
     {
         request(CaracalOp.class);
-        request(DMMessage.Req.class);
         indication(CaracalResponse.class);
-        indication(DMMessage.Resp.class);
     }
 }
