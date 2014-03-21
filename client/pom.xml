@@ -4,7 +4,7 @@
     <parent>
         <groupId>se.sics.caracaldb</groupId>
         <artifactId>caracaldb-parent-pom</artifactId>
-        <version>0.0.3-SNAPSHOT</version>
+        <version>0.0.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>caracaldb-client</artifactId>
@@ -15,7 +15,7 @@
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>caracaldb-core</artifactId>
-            <version>0.0.3-SNAPSHOT</version>
+            <version>0.0.4-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -23,6 +23,11 @@
             <artifactId>core</artifactId>
             <version>0.1.4</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>jline</groupId>
+            <artifactId>jline</artifactId>
+            <version>2.11</version>
         </dependency>
     </dependencies>
     
@@ -35,8 +40,8 @@
                 <version>2.3.2</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <source>${java.compiler.version}</source>
+                    <target>${java.compiler.version}</target>
                     <debug>true</debug>
                     <optimize>true</optimize>
                     <showDeprecations>true</showDeprecations>

@@ -22,7 +22,6 @@ package se.sics.caracaldb.client;
 
 import com.google.gson.Gson;
 import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
@@ -79,6 +78,10 @@ public class BlockingClient {
         this.worker = worker;
     }
 
+    public boolean test() {
+        return worker.test();
+    } 
+    
     public ResponseCode put(Key k, byte[] value) {
         LOG.debug("Putting on {}", k);
         PutRequest req = new PutRequest(TimestampIdFactory.get().newId(), k, value);

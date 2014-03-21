@@ -64,10 +64,11 @@ public class ClientWorker extends ComponentDefinition {
     private final BlockingQueue<DMMessage.Resp> dataModelQ;
     private final Address self;
     private final Address bootstrapServer;
-    private final SortedSet<Address> knownNodes = new TreeSet<Address>();
+    private final SortedSet<Address> knownNodes = new TreeSet<>();
     private final int sampleSize;
     private Long currentRequestId = -1l;
     private RangeQuery.SeqCollector col;
+    private boolean connectionEstablished = false;
 
     public ClientWorker(ClientWorkerInit init) {
         responseQ = init.q;
@@ -100,6 +101,7 @@ public class ClientWorker extends ComponentDefinition {
         public void handle(Sample event) {
             LOG.debug("Got Sample {}", event);
             knownNodes.addAll(event.nodes);
+            connectionEstablished = true;
         }
     };
     Handler<PutRequest> putHandler = new Handler<PutRequest>() {
@@ -204,6 +206,10 @@ public class ClientWorker extends ComponentDefinition {
 
     public void triggerOnSelf(CaracalOp op) {
         trigger(op, client.getPair());
+    }
+
+    public boolean test() {
+        return connectionEstablished;
     }
 
     public void dataModelTrigger(DMMessage.Req req) {

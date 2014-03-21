@@ -4,7 +4,7 @@
     <parent>
         <groupId>se.sics.caracaldb</groupId>
         <artifactId>caracaldb-parent-pom</artifactId>
-        <version>0.0.3-SNAPSHOT</version>
+        <version>0.0.4-SNAPSHOT</version>
     </parent>
     
     <properties>
@@ -23,13 +23,13 @@
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>caracaldb-core</artifactId>
-            <version>0.0.3-SNAPSHOT</version>
+            <version>0.0.4-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>caracaldb-simulator</artifactId>
-            <version>0.0.3-SNAPSHOT</version>
+            <version>0.0.4-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -135,8 +135,8 @@
                 <version>2.3.2</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <source>${java.compiler.version}</source>
+                    <target>${java.compiler.version}</target>
                     <debug>true</debug>
                     <optimize>true</optimize>
                     <showDeprecations>true</showDeprecations>

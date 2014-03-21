@@ -63,10 +63,10 @@ public class ClientManager extends ComponentDefinition {
     private final int messageBufferSizeMax;
     private final int messageBufferSize;
     private final int sampleSize;
-    private final Config conf;
+    private static Config conf = null;
     private final Address bootstrapServer;
     private final Address self;
-    private final SortedSet<Address> vNodes = new TreeSet<Address>();
+    private final SortedSet<Address> vNodes = new TreeSet<>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public ClientManager() {
@@ -75,7 +75,9 @@ public class ClientManager extends ComponentDefinition {
         } else {
             throw new RuntimeException("Don't start the ClientManager twice! You are doing it wrong -.-");
         }
-        conf = ConfigFactory.load();
+        if (conf == null) {
+            conf = ConfigFactory.load();
+        }
         messageBufferSizeMax = conf.getInt("caracal.messageBufferSizeMax") * 1024;
         messageBufferSize = conf.getInt("caracal.messageBufferSize") * 1024;
         sampleSize = conf.getInt("bootstrap.sampleSize");
@@ -129,12 +131,18 @@ public class ClientManager extends ComponentDefinition {
         return INSTANCE.addClient();
     }
 
+    public static void setConfig(Config c) {
+        synchronized (ClientManager.class) {
+            conf = c;
+        }
+    }
+
     public BlockingClient addClient() {
         lock.writeLock().lock();
         try {
             Address adr = addVNode();
-            BlockingQueue<CaracalResponse> q = new LinkedBlockingQueue<CaracalResponse>();
-            BlockingQueue<DMMessage.Resp> dataModelQ = new LinkedBlockingQueue<DMMessage.Resp>();
+            BlockingQueue<CaracalResponse> q = new LinkedBlockingQueue<>();
+            BlockingQueue<DMMessage.Resp> dataModelQ = new LinkedBlockingQueue<>();
             Component cw = create(ClientWorker.class, new ClientWorkerInit(q, dataModelQ, adr, bootstrapServer, sampleSize));
             vnc.addConnection(adr.getId(), cw.getNegative(Network.class));
             connect(timer.getPositive(Timer.class), cw.getNegative(Timer.class));
