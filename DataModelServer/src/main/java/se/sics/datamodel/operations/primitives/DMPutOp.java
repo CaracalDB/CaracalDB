@@ -45,7 +45,7 @@ public class DMPutOp extends DMOperation {
 
     @Override
     protected void startHook() {
-        LOG.debug("Operation DM_PUT {} - started", id);
+        LOG.debug("Operation {} - started", toString());
         operationsManager.send(id, req.id, req);
     }
 

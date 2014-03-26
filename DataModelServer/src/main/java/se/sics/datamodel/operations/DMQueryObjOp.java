@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.datamodel.msg.DMMessage;
@@ -37,14 +38,12 @@ import se.sics.caracaldb.utils.TimestampIdFactory;
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class DMQueryObjOp extends DMSequentialOp {
-    private final ByteId dbId;
-    private final ByteId typeId;
+    private final Pair<ByteId, ByteId>  typeId;
     private final ByteId indexId;
     private final Object indexValue;
     
-    public DMQueryObjOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId, ByteId indexId, Object indexValue) {
+    public DMQueryObjOp(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, ByteId indexId, Object indexValue) {
         super(id, operationsMaster);
-        this.dbId = dbId;
         this.typeId = typeId;
         this.indexId = indexId;
         this.indexValue = indexValue;
@@ -58,7 +57,7 @@ public class DMQueryObjOp extends DMSequentialOp {
         
         KeyRange indexRange;
         try {
-            indexRange = DMKeyFactory.getIndexRangeIS(dbId, typeId, indexId, indexValue);
+            indexRange = DMKeyFactory.getIndexRangeIS(typeId.getValue0(), typeId.getValue1(), indexId, indexValue);
         } catch (IOException ex) {
             fail(DMMessage.ResponseCode.FAILURE);
             return;
@@ -77,7 +76,7 @@ public class DMQueryObjOp extends DMSequentialOp {
             if(result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
                 TimestampIdFactory tidFactory = TimestampIdFactory.get();
                 DMCRQOp.Result typedResult = (DMCRQOp.Result) result;
-                pendingOp = new DMMultiGetObj(tidFactory.newId(), this, dbId, typeId, getObjectIds(typedResult.results.keySet()));
+                pendingOp = new DMMultiGetObj(tidFactory.newId(), this, typeId, getObjectIds(typedResult.results.keySet()));
                 pendingOp.start();
                 return;
             } else {

@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.msg;
 
+import org.javatuples.Triplet;
 import se.sics.datamodel.util.ByteId;
 
 /**
@@ -29,14 +30,10 @@ public class GetObj {
 
     public static class Req extends DMMessage.Req {
 
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId;
 
-        public Req(long id, ByteId dbId, ByteId typeId, ByteId objId) {
+        public Req(long id, Triplet<ByteId, ByteId, ByteId> objId) {
             super(id);
-            this.dbId = dbId;
-            this.typeId = typeId;
             this.objId = objId;
         }
 
@@ -47,15 +44,11 @@ public class GetObj {
     }
 
     public static class Resp extends DMMessage.Resp {
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId;
         public final byte[] value;
 
-        public Resp(long id, DMMessage.ResponseCode opResult, ByteId dbId, ByteId typeId, ByteId objId, byte[] value) {
+        public Resp(long id, DMMessage.ResponseCode opResult, Triplet<ByteId, ByteId, ByteId> objId, byte[] value) {
             super(id, opResult);
-            this.dbId = dbId;
-            this.typeId = typeId;
             this.objId = objId;
             this.value = value;
         }

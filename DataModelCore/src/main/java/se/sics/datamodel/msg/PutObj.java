@@ -22,6 +22,7 @@
 package se.sics.datamodel.msg;
 
 import java.util.Map;
+import org.javatuples.Triplet;
 import se.sics.datamodel.util.ByteId;
 
 /**
@@ -29,19 +30,14 @@ import se.sics.datamodel.util.ByteId;
  */
 public class PutObj {
     public static class Req extends DMMessage.Req {
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
-        
-        public final byte[] value;
+        public final Triplet<ByteId, ByteId, ByteId> objId; //<dbId, typeId, objId>
+        public final byte[] objValue;
         public final Map<ByteId, Object> indexValue;
 
-        public Req(long id, ByteId dbId, ByteId typeId, ByteId objId, byte[] value, Map<ByteId, Object> indexValue) {
+        public Req(long id, Triplet<ByteId, ByteId, ByteId> objId, byte[] value, Map<ByteId, Object> indexValue) {
             super(id);
-            this.dbId = dbId;
-            this.typeId = typeId;
             this.objId = objId;
-            this.value = value;
+            this.objValue = value;
             this.indexValue = indexValue;
         }
 
@@ -52,14 +48,10 @@ public class PutObj {
     }
 
     public static class Resp extends DMMessage.Resp {
-        public final ByteId dbId;
-        public final ByteId typeId; 
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId;
         
-        public Resp(long id, DMMessage.ResponseCode opResult, ByteId dbId, ByteId typeId, ByteId objId) {
+        public Resp(long id, Triplet<ByteId, ByteId, ByteId> objId, DMMessage.ResponseCode opResult) {
             super(id, opResult);
-            this.dbId = dbId;
-            this.typeId = typeId;
             this.objId = objId;
         }
 

@@ -52,7 +52,7 @@ public class DMCRQOp extends DMOperation {
     //*****DMOperation*****
     @Override
     protected void startHook() {
-        LOG.debug("Operation - started", toString());
+        LOG.debug("Operation {} - started", toString());
         operationsManager.send(id, req.id, req);
     }
 

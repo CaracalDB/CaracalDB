@@ -18,42 +18,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-package se.sics.datamodel.util;
+package se.sics.datamodel.client;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import junit.framework.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import se.sics.datamodel.util.ByteId;
+import se.sics.datamodel.util.gson.GsonHelper;
+import se.sics.datamodel.util.gsonextra.ClientQueryObjGson;
 
 /**
- * @author Alex
+ *
+ * @author Alex Ormenisan <aaor@sics.se>
  */
-@RunWith(JUnit4.class)
-public class ObjectTest {
-    @Test
-    public void objGsonTest() {
-        Gson gson = GsonHelper.getGson();
+public class ClientQueryObjGsonTest {
 
+    @Test
+    public void test() {
+        Gson gson = GsonHelper.getGson();
         ByteId dbId = new ByteId(new byte[]{1, 1});
         ByteId typeId = new ByteId(new byte[]{1, 2});
-        TempTypeInfo typeInfo = new TempTypeInfo("type1", dbId, typeId);
-      
-        ByteIdFactory bif = new ByteIdFactory();
-        typeInfo.addField("field1", FieldInfo.FieldType.FLOAT, true);
-        typeInfo.addField("field2", FieldInfo.FieldType.STRING, false);
-        typeInfo.addField("field3", FieldInfo.FieldType.INTEGER, true);
-        
-        ByteId objId = new ByteId(new byte[]{1,3});
-        TempObject obj = new TempObject(typeInfo, objId);
-        
-        obj.objValue.fieldMap.put(typeInfo.getField("field1"), 17.2);
-        obj.objValue.fieldMap.put(typeInfo.getField("field2"), "test");
-        obj.objValue.fieldMap.put(typeInfo.getField("field3"), 12);
-        
-        System.out.println(typeInfo);
-        System.out.println(obj);
-        System.out.println(gson.toJson(obj.objValue));
-        System.out.println(gson.fromJson(gson.toJson(obj.objValue), TempObject.ValueHolder.class).getValue(typeInfo));
+        ByteId indexId = new ByteId(new byte[]{1, 3});
+        JsonElement indexVal = gson.toJsonTree(15);
+
+        ClientQueryObjGson c = new ClientQueryObjGson(dbId, typeId, indexId, indexVal);
+        System.out.println(c);
+        ClientQueryObjGson cc = gson.fromJson("{\"dbId\":{\"id\":[1,1]},\"typeId\":{\"id\":[1,2]},\"indexId\":{\"id\":[1,3]},\"indexValue\":15}", ClientQueryObjGson.class);
+        System.out.println(cc);
+        Assert.assertEquals(c, cc);
     }
 }

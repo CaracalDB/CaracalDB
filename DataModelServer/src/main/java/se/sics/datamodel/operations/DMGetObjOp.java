@@ -22,6 +22,7 @@ package se.sics.datamodel.operations;
 
 import se.sics.datamodel.operations.primitives.DMGetOp;
 import java.io.IOException;
+import org.javatuples.Triplet;
 import se.sics.caracaldb.Key;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetObj;
@@ -33,14 +34,10 @@ import se.sics.datamodel.util.DMKeyFactory;
  */
 public class DMGetObjOp extends DMSequentialOp {
 
-    private final ByteId dbId;
-    private final ByteId typeId;
-    private final ByteId objId;
+    private final Triplet<ByteId, ByteId, ByteId> objId;
 
-    public DMGetObjOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId, ByteId objId) {
+    public DMGetObjOp(long id, DMOperationsManager operationsMaster, Triplet<ByteId, ByteId, ByteId> objId) {
         super(id, operationsMaster);
-        this.dbId = dbId;
-        this.typeId = typeId;
         this.objId = objId;
     }
 
@@ -51,9 +48,9 @@ public class DMGetObjOp extends DMSequentialOp {
 
         Key key;
         try {
-            key = DMKeyFactory.getDataKey(dbId, typeId, objId);
+            key = DMKeyFactory.getDataKey(objId.getValue0(), objId.getValue1(), objId.getValue2());
         } catch (IOException ex) {
-            finish(new Result(DMMessage.ResponseCode.FAILURE, dbId, typeId, objId, null));
+            finish(new Result(DMMessage.ResponseCode.FAILURE, objId, null));
             return;
         }
         pendingOp = new DMGetOp(id, this, key);
@@ -86,32 +83,28 @@ public class DMGetObjOp extends DMSequentialOp {
     }
     
     private void fail(DMMessage.ResponseCode respCode) {
-        Result result = new Result(respCode, dbId, typeId, objId, null);
+        Result result = new Result(respCode, objId, null);
         finish(result);
     }
 
     private void success(byte[] value) {
-        Result result = new Result(DMMessage.ResponseCode.SUCCESS, dbId, typeId, objId, value);
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, objId, value);
         finish(result);
     }
     
     public static class Result extends DMOperation.Result {
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId;
         public final byte[] value;
         
-        public Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, ByteId objId, byte[] value) {
+        public Result(DMMessage.ResponseCode respCode, Triplet<ByteId, ByteId, ByteId> objId, byte[] value) {
             super(respCode);
-            this.dbId = dbId;
-            this.typeId = typeId;
             this.objId = objId;
             this.value = value;
         }
 
         @Override
         public DMMessage.Resp getMsg(long msgId) {
-            return new GetObj.Resp(msgId, responseCode, dbId, typeId, objId, value);
+            return new GetObj.Resp(msgId, responseCode, objId, value);
         }
     }
 }

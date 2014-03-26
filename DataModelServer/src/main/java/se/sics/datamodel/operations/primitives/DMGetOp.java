@@ -48,7 +48,7 @@ public class DMGetOp extends DMOperation {
     //***** DMOperation *****
     @Override
     protected void startHook() {
-        LOG.debug("Operation DM_GET {} - started", id);
+        LOG.debug("Operation {} - started", toString());
         CaracalOp req = new GetRequest(id, key);
         operationsManager.send(id, req.id, req);
     }

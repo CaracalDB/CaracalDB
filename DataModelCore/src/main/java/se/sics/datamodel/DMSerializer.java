@@ -18,42 +18,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.datamodel.msg;
+package se.sics.datamodel;
 
-import org.javatuples.Pair;
-import se.sics.datamodel.util.ByteId;
+import java.io.UnsupportedEncodingException;
+import se.sics.datamodel.util.gson.GsonHelper;
 
 /**
- * @author Alex Ormenisan <aaor@sics.se>
+ * @author Alex Ormenisan <aaor@scis.se>
  */
-public class PutType {
+public class DMSerializer {
 
-    public static class Req extends DMMessage.Req {
-
-        public final Pair<ByteId,ByteId> typeId; //<dbId,typeId>
-        public final byte[] typeInfo;
-
-        public Req(long id, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
-            super(id);
-            this.typeId = typeId;
-            this.typeInfo = typeInfo;
-        }
-
-        @Override
-        public String toString() {
-            return "DM_PUT_TYPE_REQ(" + id + ")";
+    public static <T> String asString(T o) {
+        return GsonHelper.getGson().toJson(o);
+    }
+    
+    public static <T> T fromString(String s, Class<T> type) {
+        return GsonHelper.getGson().fromJson(s, type);
+    }
+    
+    public static <T> byte[] serialize(T o) {
+        try {
+            return GsonHelper.getGson().toJson(o).getBytes("UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
-    public static class Resp extends DMMessage.Resp {
-
-        public Resp(long id, DMMessage.ResponseCode opResult) {
-            super(id, opResult);
+    public static <T> T deserialize(byte[] b, Class<T> type) {
+        String s;
+        try {
+            s = new String(b, "UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
         }
-
-        @Override
-        public String toString() {
-            return "DM_PUT_TYPE_RESP(" + id + ")";
-        }
+        return GsonHelper.getGson().fromJson(s, type);
     }
 }

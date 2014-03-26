@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.util;
 
+import se.sics.datamodel.util.ByteId;
 import java.util.Arrays;
 import java.util.LinkedList;
 

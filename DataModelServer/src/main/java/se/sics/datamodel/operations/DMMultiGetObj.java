@@ -23,6 +23,7 @@ package se.sics.datamodel.operations;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import org.javatuples.Pair;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.util.ByteId;
 import se.sics.caracaldb.utils.TimestampIdFactory;
@@ -35,37 +36,41 @@ public class DMMultiGetObj extends DMParallelOp {
 
     private final ResultBuilder resultBuilder;
 
-    public DMMultiGetObj(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId, Set<ByteId> objIds) {
+    public DMMultiGetObj(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, Set<ByteId> objIds) {
         super(id, operationsMaster);
-        this.resultBuilder = new ResultBuilder(dbId, typeId, objIds);
+        this.resultBuilder = new ResultBuilder(typeId, objIds);
     }
 
     //*****DMOperations*****
     @Override
     public final void startHook() {
-        LOG.debug("Operation {}  - started", id);
+        LOG.debug("Operation {}  - started", toString());
 
         TimestampIdFactory tidFactory = TimestampIdFactory.get();
         for (ByteId objId : resultBuilder.objs.keySet()) {
-            DMOperation pendingOp = new DMGetObjOp(tidFactory.newId(), this, resultBuilder.dbId, resultBuilder.typeId, objId);
+            DMOperation pendingOp = new DMGetObjOp(tidFactory.newId(), this, resultBuilder.typeId.add(objId));
             pendingOps.put(pendingOp.id, pendingOp);
             pendingOp.start();
+        }
+
+        if (pendingOps.isEmpty()) {
+            success();
         }
     }
 
     @Override
     public final void childFinished(long opId, DMOperation.Result result) {
-        if(done) {
+        if (done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
         }
         if (result instanceof DMGetObjOp.Result) {
             if (result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
                 DMGetObjOp.Result typedResult = (DMGetObjOp.Result) result;
-                resultBuilder.addResult(typedResult.objId, typedResult.value);
-                
+                resultBuilder.addResult(typedResult.objId.getValue2(), typedResult.value);
+
                 cleanChildOp(opId);
-                if(pendingOps.isEmpty()) {
+                if (pendingOps.isEmpty()) {
                     success();
                     return;
                 }
@@ -81,7 +86,7 @@ public class DMMultiGetObj extends DMParallelOp {
     public String toString() {
         return "DM_MULTI_GET_OBJ " + id;
     }
-    
+
     private void fail(DMMessage.ResponseCode respCode) {
         Result result = resultBuilder.fail(respCode);
         finish(result);
@@ -91,42 +96,40 @@ public class DMMultiGetObj extends DMParallelOp {
         Result result = resultBuilder.build();
         finish(result);
     }
-    
+
     private static class ResultBuilder {
-        final ByteId dbId;
-        final ByteId typeId;
+
+        final Pair<ByteId, ByteId> typeId;
         final Map<ByteId, byte[]> objs;
-        
-        ResultBuilder(ByteId dbId, ByteId typeId, Set<ByteId> objIds) {
-            this.dbId = dbId;
+
+        ResultBuilder(Pair<ByteId, ByteId> typeId, Set<ByteId> objIds) {
             this.typeId = typeId;
             this.objs = new TreeMap<ByteId, byte[]>();
-            for(ByteId objId : objIds) {
+            for (ByteId objId : objIds) {
                 objs.put(objId, null);
             }
         }
-        
+
         void addResult(ByteId objId, byte[] value) {
             objs.put(objId, value);
         }
-        
+
         Result build() {
-            return new Result(DMMessage.ResponseCode.SUCCESS, dbId, typeId, objs);
+            return new Result(DMMessage.ResponseCode.SUCCESS, typeId, objs);
         }
-        
+
         Result fail(DMMessage.ResponseCode respCode) {
-            return new Result(respCode, dbId, typeId, objs);
+            return new Result(respCode, typeId, objs);
         }
     }
 
     public static class Result extends DMOperation.Result {
-        public final ByteId dbId;
-        public final ByteId typeId;
+
+        public final Pair<ByteId, ByteId> typeId;
         public final Map<ByteId, byte[]> values;
 
-        Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, Map<ByteId, byte[]> values) {
+        Result(DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, byte[]> values) {
             super(respCode);
-            this.dbId = dbId;
             this.typeId = typeId;
             this.values = values;
         }

@@ -22,8 +22,7 @@ package se.sics.datamodel.operations;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.javatuples.Triplet;
 import se.sics.caracaldb.Key;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.PutObj;
@@ -37,16 +36,12 @@ import se.sics.caracaldb.utils.TimestampIdFactory;
  */
 public class DMPutObjOp extends DMParallelOp {
 
-    private final ByteId dbId;
-    private final ByteId typeId;
-    private final ByteId objId;
+    private final Triplet<ByteId, ByteId, ByteId> objId;
     private final byte[] value;
     private final Map<ByteId, Object> indexValues;
 
-    public DMPutObjOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId, ByteId objId, byte[] value, Map<ByteId, Object> indexValues) {
+    public DMPutObjOp(long id, DMOperationsManager operationsMaster, Triplet<ByteId, ByteId, ByteId> objId, byte[] value, Map<ByteId, Object> indexValues) {
         super(id, operationsMaster);
-        this.dbId = dbId;
-        this.typeId = typeId;
         this.objId = objId;
         this.value = value;
         this.indexValues = indexValues;
@@ -60,7 +55,7 @@ public class DMPutObjOp extends DMParallelOp {
         
         Key key;
         try {
-            key = DMKeyFactory.getDataKey(dbId, typeId, objId);
+            key = DMKeyFactory.getDataKey(objId.getValue0(), objId.getValue1(), objId.getValue2());
         } catch (IOException ex) {
             fail(DMMessage.ResponseCode.FAILURE);
             return;
@@ -73,7 +68,7 @@ public class DMPutObjOp extends DMParallelOp {
         for (Map.Entry<ByteId, Object> e : indexValues.entrySet()) {
             Key indexKey;
             try {
-                indexKey = DMKeyFactory.getIndexKey(dbId, typeId, e.getKey(), e.getValue(), objId);
+                indexKey = DMKeyFactory.getIndexKey(objId.getValue0(), objId.getValue1(), e.getKey(), e.getValue(), objId.getValue2());
             } catch (IOException ex) {
                 fail(DMMessage.ResponseCode.FAILURE);
                 return;
@@ -112,31 +107,27 @@ public class DMPutObjOp extends DMParallelOp {
     }
 
     private void fail(DMMessage.ResponseCode respCode) {
-        Result result = new Result(respCode, dbId, typeId, objId);
+        Result result = new Result(respCode, objId);
         finish(result);
     }
 
     private void success() {
-        Result result = new Result(DMMessage.ResponseCode.SUCCESS, dbId, typeId, objId);
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, objId);
         finish(result);
     }
 
     public static class Result extends DMOperation.Result {
 
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId;
 
-        public Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, ByteId objId) {
+        public Result(DMMessage.ResponseCode respCode, Triplet<ByteId, ByteId, ByteId> objId) {
             super(respCode);
-            this.dbId = dbId;
-            this.typeId = typeId;
             this.objId = objId;
         }
 
         @Override
         public DMMessage.Resp getMsg(long msgId) {
-            return new PutObj.Resp(msgId, responseCode, dbId, typeId, objId);
+            return new PutObj.Resp(msgId, objId, responseCode);
         }
     }
 }

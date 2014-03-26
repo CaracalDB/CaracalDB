@@ -18,34 +18,41 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.datamodel.util;
 
-import com.google.gson.Gson;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+package se.sics.datamodel.client;
+
+import java.io.UnsupportedEncodingException;
+import se.sics.datamodel.client.util.gson.CGsonHelper;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-@RunWith(JUnit4.class)
-public class TypeInfoTest {
 
-    @Test
-    public void typeInfoGsonTest() {
-        Gson g = GsonHelper.getGson();
 
-        ByteId dbId = new ByteId(new byte[]{1, 1});
-        ByteId typeId = new ByteId(new byte[]{1, 2});
-        TempTypeInfo typeInfo = new TempTypeInfo("type1", dbId, typeId);
-      
-        ByteIdFactory bif = new ByteIdFactory();
-        typeInfo.addField("field1", FieldInfo.FieldType.FLOAT, true);
-        typeInfo.addField("field2", FieldInfo.FieldType.STRING, false);
-        typeInfo.addField("field3", FieldInfo.FieldType.FLOAT, true);
-        
-        System.out.println(typeInfo);
-        System.out.println(g.toJson(typeInfo));
-        System.out.println(g.fromJson(g.toJson(typeInfo), TempTypeInfo.class));
+public class CDMSerializer {
+    public static <T> String asString(T o) {
+        return CGsonHelper.getGson().toJson(o);
+    }
+    
+    public static <T> T fromString(String s, Class<T> type) {
+        return CGsonHelper.getGson().fromJson(s, type);
+    }
+    
+    public static <T> byte[] serialize(T o) {
+        try {
+            return CGsonHelper.getGson().toJson(o).getBytes("UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public static <T> T deserialize(byte[] b, Class<T> type) {
+        String s;
+        try {
+            s = new String(b, "UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
+        }
+        return CGsonHelper.getGson().fromJson(s, type);
     }
 }

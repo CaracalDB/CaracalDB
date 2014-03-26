@@ -18,31 +18,42 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-package se.sics.caracaldb.datamodel.client;
+package se.sics.datamodel.util.gson;
 
 import com.google.gson.Gson;
-import junit.framework.Assert;
-import org.junit.Test;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+import java.util.Map;
+import se.sics.datamodel.ObjectValue;
 import se.sics.datamodel.util.ByteId;
-import se.sics.datamodel.util.GsonHelper;
-import se.sics.datamodel.util.gsonextra.ClientGetObjGson;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class ClientGetObjGsonTest {
-    @Test
-    public void test() {
+
+public class ObjectValueAdapter extends TypeAdapter<ObjectValue>{
+
+    @Override
+    public void write(JsonWriter writer, ObjectValue t) throws IOException {
         Gson gson = GsonHelper.getGson();
-        ByteId dbId = new ByteId(new byte[]{1, 1});
-        ByteId typeId = new ByteId(new byte[]{1, 2});
-        ByteId objId = new ByteId(new byte[]{1, 3});
-        
-        ClientGetObjGson c = new ClientGetObjGson(dbId, typeId, objId);
-        System.out.println(c);
-        ClientGetObjGson cc = gson.fromJson("{\"dbId\":{\"id\":[1,1]},\"typeId\":{\"id\":[1,2]},\"objId\":{\"id\":[1,3]}}", ClientGetObjGson.class);
-        System.out.println(cc);
-        Assert.assertEquals(c, cc);
+
+        writer.beginObject();
+        writer.name("fieldMap");
+        writer.beginArray();
+        for (Map.Entry<ByteId, Object> e : t.entrySet()) {
+            writer.beginObject();
+            gson.toJson(gson.toJsonTree(e.getKey().getId()), writer.name("id"));
+            gson.toJson(gson.toJsonTree(e.getValue()), writer.name("field"));
+            writer.endObject();
+        }
+        writer.endArray();
+        writer.endObject();
+    }
+
+    @Override
+    public ObjectValue read(JsonReader reader) throws IOException {
+        throw new UnsupportedOperationException("Should not write as ValueHolder, but as Value");
     }
 }

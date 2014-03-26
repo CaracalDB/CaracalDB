@@ -22,15 +22,12 @@ package se.sics.datamodel.operations;
 
 import se.sics.datamodel.operations.primitives.DMPutOp;
 import java.io.IOException;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.PutType;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
-import se.sics.datamodel.util.TempTypeInfo;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
@@ -38,13 +35,11 @@ import se.sics.caracaldb.utils.TimestampIdFactory;
  */
 public class DMPutTypeOp extends DMSequentialOp {
 
-    private final ByteId dbId;
-    private final ByteId typeId;
+    private final Pair<ByteId, ByteId> typeId;
     private final byte[] typeInfo;
 
-    public DMPutTypeOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId, byte[] typeInfo) {
+    public DMPutTypeOp(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
         super(id, operationsMaster);
-        this.dbId = dbId;
         this.typeId = typeId;
         this.typeInfo = typeInfo;
     }
@@ -78,7 +73,7 @@ public class DMPutTypeOp extends DMSequentialOp {
         TimestampIdFactory tidFactory = TimestampIdFactory.get();
         Key typeKey;
         try {
-            typeKey = DMKeyFactory.getTypeKey(dbId, typeId);
+            typeKey = DMKeyFactory.getTypeKey(typeId.getValue0(), typeId.getValue1());
         } catch (IOException ex) {
             fail(DMMessage.ResponseCode.FAILURE);
             return;

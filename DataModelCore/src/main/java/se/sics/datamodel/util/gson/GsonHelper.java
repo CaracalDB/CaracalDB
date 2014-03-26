@@ -18,14 +18,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.datamodel.util;
+package se.sics.datamodel.util.gson;
 
+import se.sics.datamodel.ValueHolder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import se.sics.datamodel.util.gsonextra.ClientGetObjGson;
-import se.sics.datamodel.util.gsonextra.ClientGetTypeGson;
-import se.sics.datamodel.util.gsonextra.ClientPutObjGson;
-import se.sics.datamodel.util.gsonextra.ClientQueryObjGson;
+import se.sics.datamodel.ObjectValue;
+import se.sics.datamodel.TypeInfo;
 
 /**
  *
@@ -35,17 +34,17 @@ public class GsonHelper {
 
     private static Gson gson = null;
 
+    public static GsonBuilder getGsonBuilder() {
+        GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.registerTypeAdapter(TypeInfo.class, new TypeInfoAdapter());
+        gsonBuilder.registerTypeAdapter(ValueHolder.class, new ValueHolderAdapter());
+        gsonBuilder.registerTypeAdapter(ObjectValue.class, new ObjectValueAdapter());
+        return gsonBuilder;
+    }
+
     public static Gson getGson() {
         if (gson == null) {
-            GsonBuilder gsonBuilder = new GsonBuilder();
-            gsonBuilder.registerTypeAdapter(TempTypeInfo.class, new TempTypeInfo.GsonTypeAdapter());
-            gsonBuilder.registerTypeAdapter(TempObject.Value.class, new TempObject.Value.GsonTypeAdapter());
-            gsonBuilder.registerTypeAdapter(TempObject.ValueHolder.class, new TempObject.ValueHolder.GsonTypeAdapter());
-            gsonBuilder.registerTypeAdapter(ClientGetTypeGson.class, new ClientGetTypeGson.GsonTypeAdapter());
-            gsonBuilder.registerTypeAdapter(ClientGetObjGson.class, new ClientGetObjGson.GsonTypeAdapter());
-            gsonBuilder.registerTypeAdapter(ClientQueryObjGson.class, new ClientQueryObjGson.GsonTypeAdapter());
-            gsonBuilder.registerTypeAdapter(ClientPutObjGson.class, new ClientPutObjGson.GsonTypeAdapter());
-            gson = gsonBuilder.create();
+            gson = getGsonBuilder().create();
         }
         return gson;
     }

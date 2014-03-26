@@ -1,4 +1,4 @@
-/*
+/* 
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,32 +18,32 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+package se.sics.datamodel;
 
-package se.sics.caracaldb.datamodel.client;
-
-import com.google.gson.Gson;
-import junit.framework.Assert;
-import org.junit.Test;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
 import se.sics.datamodel.util.ByteId;
-import se.sics.datamodel.util.GsonHelper;
-import se.sics.datamodel.util.gsonextra.ClientGetTypeGson;
 
 /**
- *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class ClientGetTypeGsonTest {
-    @Test
-    public void test() {
-        Gson gson = GsonHelper.getGson();
-        ByteId dbId = new ByteId(new byte[]{1, 1});
-        ByteId typeId = new ByteId(new byte[]{1, 2});
-        ClientGetTypeGson c = new ClientGetTypeGson(dbId, typeId);
-        System.out.println(c);
-        System.out.println(gson.toJson(c));
-        System.out.println(gson.fromJson(gson.toJson(c), ClientGetTypeGson.class));
-        ClientGetTypeGson cc = gson.fromJson("{\"dbId\":{\"id\":[1,1]},\"typeId\":{\"id\":[1,2]}}", ClientGetTypeGson.class);
-        System.out.println(cc);
-        Assert.assertEquals(c, cc);
+public class IndexHelper {
+
+    public static Map<ByteId, Object> getIndexes(TypeInfo ti, ObjectValue ov) throws TypeInfo.InconsistencyException {
+        if (ti.size() != ov.size()) {
+            throw new TypeInfo.InconsistencyException();
+        }
+        Map<ByteId, Object> indexMap = new TreeMap<ByteId, Object>();
+        for (Entry<ByteId, FieldInfo> e : ti.entrySet()) {
+            if (e.getValue().indexed) {
+                Object o = ov.get(e.getKey());
+                if (o == null) {
+                    throw new TypeInfo.InconsistencyException();
+                }
+                indexMap.put(e.getKey(), o);
+            }
+        }
+        return indexMap;
     }
 }

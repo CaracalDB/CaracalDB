@@ -26,6 +26,7 @@ import java.util.Comparator;
 
 import com.google.common.primitives.UnsignedBytes;
 import java.util.Collection;
+import se.sics.datamodel.DMSerializer;
 import se.sics.kompics.address.IdUtils;
 
 /**
@@ -52,7 +53,7 @@ public class ByteId implements Comparable<ByteId> {
 
     @Override
     public String toString() {
-        return IdUtils.printFormat(id);
+        return DMSerializer.asString(id);
     }
 
     @Override

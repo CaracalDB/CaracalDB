@@ -18,47 +18,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+package se.sics.datamodel.client.msg;
 
-package se.sics.datamodel.msg;
-
-import java.util.Map;
 import org.javatuples.Pair;
+import se.sics.datamodel.msg.GetType;
 import se.sics.datamodel.util.ByteId;
 
 /**
- *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class QueryObj {
-    public static class Req extends DMMessage.Req {
-        public final Pair<ByteId, ByteId> typeId;
-        public final ByteId indexId;
-        public final Object indexVal;
-        
-        public Req(long id, Pair<ByteId, ByteId> typeId, ByteId indexId, Object indexVal) {
-            super(id);
-            this.typeId = typeId;
-            this.indexId = indexId;
-            this.indexVal = indexVal;
-        }
-        
-        @Override
-        public String toString() {
-            return "DM_QUERY_OBJ_REQ(" + id + ")";
-        }
+
+
+public class CGetType {
+    public final Pair<ByteId, ByteId> typeId;
+    
+    public CGetType(Pair<ByteId, ByteId> typeId) {
+        this.typeId = typeId;
     }
     
-    public static class Resp extends DMMessage.Resp {
-        public final Map<ByteId, byte[]> objs;
-        
-        public Resp(long id, DMMessage.ResponseCode respCode, Map<ByteId, byte[]> objs) {
-            super(id, respCode);
-            this.objs = objs;
-        }
-        
-        @Override
-        public String toString() {
-            return "DM_QUERY_OBJ_RESP(" + id + ")";
-        }
+    public GetType.Req getReq(long reqId) {
+        return new GetType.Req(reqId, typeId);
     }
 }

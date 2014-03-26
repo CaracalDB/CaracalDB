@@ -20,20 +20,14 @@
  */
 package se.sics.datamodel.operations;
 
-import se.sics.datamodel.operations.primitives.DMCRQOp;
 import java.io.IOException;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.KeyRange;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetType;
 import se.sics.datamodel.operations.primitives.DMGetOp;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
-import se.sics.datamodel.util.TempTypeInfo;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
@@ -41,12 +35,10 @@ import se.sics.caracaldb.utils.TimestampIdFactory;
  */
 public class DMGetTypeOp extends DMSequentialOp {
 
-    private final ByteId dbId;
-    private final ByteId typeId;
+    private final Pair<ByteId,ByteId> typeId;
 
-    public DMGetTypeOp(long id, DMOperationsManager operationsMaster, ByteId dbId, ByteId typeId) {
+    public DMGetTypeOp(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId) {
         super(id, operationsMaster);
-        this.dbId = dbId;
         this.typeId = typeId;
     }
 
@@ -70,7 +62,7 @@ public class DMGetTypeOp extends DMSequentialOp {
         LOG.debug("Operation {} - started", toString());
         Key typeKey;
         try {
-            typeKey = DMKeyFactory.getTypeKey(dbId, typeId);
+            typeKey = DMKeyFactory.getTypeKey(typeId.getValue0(), typeId.getValue1());
         } catch (IOException ex) {
             fail(DMMessage.ResponseCode.FAILURE);
             return;
@@ -139,23 +131,21 @@ public class DMGetTypeOp extends DMSequentialOp {
     }
     
     private void fail(DMMessage.ResponseCode respCode) {
-        Result result = new Result(respCode, dbId, typeId, null);
+        Result result = new Result(respCode, typeId, null);
         finish(result);
     }
 
     private void success(byte[] typeInfo) {
-        Result result = new Result(DMMessage.ResponseCode.SUCCESS, dbId, typeId, typeInfo);
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, typeId, typeInfo);
         finish(result);
     }
 
     public static class Result extends DMOperation.Result {
-        public final ByteId dbId;
-        public final ByteId typeId;
+        public final Pair<ByteId, ByteId> typeId;
         public final byte[] typeInfo;
 
-        public Result(DMMessage.ResponseCode respCode, ByteId dbId, ByteId typeId, byte[] typeInfo) {
+        public Result(DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
             super(respCode);
-            this.dbId = dbId;
             this.typeId = typeId;
             this.typeInfo = typeInfo;
         }

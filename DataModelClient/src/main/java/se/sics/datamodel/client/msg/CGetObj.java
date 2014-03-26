@@ -18,42 +18,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.datamodel.msg;
 
-import org.javatuples.Pair;
+package se.sics.datamodel.client.msg;
+
+import org.javatuples.Triplet;
+import se.sics.datamodel.msg.GetObj;
 import se.sics.datamodel.util.ByteId;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class PutType {
 
-    public static class Req extends DMMessage.Req {
 
-        public final Pair<ByteId,ByteId> typeId; //<dbId,typeId>
-        public final byte[] typeInfo;
-
-        public Req(long id, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
-            super(id);
-            this.typeId = typeId;
-            this.typeInfo = typeInfo;
-        }
-
-        @Override
-        public String toString() {
-            return "DM_PUT_TYPE_REQ(" + id + ")";
-        }
+public class CGetObj {
+    public final Triplet<ByteId, ByteId, ByteId> objId;
+    
+    public CGetObj(Triplet<ByteId, ByteId, ByteId> objId) {
+        this.objId = objId;
     }
-
-    public static class Resp extends DMMessage.Resp {
-
-        public Resp(long id, DMMessage.ResponseCode opResult) {
-            super(id, opResult);
-        }
-
-        @Override
-        public String toString() {
-            return "DM_PUT_TYPE_RESP(" + id + ")";
-        }
+    
+    public GetObj.Req getReq(long reqId) {
+        return new GetObj.Req(reqId, objId);
     }
 }

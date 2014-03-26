@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.msg;
 
+import org.javatuples.Pair;
 import se.sics.datamodel.util.ByteId;
 
 /**
@@ -29,12 +30,10 @@ public class GetType {
 
     public static class Req extends DMMessage.Req {
 
-        public final ByteId dbId;
-        public final ByteId typeId;
+        public final Pair<ByteId,ByteId> typeId; //<dbId, typeId>
 
-        public Req(long id, ByteId dbId, ByteId typeId) {
+        public Req(long id, Pair<ByteId, ByteId> typeId) {
             super(id);
-            this.dbId = dbId;
             this.typeId = typeId;
         }
 
