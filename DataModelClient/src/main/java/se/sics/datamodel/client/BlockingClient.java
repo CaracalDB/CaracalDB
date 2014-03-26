@@ -22,6 +22,8 @@ package se.sics.datamodel.client;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.javatuples.Pair;
+import org.javatuples.Triplet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.utils.TimestampIdFactory;
@@ -89,7 +91,7 @@ public class BlockingClient {
         try {
             DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
             if (resp == null) {
-                return new GetType.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, null);
+                return new GetType.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, Pair.with(req.dbId, req.typeId), null);
             }
             if (resp instanceof GetType.Resp) {
                 return (GetType.Resp) resp;
@@ -97,7 +99,7 @@ public class BlockingClient {
             throw new RuntimeException("Bad Response Type");
         } catch (InterruptedException ex) {
             LOG.error("Couldn't get a response.", ex);
-            return new GetType.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, null);
+            return new GetType.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, Pair.with(req.dbId, req.typeId), null);
         }
     }
 
@@ -133,7 +135,7 @@ public class BlockingClient {
         try {
             DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
             if (resp == null) {
-                return new GetObj.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, req.objId, null);
+                return new GetObj.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, Triplet.with(req.dbId, req.typeId, req.objId), null);
             }
             if (resp instanceof GetObj.Resp) {
                 return (GetObj.Resp) resp;
@@ -141,7 +143,7 @@ public class BlockingClient {
             throw new RuntimeException("Bad Response Type");
         } catch (InterruptedException ex) {
             LOG.error("Couldn't get a response.", ex);
-            return new GetObj.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, req.objId, null);
+            return new GetObj.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, Triplet.with(req.dbId, req.typeId, req.objId), null);
         }
     }
 

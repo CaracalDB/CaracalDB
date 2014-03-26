@@ -127,24 +127,26 @@ public class DMPutTypeOp extends DMSequentialOp {
     }
 
     private void fail(DMMessage.ResponseCode respCode) {
-        Result result = new Result(respCode);
+        Result result = new Result(respCode, typeId);
         finish(result);
     }
 
     private void success() {
-        Result result = new Result(DMMessage.ResponseCode.SUCCESS);
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, typeId);
         finish(result);
     }
 
     public static class Result extends DMOperation.Result {
-
-        public Result(DMMessage.ResponseCode respCode) {
+        public final Pair<ByteId, ByteId> typeId;
+        
+        public Result(DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId) {
             super(respCode);
+            this.typeId = typeId;
         }
 
         @Override
         public DMMessage.Resp getMsg(long msgId) {
-            return new PutType.Resp(msgId, responseCode);
+            return new PutType.Resp(msgId, responseCode, typeId);
         }
     }
 }

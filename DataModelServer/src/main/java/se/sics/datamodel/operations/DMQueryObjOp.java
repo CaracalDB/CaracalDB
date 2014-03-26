@@ -103,12 +103,12 @@ public class DMQueryObjOp extends DMSequentialOp {
     }
     
     private void fail(DMMessage.ResponseCode respCode) {
-        Result result = new Result(respCode, null);
+        Result result = new Result(respCode, typeId, null);
         finish(result);
     }
     
     private void success(Map<ByteId, byte[]> objs) {
-        Result result = new Result(DMMessage.ResponseCode.SUCCESS, objs);
+        Result result = new Result(DMMessage.ResponseCode.SUCCESS, typeId, objs);
         finish(result);
     }
     
@@ -132,16 +132,18 @@ public class DMQueryObjOp extends DMSequentialOp {
     }
     
     public static class Result extends DMOperation.Result {
+        public final Pair<ByteId, ByteId> typeId;
         public final Map<ByteId, byte[]> objs;
         
-        public Result(DMMessage.ResponseCode respCode, Map<ByteId, byte[]> objs) {
+        public Result(DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, byte[]> objs) {
             super(respCode);
+            this.typeId = typeId;
             this.objs = objs;
         }
         
         @Override
         public DMMessage.Resp getMsg(long msgId) {
-            return new QueryObj.Resp(msgId, responseCode, objs);
+            return new QueryObj.Resp(msgId, responseCode, typeId, objs);
         }
     }
 }

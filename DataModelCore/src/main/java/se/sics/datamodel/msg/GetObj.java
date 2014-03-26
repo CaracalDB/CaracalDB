@@ -30,11 +30,17 @@ public class GetObj {
 
     public static class Req extends DMMessage.Req {
 
-        public final Triplet<ByteId, ByteId, ByteId> objId;
+//        public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
 
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId objId;
+        
         public Req(long id, Triplet<ByteId, ByteId, ByteId> objId) {
             super(id);
-            this.objId = objId;
+            this.dbId = objId.getValue0();
+            this.typeId = objId.getValue1();
+            this.objId = objId.getValue2();
         }
 
         @Override
@@ -44,12 +50,18 @@ public class GetObj {
     }
 
     public static class Resp extends DMMessage.Resp {
-        public final Triplet<ByteId, ByteId, ByteId> objId;
+//        public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId objId;
+        
         public final byte[] value;
 
         public Resp(long id, DMMessage.ResponseCode opResult, Triplet<ByteId, ByteId, ByteId> objId, byte[] value) {
             super(id, opResult);
-            this.objId = objId;
+            this.dbId = objId.getValue0();
+            this.typeId = objId.getValue1();
+            this.objId = objId.getValue2();
             this.value = value;
         }
 

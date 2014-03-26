@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import org.javatuples.Pair;
+import org.javatuples.Triplet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.datamodel.msg.GetAllTypes;
@@ -93,7 +94,7 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(GetType.Req req) {
-            DMOperation op = new DMGetTypeOp(req.id, operationsManager, req.typeId);
+            DMOperation op = new DMGetTypeOp(req.id, operationsManager, Pair.with(req.dbId,req.typeId));
             pendingOps.put(op.id, op);
             op.start();
         }
@@ -115,7 +116,7 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(GetObj.Req req) {
-            DMOperation op = new DMGetObjOp(req.id, operationsManager, req.objId);
+            DMOperation op = new DMGetObjOp(req.id, operationsManager, Triplet.with(req.dbId, req.typeId, req.objId));
             pendingOps.put(op.id, op);
             op.start();
         }
@@ -126,7 +127,7 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(PutObj.Req req) {
-            DMOperation op = new DMPutObjOp(req.id, operationsManager, req.objId, req.objValue, req.indexValue);
+            DMOperation op = new DMPutObjOp(req.id, operationsManager, Triplet.with(req.dbId, req.typeId, req.objId), req.objValue, req.indexValue);
             pendingOps.put(op.id, op);
             op.start();
         }
@@ -137,7 +138,7 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(QueryObj.Req req) {
-            DMOperation op = new DMQueryObjOp(req.id, operationsManager, req.typeId, req.indexId, req.indexVal);
+            DMOperation op = new DMQueryObjOp(req.id, operationsManager, Pair.with(req.dbId, req.typeId), req.indexId, req.indexVal);
             pendingOps.put(op.id, op);
             op.start();
         }

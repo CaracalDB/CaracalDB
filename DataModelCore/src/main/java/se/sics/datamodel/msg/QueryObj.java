@@ -31,13 +31,16 @@ import se.sics.datamodel.util.ByteId;
  */
 public class QueryObj {
     public static class Req extends DMMessage.Req {
-        public final Pair<ByteId, ByteId> typeId;
+//        public final Pair<ByteId, ByteId> typeId; //revert once support for serializing Tuples
+        public final ByteId dbId;
+        public final ByteId typeId;
         public final ByteId indexId;
         public final Object indexVal;
         
         public Req(long id, Pair<ByteId, ByteId> typeId, ByteId indexId, Object indexVal) {
             super(id);
-            this.typeId = typeId;
+            this.dbId = typeId.getValue0();
+            this.typeId = typeId.getValue1();
             this.indexId = indexId;
             this.indexVal = indexVal;
         }
@@ -49,10 +52,14 @@ public class QueryObj {
     }
     
     public static class Resp extends DMMessage.Resp {
+        public final ByteId dbId;
+        public final ByteId typeId;
         public final Map<ByteId, byte[]> objs;
         
-        public Resp(long id, DMMessage.ResponseCode respCode, Map<ByteId, byte[]> objs) {
+        public Resp(long id, DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, byte[]> objs) {
             super(id, respCode);
+            this.dbId = typeId.getValue0();
+            this.typeId = typeId.getValue1();
             this.objs = objs;
         }
         

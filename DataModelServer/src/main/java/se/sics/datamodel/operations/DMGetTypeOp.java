@@ -152,7 +152,7 @@ public class DMGetTypeOp extends DMSequentialOp {
 
         @Override
         public DMMessage.Resp getMsg(long msgId) {
-            return new GetType.Resp(msgId, responseCode, typeInfo);
+            return new GetType.Resp(msgId, responseCode, typeId, typeInfo);
         }
     }
 }

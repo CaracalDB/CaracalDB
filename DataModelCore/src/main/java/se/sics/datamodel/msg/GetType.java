@@ -30,11 +30,15 @@ public class GetType {
 
     public static class Req extends DMMessage.Req {
 
-        public final Pair<ByteId,ByteId> typeId; //<dbId, typeId>
+//        public final Pair<ByteId,ByteId> typeId; //<dbId, typeId>//fix later to serialize Tuples
 
+        public final ByteId dbId;
+        public final ByteId typeId;
+        
         public Req(long id, Pair<ByteId, ByteId> typeId) {
             super(id);
-            this.typeId = typeId;
+            this.dbId = typeId.getValue0();
+            this.typeId = typeId.getValue1();
         }
 
         @Override
@@ -44,10 +48,14 @@ public class GetType {
     }
 
     public static class Resp extends DMMessage.Resp {
+        public final ByteId dbId;
+        public final ByteId typeId;
         public final byte[] typeInfo;
 
-        public Resp(long id, DMMessage.ResponseCode opResult, byte[] typeInfo) {
+        public Resp(long id, DMMessage.ResponseCode opResult, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
             super(id, opResult);
+            this.dbId = typeId.getValue0();
+            this.typeId = typeId.getValue1();
             this.typeInfo = typeInfo;
         }
 

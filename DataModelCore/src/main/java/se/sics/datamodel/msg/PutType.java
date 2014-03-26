@@ -49,9 +49,13 @@ public class PutType {
     }
 
     public static class Resp extends DMMessage.Resp {
-
-        public Resp(long id, DMMessage.ResponseCode opResult) {
+        public final ByteId dbId;
+        public final ByteId typeId;
+        
+        public Resp(long id, DMMessage.ResponseCode opResult, Pair<ByteId, ByteId> typeId) {
             super(id, opResult);
+            this.dbId = typeId.getValue0();
+            this.typeId = typeId.getValue1();
         }
 
         @Override

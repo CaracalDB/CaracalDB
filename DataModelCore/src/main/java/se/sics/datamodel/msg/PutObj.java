@@ -30,13 +30,18 @@ import se.sics.datamodel.util.ByteId;
  */
 public class PutObj {
     public static class Req extends DMMessage.Req {
-        public final Triplet<ByteId, ByteId, ByteId> objId; //<dbId, typeId, objId>
+//        public final Triplet<ByteId, ByteId, ByteId> objId; //<dbId, typeId, objId> //revert once support for serializing Tuples
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId objId;
         public final byte[] objValue;
         public final Map<ByteId, Object> indexValue;
 
         public Req(long id, Triplet<ByteId, ByteId, ByteId> objId, byte[] value, Map<ByteId, Object> indexValue) {
             super(id);
-            this.objId = objId;
+            this.dbId = objId.getValue0();
+            this.typeId = objId.getValue1();
+            this.objId = objId.getValue2();
             this.objValue = value;
             this.indexValue = indexValue;
         }
@@ -48,11 +53,16 @@ public class PutObj {
     }
 
     public static class Resp extends DMMessage.Resp {
-        public final Triplet<ByteId, ByteId, ByteId> objId;
+//        public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
+        public final ByteId dbId;
+        public final ByteId typeId;
+        public final ByteId objId;
         
         public Resp(long id, Triplet<ByteId, ByteId, ByteId> objId, DMMessage.ResponseCode opResult) {
             super(id, opResult);
-            this.objId = objId;
+            this.dbId = objId.getValue0();
+            this.typeId = objId.getValue1();
+            this.objId = objId.getValue2();
         }
 
         @Override
