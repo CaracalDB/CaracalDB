@@ -30,12 +30,15 @@ public class PutType {
 
     public static class Req extends DMMessage.Req {
 
-        public final Pair<ByteId,ByteId> typeId; //<dbId,typeId>
+//        public final Pair<ByteId,ByteId> typeId; //<dbId,typeId> //kryo is stupid and can' do tuples
+        public final ByteId dbId;
+        public final ByteId typeId;
         public final byte[] typeInfo;
 
         public Req(long id, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
             super(id);
-            this.typeId = typeId;
+            this.dbId = typeId.getValue0();
+            this.typeId = typeId.getValue1();
             this.typeInfo = typeInfo;
         }
 

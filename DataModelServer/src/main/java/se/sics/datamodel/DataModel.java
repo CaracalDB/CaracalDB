@@ -23,6 +23,7 @@ package se.sics.datamodel;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.datamodel.msg.GetAllTypes;
@@ -103,7 +104,7 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(PutType.Req req) {
-            DMOperation op = new DMPutTypeOp(req.id, operationsManager, req.typeId, req.typeInfo);
+            DMOperation op = new DMPutTypeOp(req.id, operationsManager, Pair.with(req.dbId, req.typeId), req.typeInfo);
             pendingOps.put(op.id, op);
             op.start();
         }
