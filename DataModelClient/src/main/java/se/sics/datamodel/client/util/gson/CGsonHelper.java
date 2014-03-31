@@ -26,6 +26,7 @@ import se.sics.datamodel.client.msg.CGetObj;
 import se.sics.datamodel.client.msg.CGetType;
 import se.sics.datamodel.client.msg.CPutObj;
 import se.sics.datamodel.client.msg.CPutType;
+import se.sics.datamodel.client.msg.CQueryObj;
 import se.sics.datamodel.util.gson.GsonHelper;
 
 /**
@@ -41,6 +42,7 @@ public class CGsonHelper {
         gsonBuilder.registerTypeAdapter(CPutType.class, new CPutTypeAdapter());
         gsonBuilder.registerTypeAdapter(CGetObj.class, new CGetObjAdapter());
         gsonBuilder.registerTypeAdapter(CPutObj.class, new CPutObjAdapter());
+        gsonBuilder.registerTypeAdapter(CQueryObj.class, new CQueryObjAdapter());
         return gsonBuilder;
     }
     

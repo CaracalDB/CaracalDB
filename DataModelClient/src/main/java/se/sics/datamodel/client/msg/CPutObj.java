@@ -20,8 +20,6 @@
  */
 package se.sics.datamodel.client.msg;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.javatuples.Triplet;
 import se.sics.datamodel.IndexHelper;
 import se.sics.datamodel.ObjectValue;

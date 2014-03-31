@@ -18,46 +18,43 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-package se.sics.datamodel.client;
+package se.sics.datamodel.client.msg;
 
 import com.google.gson.JsonElement;
-import java.io.UnsupportedEncodingException;
-import se.sics.datamodel.client.util.gson.CGsonHelper;
+import org.javatuples.Pair;
+import se.sics.datamodel.FieldType;
+import se.sics.datamodel.TypeInfo;
+import se.sics.datamodel.client.CDMSerializer;
+import se.sics.datamodel.msg.GetType;
+import se.sics.datamodel.msg.QueryObj;
+import se.sics.datamodel.util.ByteId;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
 
-
-public class CDMSerializer {
-    public static <T> String asString(T o) {
-        return CGsonHelper.getGson().toJson(o);
+public class CQueryObj {
+    public final Pair<ByteId, ByteId> typeId;
+    public final ByteId indexId;
+    public final JsonElement indexVal;
+    
+    public CQueryObj(Pair<ByteId, ByteId> typeId, ByteId indexId, JsonElement indexVal) {
+        this.typeId = typeId;
+        this.indexId = indexId;
+        this.indexVal = indexVal;
     }
     
-    public static <T> T fromString(String s, Class<T> type) {
-        return CGsonHelper.getGson().fromJson(s, type);
+    public GetType.Req getTypeReq(long id) {
+        return new GetType.Req(id, typeId);
     }
     
-    public static <T> T fromJsonE(JsonElement je, Class<T> type) {
-        return CGsonHelper.getGson().fromJson(je, type);
-    }
-    
-    public static <T> byte[] serialize(T o) {
+    public QueryObj.Req getQueryReq(long id, TypeInfo typeInfo) {
         try {
-            return CGsonHelper.getGson().toJson(o).getBytes("UTF-8");
-        } catch (UnsupportedEncodingException ex) {
+            FieldType indexedField = typeInfo.get(indexId).type;
+            Object oIndexVal = CDMSerializer.fromJsonE(indexVal, FieldType.getFieldClass(indexedField));
+            return new QueryObj.Req(id, typeId, indexId, oIndexVal);
+        } catch (TypeInfo.InconsistencyException ex) {
             throw new RuntimeException(ex);
         }
-    }
-
-    public static <T> T deserialize(byte[] b, Class<T> type) {
-        String s;
-        try {
-            s = new String(b, "UTF-8");
-        } catch (UnsupportedEncodingException ex) {
-            throw new RuntimeException(ex);
-        }
-        return CGsonHelper.getGson().fromJson(s, type);
     }
 }

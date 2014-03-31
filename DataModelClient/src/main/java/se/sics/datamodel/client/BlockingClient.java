@@ -32,6 +32,7 @@ import se.sics.datamodel.client.msg.CGetObj;
 import se.sics.datamodel.client.msg.CGetType;
 import se.sics.datamodel.client.msg.CPutObj;
 import se.sics.datamodel.client.msg.CPutType;
+import se.sics.datamodel.client.msg.CQueryObj;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetObj;
 import se.sics.datamodel.msg.GetType;
@@ -111,7 +112,7 @@ public class BlockingClient {
         TypeInfo typeInfo = CDMSerializer.deserialize(typeResp.typeInfo, TypeInfo.class);
         PutObj.Req objReq = cputObj.putObjReq(tidFactory.newId(), typeInfo);
 
-        worker.dataModelTrigger(null);
+        worker.dataModelTrigger(objReq);
         try {
             DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
             if (resp == null) {
@@ -148,35 +149,26 @@ public class BlockingClient {
     }
 
     public QueryObj.Resp queryObj(String queryObj) {
-        throw new UnsupportedOperationException("fix query - easy fix");
-//        LOG.debug("QueryObj for {}", queryObj);
-//        long id = TimestampIdFactory.get().newId();
-//        Gson gson = GsonHelper.getGson();
-//        ClientQueryObjGson queryObjGson = gson.fromJson(queryObj, ClientQueryObjGson.class);
-//
-//        ClientGetTypeGson cl = new ClientGetTypeGson(queryObjGson.dbId, queryObjGson.typeId);
-//        GetType.Resp type = getType(gson.toJson(cl));
-//        TempTypeInfo typeInfo;
-//        try {
-//            typeInfo = gson.fromJson(new String(type.typeInfo, "UTF-8"), TempTypeInfo.class);
-//        } catch (UnsupportedEncodingException ex) {
-//            throw new RuntimeException(ex);
-//        }
-//        Object indexVal = gson.fromJson(queryObjGson.indexValue, getClass(typeInfo.getField(queryObjGson.indexId).fieldType));
-//        QueryObj.Req req = new QueryObj.Req(id, queryObjGson.dbId, queryObjGson.typeId, queryObjGson.indexId, indexVal);
-//        worker.dataModelTrigger(req);
-//        try {
-//            DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
-//            if (resp == null) {
-//                return new QueryObj.Resp(id, DMMessage.ResponseCode.TIMEOUT, null);
-//            }
-//            if (resp instanceof QueryObj.Resp) {
-//                return (QueryObj.Resp) resp;
-//            }
-//            throw new RuntimeException("Bad Response Type");
-//        } catch (InterruptedException ex) {
-//            LOG.error("Couldn't get a response.", ex);
-//            return new QueryObj.Resp(id, DMMessage.ResponseCode.TIMEOUT, null);
-//        }
+        LOG.debug("QueryObj for {}", queryObj);
+        CQueryObj cqueryObj = CDMSerializer.fromString(queryObj, CQueryObj.class);
+
+        GetType.Req typeReq = cqueryObj.getTypeReq(tidFactory.newId());
+        GetType.Resp typeResp = getType(typeReq);
+        TypeInfo typeInfo = CDMSerializer.deserialize(typeResp.typeInfo, TypeInfo.class);
+        QueryObj.Req req = cqueryObj.getQueryReq(tidFactory.newId(), typeInfo);
+        worker.dataModelTrigger(req);
+        try {
+            DMMessage.Resp resp = dataModelQueue.poll(TIMEOUT, TIMEUNIT);
+            if (resp == null) {
+                return new QueryObj.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, cqueryObj.typeId, null);
+            }
+            if (resp instanceof QueryObj.Resp) {
+                return (QueryObj.Resp) resp;
+            }
+            throw new RuntimeException("Bad Response Type");
+        } catch (InterruptedException ex) {
+            LOG.error("Couldn't get a response.", ex);
+            return new QueryObj.Resp(req.id, DMMessage.ResponseCode.TIMEOUT, cqueryObj.typeId, null);
+        }
     }
 }

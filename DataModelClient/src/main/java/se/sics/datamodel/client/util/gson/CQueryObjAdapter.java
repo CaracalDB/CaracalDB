@@ -18,32 +18,32 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 package se.sics.datamodel.client.util.gson;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
-import org.javatuples.Triplet;
-import se.sics.datamodel.client.msg.CGetObj;
+import org.javatuples.Pair;
+import se.sics.datamodel.client.msg.CQueryObj;
 import se.sics.datamodel.util.ByteId;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
 
-public class CGetObjAdapter extends TypeAdapter<CGetObj> {
+public class CQueryObjAdapter extends TypeAdapter<CQueryObj> {
 
     @Override
-    public void write(JsonWriter writer, CGetObj t) throws IOException {
+    public void write(JsonWriter writer, CQueryObj t) throws IOException {
         throw new UnsupportedOperationException("Only read supported");
     }
 
     @Override
-    public CGetObj read(JsonReader reader) throws IOException {
+    public CQueryObj read(JsonReader reader) throws IOException {
         Gson gson = CGsonHelper.getGson();
 
         reader.beginObject();
@@ -57,12 +57,16 @@ public class CGetObjAdapter extends TypeAdapter<CGetObj> {
         }
         ByteId typeId = new ByteId((byte[]) gson.fromJson(reader, byte[].class));
         
-        if (reader.peek() != JsonToken.NAME || !reader.nextName().equals("objId")) {
+        if (reader.peek() != JsonToken.NAME || !reader.nextName().equals("indexId")) {
             throw new IOException();
         }
-        ByteId objId = new ByteId((byte[]) gson.fromJson(reader, byte[].class));
+        ByteId indexId = new ByteId((byte[]) gson.fromJson(reader, byte[].class));
 
+        if (reader.peek() != JsonToken.NAME || !reader.nextName().equals("indexVal")) {
+                throw new IOException();
+            }
+        JsonElement indexVal = gson.fromJson(reader, JsonElement.class);
         reader.endObject();
-        return new CGetObj(Triplet.with(dbId, typeId, objId));
+        return new CQueryObj(Pair.with(dbId, typeId), indexId, indexVal);
     }
 }
