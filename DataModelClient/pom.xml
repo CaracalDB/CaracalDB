@@ -23,13 +23,6 @@
         
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
-            <artifactId>caracaldb-client</artifactId>
-            <version>0.0.3-SNAPSHOT</version>
-            <scope>compile</scope>
-        </dependency>
-        
-        <dependency>
-            <groupId>se.sics.caracaldb</groupId>
             <artifactId>DataModelCore</artifactId>
             <version>0.0.3-SNAPSHOT</version>
             <scope>compile</scope>
@@ -79,11 +72,11 @@
                     <descriptors>
                         <descriptor>src/main/assembly/src.xml</descriptor>
                     </descriptors>
-                    <finalName>caracaldb-client</finalName>
+                    <finalName>datamodel-ycsb-client</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
-                            <mainClass>se.sics.caracaldb.client.Console</mainClass>
+                            <mainClass>se.sics.datamodel.client.ycsb.DataModelTest</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
