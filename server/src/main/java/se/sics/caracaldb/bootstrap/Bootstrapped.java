@@ -22,14 +22,14 @@ package se.sics.caracaldb.bootstrap;
 
 import com.google.common.collect.ImmutableSet;
 import se.sics.caracaldb.global.LookupTable;
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.address.Address;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class Bootstrapped extends Event {
+public class Bootstrapped implements KompicsEvent {
     
     public final LookupTable lut;
     public final ImmutableSet<Address> failedHosts;

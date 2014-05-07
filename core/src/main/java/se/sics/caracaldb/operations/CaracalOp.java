@@ -20,13 +20,14 @@
  */
 package se.sics.caracaldb.operations;
 
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
+
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public abstract class CaracalOp extends Event {
+public abstract class CaracalOp implements KompicsEvent {
 
     public final long id;
 

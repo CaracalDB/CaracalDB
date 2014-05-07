@@ -29,7 +29,7 @@ import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Positive;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
 
 /**
@@ -49,14 +49,14 @@ public class DeadLetterBox extends ComponentDefinition {
         subscribe(messageHandler, net);
     }
     
-    Handler<Message> messageHandler = new Handler<Message>() {
+    Handler<Msg> messageHandler = new Handler<Msg>() {
 
         @Override
-        public void handle(Message event) {
+        public void handle(Msg event) {
             if (event instanceof Forwardable) {
                 Forwardable f = (Forwardable) event;
                 Key dest = new Key(event.getDestination().getId());
-                trigger(new ForwardMessage(self, self, dest, f), net);
+                trigger(new ForwardMessage(self, self, event.getOrigin(), event.getProtocol(), dest, f), net);
                 return;
             }
             LOG.debug("{}: Dropping mis-addressed message: {}", self, event);

@@ -21,18 +21,19 @@
 package se.sics.caracaldb.global;
 
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public interface Forwardable<T extends Message> {
+public interface Forwardable<T extends Msg> {
     /**
      * Return a message with desired contents and with the given address as dest.
      * 
+     * @param src Address where message is from (now, original sender is kept in orig)
      * @param dest Address where message is forwarded to
      * @return Message to be forwarded
      */
-    public T insertDestination(Address dest);
+    public T insertDestination(Address src, Address dest);
 }

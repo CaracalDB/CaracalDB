@@ -119,7 +119,7 @@ public class MethCat extends ComponentDefinition {
                     // foward because we are not ready to actually handle requests ourself yet
                     forwardToViewMember(event);
                 } else {
-                    ForwardToRange ftr = new ForwardToRange(req, req.subRange, event.getSource());
+                    ForwardToRange ftr = new ForwardToRange(req, req.subRange, event.getOrigin());
                     trigger(ftr, lookup);
                 }
             } else if (event.op instanceof GetRequest) {
@@ -170,7 +170,7 @@ public class MethCat extends ComponentDefinition {
                     trigger(req, replication);
                 } else {
                     LOG.debug("{}: Forwarding request {}", new Object[]{self, event});
-                    ForwardToRange ftr = new ForwardToRange(req, req.subRange, event.getSource());
+                    ForwardToRange ftr = new ForwardToRange(req, req.subRange, event.orig);
                     trigger(ftr, lookup);
                 }
             } else if (event.op instanceof GetRequest) {
@@ -205,30 +205,32 @@ public class MethCat extends ComponentDefinition {
         @Override
         public void handle(CaracalResponse event) {
             CaracalMsg orig = openOps.remove(event.id);
+            CaracalResponse rsp = event;
             if (orig == null) {
                 LOG.debug("{}: Got {} but don't feel responsible for it.", self, event);
                 // Message was either already answered or another node is responsible
                 return;
             }
-            if (event instanceof RangeQuery.Response) {
+            if (event instanceof RangeQuery.InternalResponse) {
                 RangeQuery.Request req = (RangeQuery.Request) orig.op;
-                RangeQuery.Response resp = (RangeQuery.Response) event;
-                resp.setReq(req);
+                RangeQuery.InternalResponse iResp = (RangeQuery.InternalResponse) event;
+                RangeQuery.Response resp = iResp.finalize(req);
+                rsp = resp;
                 if (req.execType.equals(RangeQuery.Type.SEQUENTIAL) && !resp.readLimit) {
                     if(req.subRange.end.equals(req.initRange.end) && req.subRange.endBound.equals(req.initRange.endBound)) {
                         //finished rangequery do no forward it further
                     } else {
                         KeyRange endRange = KeyRange.closed(req.subRange.end).endFrom(req.initRange);
-                        ForwardToRange fta = new ForwardToRange(req, endRange, orig.getSource());
+                        ForwardToRange fta = new ForwardToRange(req, endRange, orig.getOrigin());
                         trigger(fta, lookup);
-                        LOG.debug("{}: RangeQuery sequentialy {} from {}", new Object[]{self, event, orig.getSource()});
+                        LOG.debug("{}: RangeQuery sequentialy {} from {}", new Object[]{self, rsp, orig.getOrigin()});
                     }
                 } else {
                     //finished rangequery do not forward it further
                 }
             }
-            trigger(new CaracalMsg(self, orig.getSource(), event), network);
-            LOG.debug("{}: Got {} and sent it back to {}", new Object[]{self, event, orig.getSource()});
+            trigger(new CaracalMsg(self, orig.getOrigin(), rsp), network);
+            LOG.debug("{}: Got {} and sent it back to {}", new Object[]{self, rsp, orig.getOrigin()});
         }
     };
 
@@ -274,7 +276,7 @@ public class MethCat extends ComponentDefinition {
         @Override
         public void handle(ForwardMessage event) {
             LOG.warn("{}: You are not supposed to send ForwardMessages to VNodes!!! I'll pass it along this time...grudgingly... {}", self, event);
-            trigger(event.forward(self.hostAddress()), network);
+            trigger(event.insertDestination(self, self.hostAddress()), network);
         }
     };
 
@@ -316,7 +318,7 @@ public class MethCat extends ComponentDefinition {
     private void forwardToViewMember(CaracalMsg event) {
         for (Address adr : view.members) {
             if (!adr.equals(self)) {
-                trigger(event.insertDestination(adr), network);
+                trigger(event.insertDestination(self, adr), network);
             }
         }
     }

@@ -21,12 +21,13 @@
 package se.sics.caracaldb.replication.log;
 
 import com.google.common.collect.ComparisonChain;
+import java.io.Serializable;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public abstract class Value implements Comparable<Value> {
+public abstract class Value implements Comparable<Value>, Serializable {
     
     public final long id;
     

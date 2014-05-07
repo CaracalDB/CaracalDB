@@ -20,22 +20,21 @@
  */
 package se.sics.caracaldb.paxos;
 
-import se.sics.caracaldb.replication.log.Reconfigure;
-import se.sics.caracaldb.replication.log.Value;
-import se.sics.caracaldb.replication.log.Propose;
-import se.sics.caracaldb.replication.log.ReplicatedLog;
 import com.google.common.primitives.Ints;
-import java.util.List;
+import java.io.Serializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.fd.SimpleEFD;
 import se.sics.caracaldb.replication.log.Decide;
+import se.sics.caracaldb.replication.log.Propose;
+import se.sics.caracaldb.replication.log.Reconfigure;
+import se.sics.caracaldb.replication.log.ReplicatedLog;
+import se.sics.caracaldb.replication.log.Value;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
-import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Stop;
 import se.sics.kompics.address.Address;
@@ -136,7 +135,7 @@ public class PaxosManager extends ComponentDefinition {
         destroy(paxos);
     }
 
-    public static class PaxosOp extends Value {
+    public static class PaxosOp extends Value implements Serializable {
 
         public PaxosOp(long id) {
             super(id);

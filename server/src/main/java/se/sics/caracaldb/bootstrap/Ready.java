@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.bootstrap;
 
+import java.io.Serializable;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Message;
 
@@ -27,7 +28,7 @@ import se.sics.kompics.network.Message;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class Ready extends Message {
+public class Ready extends Message implements Serializable {
     public Ready(Address src, Address dst) {
         super(src, dst);
     }

@@ -25,13 +25,30 @@ package se.sics.caracaldb.operations;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public enum ResponseCode {
-    SUCCESS, 
-    BUSY, 
-    LOOKUP_TIMEOUT, 
-    READ_TIMEOUT, 
-    WRITE_TIMEOUT, 
-    CLIENT_TIMEOUT, 
-    RANGEQUERY_TIMEOUT, 
-    SUCCESS_INTERRUPTED,
-    UNSUPPORTED_OP;
+
+    SUCCESS(0),
+    BUSY(1),
+    LOOKUP_TIMEOUT(2),
+    READ_TIMEOUT(3),
+    WRITE_TIMEOUT(4),
+    CLIENT_TIMEOUT(5),
+    RANGEQUERY_TIMEOUT(6),
+    SUCCESS_INTERRUPTED(7),
+    UNSUPPORTED_OP(8);
+    
+    public final byte id; // Could use ordinal() but I feel explicit assignment is safer, though slower
+
+    private ResponseCode(int id) {
+        this.id = (byte) id;
+    }
+    
+    public static ResponseCode byId(byte id) {
+        for (ResponseCode rc : ResponseCode.values()) {
+            if (rc.id == id) {
+                return rc;
+            }
+        }
+        return null;
+    }
+    
 }

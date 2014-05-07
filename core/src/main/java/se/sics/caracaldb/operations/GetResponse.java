@@ -21,7 +21,6 @@
 package se.sics.caracaldb.operations;
 
 import se.sics.caracaldb.Key;
-import se.sics.kompics.address.Address;
 
 /**
  *

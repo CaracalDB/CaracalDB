@@ -22,7 +22,7 @@ package se.sics.caracaldb.global;
 
 import com.google.common.collect.ImmutableSet;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Transport;
 
 /**
  *
@@ -33,7 +33,7 @@ public class SampleRequest extends Message {
     public int n;
     
     public SampleRequest(Address src, Address dest, int n) {
-        super(src, dest);
+        super(src, dest, src, Transport.TCP);
         this.n = n;
     }
     

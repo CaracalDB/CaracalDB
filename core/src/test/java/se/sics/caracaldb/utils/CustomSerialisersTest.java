@@ -20,22 +20,20 @@
  */
 package se.sics.caracaldb.utils;
 
-import com.google.common.io.Closer;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import com.google.common.collect.ImmutableSortedSet;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.net.InetAddress;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
-import se.sics.caracaldb.utils.CustomSerialisers.BitBuffer;
+import se.sics.caracaldb.View;
 import se.sics.kompics.address.Address;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
 
 /**
  *
@@ -43,6 +41,7 @@ import se.sics.kompics.address.Address;
  */
 @RunWith(JUnit4.class)
 public class CustomSerialisersTest {
+    
 
     @Test
     public void bitBufferTest() {
@@ -69,119 +68,58 @@ public class CustomSerialisersTest {
     }
 
     @Test
-    public void keyTest() {
+    public void keyTest() throws IOException {
         /*
          * Keys
          */
         Key nullKey = new Key((byte[]) null);
         Key someKey = Key.fromHex("FF EE 00 11 AA 01 12 34 FE");
 
-        byte[] data = null;
-        try {
-            /*
-             * Write IN
-             */
-            Closer closer = Closer.create();
-            try {
-                ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-                DataOutputStream w = closer.register(new DataOutputStream(baos));
+        ByteBuf buf = Unpooled.buffer();
 
-                CustomSerialisers.serialiseKey(Key.INF, w);
-                CustomSerialisers.serialiseKey(nullKey, w);
-                CustomSerialisers.serialiseKey(Key.NULL_KEY, w);
-                CustomSerialisers.serialiseKey(Key.ZERO_KEY, w);
-                CustomSerialisers.serialiseKey(someKey, w);
+        CustomSerialisers.serialiseKey(Key.INF, buf);
+        CustomSerialisers.serialiseKey(nullKey, buf);
+        CustomSerialisers.serialiseKey(Key.NULL_KEY, buf);
+        CustomSerialisers.serialiseKey(Key.ZERO_KEY, buf);
+        CustomSerialisers.serialiseKey(someKey, buf);
 
-                data = baos.toByteArray();
-            } catch (Throwable e) {
-                throw closer.rethrow(e);
-            } finally {
-                closer.close();
-            }
+        assertEquals(Key.INF, CustomSerialisers.deserialiseKey(buf));
+        assertEquals(nullKey, CustomSerialisers.deserialiseKey(buf));
+        assertEquals(Key.NULL_KEY, CustomSerialisers.deserialiseKey(buf));
+        assertEquals(Key.ZERO_KEY, CustomSerialisers.deserialiseKey(buf));
+        assertEquals(someKey, CustomSerialisers.deserialiseKey(buf));
 
-            assertNotNull(data);
-            /*
-             * Read OUT
-             */
-            closer = Closer.create();
-            try {
-                ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(data));
-                DataInputStream r = closer.register(new DataInputStream(bais));
-
-                assertEquals(Key.INF, CustomSerialisers.deserialiseKey(r));
-                assertEquals(nullKey, CustomSerialisers.deserialiseKey(r));
-                assertEquals(Key.NULL_KEY, CustomSerialisers.deserialiseKey(r));
-                assertEquals(Key.ZERO_KEY, CustomSerialisers.deserialiseKey(r));
-                assertEquals(someKey, CustomSerialisers.deserialiseKey(r));
-
-            } catch (Throwable e) {
-                throw closer.rethrow(e);
-            } finally {
-                closer.close();
-            }
-
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
+        buf.release();
 
     }
 
     @Test
-    public void addressTest() {
+    public void viewTest() {
 
         try {
             InetAddress ip = InetAddress.getByAddress(new byte[]{1, 2, 3, 4});
-            /*
-             * Addresses
-             */
 
             Address hostAddress = new Address(ip, 1234, null);
             Address someAddress = hostAddress.newVirtual(Key.fromHex("FF EE 00 11 AA 01 12 34 FE").getArray());
+            Address someOtherAddress = hostAddress.newVirtual(Key.fromHex("FF EE 00 11 AA 01 12 34 FF").getArray());
 
-            byte[] data = null;
-            /*
-             * Write IN
-             */
-            Closer closer = Closer.create();
-            try {
-                ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-                DataOutputStream w = closer.register(new DataOutputStream(baos));
+            View v = new View(ImmutableSortedSet.of(someAddress, someOtherAddress), 1);
 
-                CustomSerialisers.serialiseAddress(hostAddress, w);
-                CustomSerialisers.serialiseAddress(someAddress, w);
+            ByteBuf buf = Unpooled.buffer();
 
-                data = baos.toByteArray();
-            } catch (Throwable e) {
-                throw closer.rethrow(e);
-            } finally {
-                closer.close();
-            }
+            CustomSerialisers.serialiseView(v, buf);
 
-            assertNotNull(data);
-            /*
-             * Read OUT
-             */
-            closer = Closer.create();
-            try {
-                ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(data));
-                DataInputStream r = closer.register(new DataInputStream(bais));
+            assertEquals(v, CustomSerialisers.deserialiseView(buf));
 
-                assertEquals(hostAddress, CustomSerialisers.deserialiseAddress(r));
-                assertEquals(someAddress, CustomSerialisers.deserialiseAddress(r));
-
-            } catch (Throwable e) {
-                throw closer.rethrow(e);
-            } finally {
-                closer.close();
-            }
+            buf.release();
 
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
     }
-    
+
     @Test
-    public void keyRangeTest() {
+    public void keyRangeTest() throws IOException {
         /*
          * Keys
          */
@@ -192,50 +130,18 @@ public class CustomSerialisersTest {
         KeyRange co = KeyRange.closed(someKey).open(someOtherKey);
         KeyRange cc = KeyRange.closed(someKey).closed(someOtherKey);
 
-        byte[] data = null;
-        try {
-            /*
-             * Write IN
-             */
-            Closer closer = Closer.create();
-            try {
-                ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-                DataOutputStream w = closer.register(new DataOutputStream(baos));
+        ByteBuf buf = Unpooled.buffer();
 
-                CustomSerialisers.serialiseKeyRange(oo, w);
-                CustomSerialisers.serialiseKeyRange(oc, w);
-                CustomSerialisers.serialiseKeyRange(co, w);
-                CustomSerialisers.serialiseKeyRange(cc, w);
+        CustomSerialisers.serialiseKeyRange(oo, buf);
+        CustomSerialisers.serialiseKeyRange(oc, buf);
+        CustomSerialisers.serialiseKeyRange(co, buf);
+        CustomSerialisers.serialiseKeyRange(cc, buf);
 
-                data = baos.toByteArray();
-            } catch (Throwable e) {
-                throw closer.rethrow(e);
-            } finally {
-                closer.close();
-            }
+        assertEquals(oo, CustomSerialisers.deserialiseKeyRange(buf));
+        assertEquals(oc, CustomSerialisers.deserialiseKeyRange(buf));
+        assertEquals(co, CustomSerialisers.deserialiseKeyRange(buf));
+        assertEquals(cc, CustomSerialisers.deserialiseKeyRange(buf));
 
-            assertNotNull(data);
-            /*
-             * Read OUT
-             */
-            closer = Closer.create();
-            try {
-                ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(data));
-                DataInputStream r = closer.register(new DataInputStream(bais));
-
-                assertEquals(oo, CustomSerialisers.deserialiseKeyRange(r));
-                assertEquals(oc, CustomSerialisers.deserialiseKeyRange(r));
-                assertEquals(co, CustomSerialisers.deserialiseKeyRange(r));
-                assertEquals(cc, CustomSerialisers.deserialiseKeyRange(r));
-
-            } catch (Throwable e) {
-                throw closer.rethrow(e);
-            } finally {
-                closer.close();
-            }
-
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
+        buf.release();
     }
 }

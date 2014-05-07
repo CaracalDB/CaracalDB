@@ -31,6 +31,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import se.sics.caracaldb.MessageRegistrator;
 import se.sics.caracaldb.datamodel.msg.DMMessage;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.utils.TimestampIdFactory;
@@ -42,9 +43,8 @@ import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.VirtualNetworkChannel;
-import se.sics.kompics.network.grizzly.ConstantQuotaAllocator;
-import se.sics.kompics.network.grizzly.GrizzlyNetwork;
-import se.sics.kompics.network.grizzly.GrizzlyNetworkInit;
+import se.sics.kompics.network.netty.NettyInit;
+import se.sics.kompics.network.netty.NettyNetwork;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.timer.java.JavaTimer;
 
@@ -68,6 +68,10 @@ public class ClientManager extends ComponentDefinition {
     private final Address self;
     private final SortedSet<Address> vNodes = new TreeSet<>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    static {
+        MessageRegistrator.register();
+    }
 
     public ClientManager() {
         if (INSTANCE == null) {
@@ -97,11 +101,7 @@ public class ClientManager extends ComponentDefinition {
         self = new Address(localIP, localPort, null);
         TimestampIdFactory.init(self);
 
-        network = create(GrizzlyNetwork.class, new GrizzlyNetworkInit(self, 8, 0, 0,
-                messageBufferSize, messageBufferSizeMax,
-                Runtime.getRuntime().availableProcessors(),
-                Runtime.getRuntime().availableProcessors(),
-                new ConstantQuotaAllocator(5)));
+        network = create(NettyNetwork.class, new NettyInit(self));
         timer = create(JavaTimer.class, Init.NONE);
         vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
 

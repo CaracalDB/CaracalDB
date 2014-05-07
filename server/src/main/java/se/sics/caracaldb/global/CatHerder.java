@@ -67,7 +67,7 @@ import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
@@ -112,11 +112,8 @@ public class CatHerder extends ComponentDefinition {
         heartbeatTimeout = 2 * heartbeatInterval;
         lut = init.bootEvent.lut;
         self = init.self;
-        try {
-            heartBeatKey = LookupTable.RESERVED_HEARTBEATS.append(CustomSerialisers.serialiseAddress(self)).get();
-        } catch (IOException ex) {
-            throw new RuntimeException(ex); // No idea what to do if this doesn't work.
-        }
+        heartBeatKey = LookupTable.RESERVED_HEARTBEATS.append(CustomSerialisers.serialiseAddress(self)).get();
+
         checkMasterGroup();
         if (checkMaster()) {
             connectMasterHandlers();
@@ -194,7 +191,7 @@ public class CatHerder extends ComponentDefinition {
         public void handle(ForwardToAny event) {
             try {
                 Address dest = findDest(event.key);
-                Message msg = event.msg.insertDestination(dest);
+                Msg msg = event.msg.insertDestination(self, dest);
                 trigger(msg, net);
                 LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
             } catch (NoResponsibleForKeyException ex) {
@@ -236,7 +233,7 @@ public class CatHerder extends ComponentDefinition {
                     dest = repGroup.getValue1()[nodePos];
                 }
 
-                Message msg = event.getSubRangeMessage(repGroup.getValue0(), dest);
+                Msg msg = event.getSubRangeMessage(repGroup.getValue0(), self, dest);
                 trigger(msg, net);
                 LOG.debug("{}: Forwarding {} to {}", new Object[]{self, msg, dest});
             } else { //if(event.execType.equals(RangeQuery.Type.Parallel)
@@ -255,7 +252,7 @@ public class CatHerder extends ComponentDefinition {
                 for (Entry<KeyRange, Address[]> repGroup : repGroups.entrySet()) {
                     int nodePos = RAND.nextInt(repGroup.getValue().length);
                     Address dest = repGroup.getValue()[nodePos];
-                    Message msg = event.getSubRangeMessage(repGroup.getKey(), dest);
+                    Msg msg = event.getSubRangeMessage(repGroup.getKey(), self, dest);
                     trigger(msg, net);
                     LOG.debug("{}: Forwarding {} to {}", new Object[]{self, msg, dest});
                 }
@@ -267,7 +264,7 @@ public class CatHerder extends ComponentDefinition {
         public void handle(ForwardMessage event) {
             try {
                 Address dest = findDest(event.forwardTo);
-                Message msg = event.msg.insertDestination(dest);
+                Msg msg = event.msg.insertDestination(self, dest);
                 trigger(msg, net);
                 LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
             } catch (NoResponsibleForKeyException ex) {

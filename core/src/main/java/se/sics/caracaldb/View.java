@@ -24,8 +24,6 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
 import java.util.Iterator;
-import java.util.NavigableSet;
-import java.util.TreeSet;
 import se.sics.kompics.address.Address;
 
 /**
@@ -34,12 +32,11 @@ import se.sics.kompics.address.Address;
  */
 public class View implements Comparable<View> {
 
-    // Should be Immutable, but tell that to Kryo -.-
-    public final NavigableSet<Address> members;
+    public final ImmutableSortedSet<Address> members;
     public final int id;
 
     public View(ImmutableSortedSet<Address> members, int id) {
-        this.members = new TreeSet<Address>(members);
+        this.members = members;
         this.id = id;
     }
 

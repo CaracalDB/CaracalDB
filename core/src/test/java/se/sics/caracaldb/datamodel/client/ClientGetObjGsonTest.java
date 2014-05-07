@@ -32,7 +32,7 @@ import se.sics.caracaldb.datamodel.util.gsonextra.ClientGetObjGson;
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class ClientGetObjGsonTest {
-     @Test
+    @Test
     public void test() {
         Gson gson = GsonHelper.getGson();
         ByteId dbId = new ByteId(new byte[]{1, 1});

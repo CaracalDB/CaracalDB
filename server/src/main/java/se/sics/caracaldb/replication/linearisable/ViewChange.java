@@ -21,13 +21,13 @@
 package se.sics.caracaldb.replication.linearisable;
 
 import se.sics.caracaldb.View;
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class ViewChange extends Event implements Comparable<ViewChange> {
+public class ViewChange implements KompicsEvent, Comparable<ViewChange> {
 
     public final View view;
     public final int quorum;

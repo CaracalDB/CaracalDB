@@ -20,25 +20,23 @@
  */
 package se.sics.caracaldb.vhostfd;
 
-import se.sics.caracaldb.fd.SubscribeNodeStatus;
-import se.sics.caracaldb.fd.Restore;
-import se.sics.caracaldb.fd.UnsubscribeNodeStatus;
-import se.sics.caracaldb.fd.Suspect;
-import se.sics.caracaldb.fd.EventualFailureDetector;
 import com.google.common.base.Objects;
-import com.google.common.collect.LinkedListMultimap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.fd.EventualFailureDetector;
+import se.sics.caracaldb.fd.Restore;
+import se.sics.caracaldb.fd.SubscribeNodeStatus;
+import se.sics.caracaldb.fd.Suspect;
+import se.sics.caracaldb.fd.UnsubscribeNodeStatus;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
-import se.sics.kompics.Request;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.Transport;
 import se.sics.kompics.timer.CancelTimeout;
@@ -53,7 +51,6 @@ import se.sics.kompics.timer.Timer;
 public class VirtualEPFD extends ComponentDefinition {
 
     private static final Logger LOG = LoggerFactory.getLogger(VirtualEPFD.class);
-    private static final Transport PROTOCOL = Transport.TCP;
     // PORTS
     Negative<EventualFailureDetector> fd = provides(EventualFailureDetector.class);
     Positive<Network> net = requires(Network.class);
@@ -160,7 +157,7 @@ public class VirtualEPFD extends ComponentDefinition {
             LOG.debug("@{}: Received Ping from {}. Sending Pong. ",
                     self, event.getSource());
             trigger(new Pong(event.getId(), event.getTs(), self,
-                    event.getSource(), PROTOCOL), net);
+                    event.getSource()), net);
         }
     };
     Handler<Pong> pongHandler = new Handler<Pong>() {
@@ -192,7 +189,6 @@ public class VirtualEPFD extends ComponentDefinition {
         UUID intervalPingTimeoutId = st.getTimeoutEvent().getTimeoutId();
 
         // we must not add this timeout id to outstandingTimeout!
-
         trigger(st, timer);
         return intervalPingTimeoutId;
     }
@@ -206,7 +202,7 @@ public class VirtualEPFD extends ComponentDefinition {
         outstandingTimeouts.add(pongTimeoutId);
 
         trigger(st, timer);
-        trigger(new Ping(pongTimeoutId, ts, self, probedHost, PROTOCOL), net);
+        trigger(new Ping(pongTimeoutId, ts, self, probedHost), net);
         // logger.debug(
         // "@{}: Sent Ping({},{},{}) to {}.",
         // new Object[] { self.getId(), ts, pongTimeoutId,
@@ -261,18 +257,46 @@ public class VirtualEPFD extends ComponentDefinition {
         }
     }
 
-    public final class Ping extends Message {
+    public static abstract class FDMsg implements Msg {
 
-        /**
-         *
-         */
-        private static final long serialVersionUID = 7927599827379778378L;
-        private final UUID id;
-        private final long ts;
+        public final Address src;
+        public final Address dst;
+        public final Transport protocol = Transport.TCP;
 
-        public Ping(UUID id, long ts, Address source, Address destination,
-                Transport protocol) {
-            super(source, destination, protocol);
+        public FDMsg(Address src, Address dst) {
+            this.src = src;
+            this.dst = dst;
+        }
+
+        @Override
+        public Address getSource() {
+            return src;
+        }
+
+        @Override
+        public Address getDestination() {
+            return dst;
+        }
+
+        @Override
+        public Address getOrigin() {
+            return src;
+        }
+
+        @Override
+        public Transport getProtocol() {
+            return protocol;
+        }
+
+    }
+
+    public static final class Ping extends FDMsg {
+
+        public final UUID id;
+        public final long ts;
+
+        public Ping(UUID id, long ts, Address source, Address destination) {
+            super(source, destination);
             this.id = id;
             this.ts = ts;
         }
@@ -307,18 +331,13 @@ public class VirtualEPFD extends ComponentDefinition {
         }
     }
 
-    public final class Pong extends Message {
+    public static final class Pong extends FDMsg {
 
-        /**
-         *
-         */
-        private static final long serialVersionUID = 554912880067612945L;
         public final UUID id;
         public final long ts;
 
-        public Pong(UUID id, long ts, Address source, Address destination,
-                Transport protocol) {
-            super(source, destination, protocol);
+        public Pong(UUID id, long ts, Address source, Address destination) {
+            super(source, destination);
             this.id = id;
             this.ts = ts;
         }

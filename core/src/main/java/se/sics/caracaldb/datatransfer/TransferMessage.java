@@ -20,8 +20,10 @@
  */
 package se.sics.caracaldb.datatransfer;
 
+import java.util.UUID;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Transport;
 
 /**
  *
@@ -29,10 +31,10 @@ import se.sics.kompics.network.Message;
  */
 public abstract class TransferMessage extends Message {
 
-    public final long id;
+    public final UUID id;
 
-    public TransferMessage(Address src, Address dst, long id) {
-        super(src, dst);
+    public TransferMessage(Address src, Address dst, UUID id) {
+        super(src, dst, Transport.TCP);
         this.id = id;
     }
 }

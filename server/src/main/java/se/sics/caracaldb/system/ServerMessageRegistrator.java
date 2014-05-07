@@ -21,18 +21,34 @@
 package se.sics.caracaldb.system;
 
 import se.sics.caracaldb.MessageRegistrator;
-import se.sics.kompics.network.grizzly.kryo.KryoMessage;
+import se.sics.caracaldb.ServerSerializer;
+import se.sics.caracaldb.global.Maintenance;
+import se.sics.caracaldb.global.MaintenanceMsg;
+import se.sics.caracaldb.replication.linearisable.ExecutionEngine.SMROp;
+import se.sics.caracaldb.replication.linearisable.ExecutionEngine.Scan;
+import se.sics.caracaldb.replication.linearisable.ExecutionEngine.SyncedUp;
+import se.sics.caracaldb.vhostfd.VirtualEPFD.FDMsg;
+import se.sics.kompics.network.netty.serialization.Serializers;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class ServerMessageRegistrator {
-    
+
     public static void register() {
         MessageRegistrator.register();
         
-        KryoMessage.register(se.sics.caracaldb.vhostfd.VirtualEPFD.Ping.class);
-        KryoMessage.register(se.sics.caracaldb.vhostfd.VirtualEPFD.Pong.class);
+        Serializers.register(ServerSerializer.FD.instance, "fdS");
+        Serializers.register(FDMsg.class, "fdS");
+        //
+        Serializers.register(ServerSerializer.GLOBAL.instance, "globalS");
+        Serializers.register(MaintenanceMsg.class, "globalS");
+        Serializers.register(Maintenance.class, "globalS");
+        //
+        Serializers.register(ServerSerializer.XNGIN.instance, "xnginS");
+        Serializers.register(SMROp.class, "xnginS");
+        Serializers.register(SyncedUp.class, "xnginS");
+        Serializers.register(Scan.class, "xnginS");
     }
 }

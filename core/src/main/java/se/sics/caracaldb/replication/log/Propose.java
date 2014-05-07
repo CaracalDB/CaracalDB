@@ -20,7 +20,7 @@
  */
 package se.sics.caracaldb.replication.log;
 
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
 
 /**
  *
@@ -28,7 +28,7 @@ import se.sics.kompics.Event;
  * 
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class Propose<T extends Value> extends Event {
+public class Propose<T extends Value> implements KompicsEvent {
     
     public final T value;
     

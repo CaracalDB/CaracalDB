@@ -26,12 +26,12 @@ import java.util.SortedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.flow.DataMessage;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.store.BatchWrite;
 import se.sics.caracaldb.store.StorageRequest;
 import se.sics.caracaldb.store.StorageResponse;
 import se.sics.kompics.Handler;
-import se.sics.kompics.Response;
 import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
 
@@ -53,7 +53,6 @@ public class DataReceiver extends DataTransferComponent {
         force = init.force;
 
         // subscriptions
-
         subscribe(startHandler, control);
         subscribe(dataHandler, net);
     }
@@ -64,9 +63,16 @@ public class DataReceiver extends DataTransferComponent {
             state = State.WAITING;
         }
     };
-    Handler<Data> dataHandler = new Handler<Data>() {
+    Handler<DataMessage> dataHandler = new Handler<DataMessage>() {
         @Override
-        public void handle(Data event) {
+        public void handle(DataMessage event) {
+            if (event.isfinal) {
+                trigger(new Completed(id), transfer);
+                state = State.DONE;
+            }
+            if (event.data.length == 0) {
+                return;
+            }
             SortedMap<Key, byte[]> data = null;
             try {
                 data = deserialise(event.data);
@@ -78,13 +84,6 @@ public class DataReceiver extends DataTransferComponent {
             } catch (IOException ex) {
                 LOG.error("Could not deserialise data. Ignoring message!", ex);
             }
-        }
-    };
-    Handler<Complete> completeHandler = new Handler<Complete>() {
-        @Override
-        public void handle(Complete event) {
-            trigger(new Completed(id), transfer);
-            state = State.DONE;
         }
     };
 

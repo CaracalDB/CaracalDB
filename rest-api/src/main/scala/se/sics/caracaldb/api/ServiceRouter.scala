@@ -166,7 +166,7 @@ trait ServiceRouter extends HttpService {
 				case o: Operation => return Right(o);
 			}
 		} catch {
-			case e: TimeoutException => Right(new Operation(ResponseCode.CLIENT_TIMEOUT));
+			case e: TimeoutException => Right(Operation(ResponseCode.CLIENT_TIMEOUT));
 		}
 	}
 
@@ -203,7 +203,7 @@ trait ServiceRouter extends HttpService {
 				case o: Operation => return Right(o);
 			}
 		} catch {
-			case e: TimeoutException => Right(new Operation(ResponseCode.CLIENT_TIMEOUT));
+			case e: TimeoutException => Right(Operation(ResponseCode.CLIENT_TIMEOUT));
 		}
 	}
 

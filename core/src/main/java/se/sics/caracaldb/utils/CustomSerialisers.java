@@ -20,19 +20,17 @@
  */
 package se.sics.caracaldb.utils;
 
-import com.google.common.io.Closer;
-import com.google.common.primitives.Ints;
+import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.primitives.UnsignedBytes;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.View;
 import se.sics.kompics.address.Address;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
 
 /**
  *
@@ -43,98 +41,59 @@ public abstract class CustomSerialisers {
      * Custom Address serialisation to save some space
      */
 
-    public static void serialiseAddress(Address addr, DataOutputStream w) throws IOException {
-        if (addr == null) {
-            w.writeInt(0); //simply put four 0 bytes since 0.0.0.0 is not a valid host ip
-            return;
-        }
-        w.write(addr.getIp().getAddress());
-        // Write ports as 2 bytes instead of 4
-        byte[] portBytes = Ints.toByteArray(addr.getPort());
-        w.writeByte(portBytes[2]);
-        w.writeByte(portBytes[3]);
-        serialiseKey(addr.getId(), w);
-
+    public static byte[] serialiseAddress(Address addr) {
+        ByteBuf buf = Unpooled.buffer();
+        SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
+        byte[] bytes = new byte[buf.readableBytes()];
+        buf.readBytes(bytes);
+        buf.release();
+        return bytes;
     }
 
-    public static byte[] serialiseAddress(Address addr) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-            DataOutputStream w = closer.register(new DataOutputStream(baos));
-
-            serialiseAddress(addr, w);
-            w.flush();
-
-            return baos.toByteArray();
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
-        }
+    public static Address deserialiseAddress(byte[] data) {
+        ByteBuf buf = Unpooled.wrappedBuffer(data);
+        Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+        buf.release();
+        return addr;
     }
 
-    public static Address deserialiseAddress(DataInputStream r) throws IOException {
-        byte[] ipBytes = new byte[4];
-        if (r.read(ipBytes) != 4) {
-            throw new IOException("Incomplete dataset!");
-        }
-        if ((ipBytes[0] == 0) && (ipBytes[1] == 0) && (ipBytes[2] == 0) && (ipBytes[3] == 0)) {
-            return null; // IP 0.0.0.0 is not valid but null Address encoding
-        }
-        InetAddress ip = InetAddress.getByAddress(ipBytes);
-        byte portUpper = r.readByte();
-        byte portLower = r.readByte();
-        int port = Ints.fromBytes((byte) 0, (byte) 0, portUpper, portLower);
-        Key id = deserialiseKey(r);
-        return new Address(ip, port, id.getArray());
-    }
-
-    public static void serialiseKey(Key key, DataOutputStream w) throws IOException {
+    public static void serialiseKey(Key key, ByteBuf w) {
         byte[] id = key.getArray();
         BitBuffer bbuf = BitBuffer.create((key instanceof Key.Inf), (id == null));
         boolean byteFlag = (id != null) && (id.length <= Key.BYTE_KEY_SIZE);
         bbuf.write(byteFlag);
         byte[] flags = bbuf.finalise();
-        w.write(flags);
+        w.writeBytes(flags);
         if (id != null) {
             if (byteFlag) {
                 w.writeByte(UnsignedBytes.checkedCast(id.length));
             } else {
                 w.writeInt(id.length);
             }
-            w.write(id);
+            w.writeBytes(id);
         }
     }
 
-    public static void serialiseKey(byte[] key, DataOutputStream w) throws IOException {
+    public static void serialiseKey(byte[] key, ByteBuf w) {
         serialiseKey(new Key(key), w);
     }
 
-    public static byte[] serialiseKey(Key key) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-            DataOutputStream w = closer.register(new DataOutputStream(baos));
-
-            serialiseKey(key, w);
-            w.flush();
-
-            return baos.toByteArray();
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
-        }
+    public static byte[] serialiseKey(Key key) {
+        ByteBuf buf = Unpooled.buffer();
+        serialiseKey(key, buf);
+        byte[] bytes = new byte[buf.readableBytes()];
+        buf.readBytes(bytes);
+        buf.release();
+        return bytes;
     }
 
-    public static byte[] serialiseKey(byte[] key) throws IOException {
+    public static byte[] serialiseKey(byte[] key) {
         return serialiseKey(new Key(key));
     }
 
-    public static Key deserialiseKey(DataInputStream r) throws IOException {
+    public static Key deserialiseKey(ByteBuf r) {
         byte[] flagBytes = new byte[1];
-        r.read(flagBytes);
+        r.readBytes(flagBytes);
         boolean[] flags = BitBuffer.extract(3, flagBytes);
         boolean infFlag = flags[0];
         boolean nullFlag = flags[1];
@@ -153,42 +112,38 @@ public abstract class CustomSerialisers {
         }
         byte[] id;
         id = new byte[keySize];
-        if (r.read(id) != keySize) {
-            throw new IOException("Incomplete dataset!");
-        }
+        r.readBytes(id);
         return new Key(id);
     }
     
-    public static void serialiseKeyRange(KeyRange range, DataOutputStream w) throws IOException {
-        BitBuffer bbuf = new BitBuffer();
-        bbuf.write(range.beginBound == KeyRange.Bound.CLOSED);
-        bbuf.write(range.endBound == KeyRange.Bound.CLOSED);
+    public static Key deserialiseKey(byte[] r) {
+        ByteBuf buf = Unpooled.wrappedBuffer(r);
+        Key k = deserialiseKey(buf);
+        buf.release();
+        return k;
+    }
+    
+    public static void serialiseKeyRange(KeyRange range, ByteBuf w) {
+        BitBuffer bbuf = BitBuffer.create(range.beginBound == KeyRange.Bound.CLOSED,
+                range.endBound == KeyRange.Bound.CLOSED);
         byte[] flags = bbuf.finalise();
-        w.write(flags);
+        w.writeBytes(flags);
         serialiseKey(range.begin, w);
         serialiseKey(range.end, w);
     }
     
-    public static byte[] serialiseKeyRange(KeyRange range) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-            DataOutputStream w = closer.register(new DataOutputStream(baos));
-
-            serialiseKeyRange(range, w);
-            w.flush();
-
-            return baos.toByteArray();
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
-        }
+    public static byte[] serialiseKeyRange(KeyRange range) {
+        ByteBuf buf = Unpooled.buffer();
+        serialiseKeyRange(range, buf);
+        byte[] bytes = new byte[buf.readableBytes()];
+        buf.readBytes(bytes);
+        buf.release();
+        return bytes;
     }
     
-    public static KeyRange deserialiseKeyRange(DataInputStream r) throws IOException {
+    public static KeyRange deserialiseKeyRange(ByteBuf r) {
         byte[] flags = new byte[1];
-        r.read(flags);
+        r.readBytes(flags);
         boolean[] bounds = BitBuffer.extract(2, flags);
         KeyRange.Bound beginBound = bounds[0] ? KeyRange.Bound.CLOSED : KeyRange.Bound.OPEN;
         KeyRange.Bound endBound = bounds[1] ? KeyRange.Bound.CLOSED : KeyRange.Bound.OPEN;
@@ -197,61 +152,87 @@ public abstract class CustomSerialisers {
         return new KeyRange(beginBound, begin, end, endBound);
     }
     
-    public static class BitBuffer {
-
-        private static final int ZERO = 0;
-        private static final int[] POS = {1, 2, 4, 8, 16, 32, 64, 128};
-
-        private final ArrayList<Boolean> buffer = new ArrayList<Boolean>();
-
-        private BitBuffer() {
-        }
-
-        public static BitBuffer create(Boolean... args) {
-            BitBuffer b = new BitBuffer();
-            b.buffer.addAll(Arrays.asList(args));
-            return b;
-        }
-
-        public BitBuffer write(Boolean... args) {
-            buffer.addAll(Arrays.asList(args));
-            return this;
-        }
-
-        public byte[] finalise() {
-            int numBytes = (int) Math.ceil(((double) buffer.size()) / 8.0);
-            byte[] bytes = new byte[numBytes];
-            for (int i = 0; i < numBytes; i++) {
-                int b = ZERO;
-                for (int j = 0; j < 8; j++) {
-                    int pos = i * 8 + j;
-                    if (buffer.size() > pos) {
-                        if (buffer.get(pos)) {
-                            b = b ^ POS[j];
-                        }
-                    }
-                }
-                bytes[i] = UnsignedBytes.checkedCast(b);
-            }
-            return bytes;
-        }
-
-        public static boolean[] extract(int numValues, byte[] bytes) {
-            assert (((int) Math.ceil(((double) numValues) / 8.0)) <= bytes.length);
-
-            boolean[] output = new boolean[numValues];
-            for (int i = 0; i < bytes.length; i++) {
-                int b = bytes[i];
-                for (int j = 0; j < 8; j++) {
-                    int pos = i * 8 + j;
-                    if (pos >= numValues) {
-                        return output;
-                    }
-                    output[pos] = ((b & POS[j]) != 0);
-                }
-            }
-
-            return output;
+    public static KeyRange deserialiseKeyRange(byte[] data) {
+        ByteBuf buf = Unpooled.wrappedBuffer(data);
+        KeyRange kr = deserialiseKeyRange(buf);
+        buf.release();
+        return kr;
+    }
+    
+    public static void serialiseView(View view, ByteBuf buf) {
+        buf.writeInt(view.id);
+        buf.writeInt(view.members.size());
+        for (Address addr : view.members) {
+            SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
         }
     }
+    
+    public static View deserialiseView(ByteBuf buf) {
+        int id = buf.readInt();
+        int memsize = buf.readInt();
+        ImmutableSortedSet.Builder<Address> addrs = ImmutableSortedSet.naturalOrder();
+        for (int i = 0; i < memsize; i++) {
+            Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            addrs.add(addr);
+        }
+        return new View(addrs.build(), id);
+    }
+    
+//    public static class BitBuffer {
+//
+//        private static final int ZERO = 0;
+//        private static final int[] POS = {1, 2, 4, 8, 16, 32, 64, 128};
+//
+//        private final ArrayList<Boolean> buffer = new ArrayList<Boolean>();
+//
+//        private BitBuffer() {
+//        }
+//
+//        public static BitBuffer create(Boolean... args) {
+//            BitBuffer b = new BitBuffer();
+//            b.buffer.addAll(Arrays.asList(args));
+//            return b;
+//        }
+//
+//        public BitBuffer write(Boolean... args) {
+//            buffer.addAll(Arrays.asList(args));
+//            return this;
+//        }
+//
+//        public byte[] finalise() {
+//            int numBytes = (int) Math.ceil(((double) buffer.size()) / 8.0);
+//            byte[] bytes = new byte[numBytes];
+//            for (int i = 0; i < numBytes; i++) {
+//                int b = ZERO;
+//                for (int j = 0; j < 8; j++) {
+//                    int pos = i * 8 + j;
+//                    if (buffer.size() > pos) {
+//                        if (buffer.get(pos)) {
+//                            b = b ^ POS[j];
+//                        }
+//                    }
+//                }
+//                bytes[i] = UnsignedBytes.checkedCast(b);
+//            }
+//            return bytes;
+//        }
+//
+//        public static boolean[] extract(int numValues, byte[] bytes) {
+//            assert (((int) Math.ceil(((double) numValues) / 8.0)) <= bytes.length);
+//
+//            boolean[] output = new boolean[numValues];
+//            for (int i = 0; i < bytes.length; i++) {
+//                int b = bytes[i];
+//                for (int j = 0; j < 8; j++) {
+//                    int pos = i * 8 + j;
+//                    if (pos >= numValues) {
+//                        return output;
+//                    }
+//                    output[pos] = ((b & POS[j]) != 0);
+//                }
+//            }
+//
+//            return output;
+//        }
+//    }
 }

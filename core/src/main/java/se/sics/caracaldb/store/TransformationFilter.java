@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.store;
 
+import java.io.Serializable;
 import org.javatuples.Pair;
 
 /**
@@ -27,7 +28,7 @@ import org.javatuples.Pair;
  * 
  * TransformationFilters are stateless
  */
-public interface TransformationFilter {
+public interface TransformationFilter extends Serializable {
 
     /**
      * @param value serialized item

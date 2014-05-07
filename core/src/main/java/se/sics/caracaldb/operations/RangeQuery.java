@@ -39,9 +39,9 @@ public class RangeQuery {
 
         public KeyRange subRange;
         public final KeyRange initRange;
+        public final Type execType;
         public final Limit.LimitTracker limitTracker;
         public final TransformationFilter transFilter;
-        public final Type execType;
 
         public Request(Request req, KeyRange newRange) {
             super(req.id);
@@ -61,7 +61,7 @@ public class RangeQuery {
             this.execType = execType;
         }
 
-        private Request(long id, KeyRange subRange, KeyRange initRange, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
+        Request(long id, KeyRange subRange, KeyRange initRange, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
             super(id);
             this.initRange = initRange;
             this.subRange = subRange;
@@ -96,37 +96,66 @@ public class RangeQuery {
 
     public static class Response extends CaracalResponse {
 
-        public Request req;
+        public final KeyRange subRange;
+        public final KeyRange initRange;
         public final SortedMap<Key, byte[]> data;
         public final boolean readLimit;
 
-        public Response(RangeResp event) {
+        public Response(Request req, RangeResp event) {
             super(event.getId(), ResponseCode.SUCCESS);
+            this.subRange = req.subRange;
+            this.initRange = req.initRange;
             this.data = event.result;
             this.readLimit = event.readLimit;
         }
 
-        //used when operation is successful
-        public Response(long id, KeyRange range, SortedMap<Key, byte[]> data, boolean readLimit) {
+        public Response(long id, KeyRange subRange, KeyRange initRange, SortedMap<Key, byte[]> data, boolean readLimit) {
             super(id, ResponseCode.SUCCESS);
+            this.subRange = subRange;
+            this.initRange = initRange;
             this.data = data;
             this.readLimit = readLimit;
         }
 
-        // used when the operation is unsuccessful
-        public Response(long id, ResponseCode code, KeyRange range) {
-            super(id, code);
+        public Response(ResponseCode code, Request req) {
+            super(req.id, code);
+            this.subRange = req.subRange;
+            this.initRange = req.initRange;
             this.data = null;
             this.readLimit = false;
         }
-
-        public void setReq(Request req) {
-            this.req = req;
+        
+        Response(long id, ResponseCode code, KeyRange subRange, KeyRange initRange, SortedMap<Key, byte[]> data, boolean readLimit) {
+            super(id, code);
+            this.subRange = subRange;
+            this.initRange = initRange;
+            this.data = data;
+            this.readLimit = readLimit;
         }
 
         @Override
         public String toString() {
             String str = "RangeQuery Response(" + id + ", ";
+            str += code.name() + ")";
+            return str;
+        }
+    }
+    
+    public static class InternalResponse extends CaracalResponse {
+        public final RangeResp resp;
+        
+        public InternalResponse(RangeResp resp) {
+            super(resp.getId(), ResponseCode.SUCCESS);
+            this.resp = resp;
+        }
+        
+        public Response finalize(Request req) {
+            return new Response(req, resp);
+        }
+        
+        @Override
+        public String toString() {
+            String str = "RangeQuery InternalResponse(" + id + ", ";
             str += code.name() + ")";
             return str;
         }
@@ -154,7 +183,7 @@ public class RangeQuery {
         public Pair<KeyRange, TreeMap<Key, byte[]>> getResult() {
             return Pair.with(coveredRange, results);
         }
-        
+
         public RangeResponse getResponse() {
             Pair<KeyRange, TreeMap<Key, byte[]>> res = getResult();
             return new RangeResponse(req.id, req.initRange, ResponseCode.SUCCESS, res.getValue0(), res.getValue1());
@@ -170,14 +199,14 @@ public class RangeQuery {
             if (resp.id != req.id) {
                 return;
             }
-            KeyRange respRange = resp.req.subRange;
+            KeyRange respRange = resp.subRange;
             KeyRange primaryRange = removePrimaryRange(respRange.begin);
             addRestRange(primaryRange, respRange);
             checkReadLimit(resp.readLimit, respRange.end);
             results.putAll(resp.data);
             if (pendingSubRanges.isEmpty()) {
                 done = true;
-                if(coveredRange == null) {
+                if (coveredRange == null) {
                     coveredRange = req.subRange;
                 }
             }

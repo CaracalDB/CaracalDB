@@ -39,13 +39,22 @@ public class Reconfigure extends Value {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (o instanceof Reconfigure) {
+            Reconfigure that = (Reconfigure) o;
+            return this.compareTo(that) == 0;
+        }
+        return false;
+    }
+
+    @Override
     public int compareTo(Value o) {
         int superRes = super.baseCompareTo(o);
         if (superRes != 0) {
             return superRes;
         }
         // I can do this because baseCompareTo already checks for class equality
-        Reconfigure that = (Reconfigure) o; 
+        Reconfigure that = (Reconfigure) o;
         return ComparisonChain.start()
                 .compare(this.view, that.view)
                 .compare(this.quorum, that.quorum)

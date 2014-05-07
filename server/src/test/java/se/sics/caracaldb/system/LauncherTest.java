@@ -40,7 +40,6 @@ import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Message;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.network.grizzly.kryo.KryoMessage;
 
 /**
  *
@@ -63,7 +62,7 @@ public class LauncherTest {
     private static boolean spawn2;
 
     static {
-        KryoMessage.register(TestMsg.class);
+        //TODO register necessary serializers
     }
 
     @Before

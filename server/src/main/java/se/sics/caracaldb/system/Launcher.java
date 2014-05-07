@@ -34,6 +34,11 @@ import se.sics.kompics.simulation.SimulatorScheduler;
  */
 public abstract class Launcher {
 
+    static {
+        ServerMessageRegistrator.register();
+        //MessageRegistrator.register();
+    }
+
     private static Configuration.Builder configBuilder;
     private static Configuration config;
     private static Scheduler scheduler;

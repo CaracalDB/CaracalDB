@@ -20,27 +20,40 @@
  */
 package se.sics.caracaldb.store;
 
+import java.io.Serializable;
 import org.javatuples.Pair;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class TFFactory {
+
+    private static final TombFilter TOMB = new TombFilter();
+    private static final NoFilter NONE = new NoFilter();
+
     public static TransformationFilter tombstoneFilter() {
-        return new TransformationFilter() {
-            @Override
-            public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
-                return new Pair<Boolean, byte[]>(serializedValue == null, serializedValue);
-            }
-        };
+        return TOMB;
     }
-    
+
     public static TransformationFilter noTF() {
-        return new TransformationFilter() {
-            @Override
-            public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
-                return new Pair<Boolean, byte[]>(Boolean.TRUE, serializedValue);
-            }
-        };
+        return NONE;
+    }
+
+    public static class TombFilter implements TransformationFilter, Serializable {
+
+        @Override
+        public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
+            return new Pair<Boolean, byte[]>(serializedValue == null, serializedValue);
+        }
+
+    }
+
+    public static class NoFilter implements TransformationFilter, Serializable {
+
+        @Override
+        public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
+            return new Pair<Boolean, byte[]>(Boolean.TRUE, serializedValue);
+        }
+
     }
 }

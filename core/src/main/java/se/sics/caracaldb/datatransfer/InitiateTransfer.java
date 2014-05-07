@@ -21,6 +21,7 @@
 package se.sics.caracaldb.datatransfer;
 
 import java.util.Map;
+import java.util.UUID;
 import se.sics.kompics.address.Address;
 
 /**
@@ -31,7 +32,7 @@ public class InitiateTransfer extends TransferMessage {
     
     public final Map<String, Object> metadata;
     
-    public InitiateTransfer(Address src, Address dst, long id, Map<String, Object> metadata) {
+    public InitiateTransfer(Address src, Address dst, UUID id, Map<String, Object> metadata) {
         super(src, dst, id);
         this.metadata = metadata;
     }

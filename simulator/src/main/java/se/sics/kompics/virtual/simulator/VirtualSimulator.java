@@ -20,27 +20,25 @@
  */
 package se.sics.kompics.virtual.simulator;
 
-import se.sics.kompics.virtual.networkmodel.NetworkModel;
+import com.google.common.base.Optional;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import se.sics.kompics.ComponentDefinition;
-import se.sics.kompics.Event;
 import se.sics.kompics.Handler;
+import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Negative;
 import se.sics.kompics.PortType;
 import se.sics.kompics.Start;
-import se.sics.kompics.network.ClearToSend;
-import se.sics.kompics.network.DataMessage;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.MessageNotify;
+import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.network.RequestToSend;
-import se.sics.kompics.virtual.networkmodel.NetworkModel;
+import se.sics.kompics.network.netty.serialization.Serializers;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 import se.sics.kompics.p2p.experiment.dsl.events.KompicsSimulatorEvent;
 import se.sics.kompics.p2p.experiment.dsl.events.PeriodicSimulatorEvent;
@@ -60,10 +58,10 @@ import se.sics.kompics.timer.SchedulePeriodicTimeout;
 import se.sics.kompics.timer.ScheduleTimeout;
 import se.sics.kompics.timer.Timeout;
 import se.sics.kompics.timer.Timer;
+import se.sics.kompics.virtual.networkmodel.NetworkModel;
 
 /**
- * The
- * <code>Simulator</code> class.
+ * The <code>Simulator</code> class.
  *
  * Taken mostly from VirtualSimulator with modifications for virtual node
  * support
@@ -99,6 +97,9 @@ public final class VirtualSimulator extends ComponentDefinition implements
     // time statistics
     private long simulationStartTime = 0;
 
+    private boolean serialize;
+    private ByteBuf bbuf;
+
     public VirtualSimulator(VirtualSimulatorInit init) {
         // set myself as the simulated time provider
         SimulatorSystem.setSimulator(this);
@@ -110,6 +111,7 @@ public final class VirtualSimulator extends ComponentDefinition implements
 
         subscribe(handleStart, control);
         subscribe(handleMessage, network);
+        subscribe(notifyHandler, network);
         subscribe(handleST, timer);
         subscribe(handleSPT, timer);
         subscribe(handleCT, timer);
@@ -121,6 +123,10 @@ public final class VirtualSimulator extends ComponentDefinition implements
         scheduler.setSimulator(thisSimulator);
         scenario = init.getScenario();
         random = scenario.getRandom();
+        serialize = init.serialize;
+        if (serialize) {
+            bbuf = Unpooled.buffer(512, 65536);
+        }
 
         CLOCK = 0;
         simulationStartTime = System.currentTimeMillis();
@@ -258,7 +264,7 @@ public final class VirtualSimulator extends ComponentDefinition implements
     }
 
     private void executeStochasticProcessEvent(StochasticProcessEvent event) {
-        Event e = event.generateOperation(random);
+        KompicsEvent e = event.generateOperation(random);
 
         trigger(e, simulationPort);
         LOG.debug("{}: {}", pName(event), e);
@@ -275,23 +281,23 @@ public final class VirtualSimulator extends ComponentDefinition implements
         }
     }
 
-    private void executeKompicsEvent(Event kompicsEvent) {
+    private void executeKompicsEvent(KompicsEvent kompicsEvent) {
         // trigger Messages on the Network port
-        if (Message.class.isAssignableFrom(kompicsEvent.getClass())) {
-            Message message = (Message) kompicsEvent;
+        if (kompicsEvent instanceof Msg) {
+            Msg message = (Msg) kompicsEvent;
             LOG.debug("Delivered Message: {} from {} to {} ", new Object[]{
-                        message, message.getSource(), message.getDestination()});
-            trigger(kompicsEvent, network);
+                message, message.getSource(), message.getDestination()});
+            trigger(message, network);
             return;
         }
 
         // trigger Timeouts on the Timer port
-        if (Timeout.class.isAssignableFrom(kompicsEvent.getClass())) {
+        if (kompicsEvent instanceof Timeout) {
             Timeout timeout = (Timeout) kompicsEvent;
             LOG.debug("Triggered Timeout: {} {}", kompicsEvent, timeout
                     .getTimeoutId());
             activeTimers.remove(timeout.getTimeoutId());
-            trigger(kompicsEvent, timer);
+            trigger(timeout, timer);
             return;
         }
 
@@ -304,9 +310,13 @@ public final class VirtualSimulator extends ComponentDefinition implements
         periodic.setTime(CLOCK + periodic.getPeriod());
 
         // clone timeouts
-        if (Timeout.class.isAssignableFrom(periodic.getEvent().getClass())) {
+        if (periodic.getEvent() instanceof Timeout) {
             Timeout timeout = (Timeout) periodic.getEvent();
-            periodic.setEvent((Timeout) timeout.clone());
+            try {
+                periodic.setEvent((Timeout) timeout.clone());
+            } catch (CloneNotSupportedException ex) {
+                LOG.warn("Cloudn't clone Timeout event!", ex);
+            }
 
             LOG.debug("Triggered [periodic] Timeout: {} {}", timeout,
                     timeout.getTimeoutId());
@@ -345,15 +355,39 @@ public final class VirtualSimulator extends ComponentDefinition implements
                 futureEventList.scheduleFutureEvent(CLOCK, simulatorEvent);
             }
 
-
             LOG.info("Simulation started");
         }
     };
-    Handler<Message> handleMessage = new Handler<Message>() {
+    Handler<Msg> handleMessage = new Handler<Msg>() {
         @Override
-        public void handle(Message event) {
+        public void handle(Msg e) {
             random.nextInt();
-            LOG.debug("Message send: {}", event);
+            LOG.debug("Message send: {}", e);
+
+            Msg event = e;
+            if (serialize) {
+                try {
+                    Serializers.toBinary(e, bbuf);
+                } catch (Exception ex) {
+                    LOG.error("Message {} could not be serialized!\n {}", e, ex);
+                    throw new RuntimeException(e.getClass().getCanonicalName());
+                }
+                try {
+                    event = (Msg) Serializers.fromBinary(bbuf, Optional.absent());
+                    if (event == null) {
+                        LOG.error("Message {} could not be (de-)serialized!", e);
+                        throw new RuntimeException(e.getClass().getCanonicalName());
+                    }
+                    bbuf.clear();
+                } catch (Exception ex) {
+                    LOG.error("Message {} could not be deserialized!\n {}", e, ex);
+                    throw new RuntimeException(e.getClass().getCanonicalName());
+                }
+                if (!e.getClass().equals(event.getClass())) {
+                    LOG.error("Serialised message {} and deserialized message {}! See the problem? \n {}", e, event);
+                    throw new RuntimeException(e.getClass().getCanonicalName());
+                }
+            }
 
             if (networkModel != null) {
                 long latency = networkModel.getLatencyMs(event);
@@ -365,43 +399,42 @@ public final class VirtualSimulator extends ComponentDefinition implements
             }
         }
     };
-    Handler<RequestToSend> handleRTS = new Handler<RequestToSend>() {
-        @Override
-        public void handle(RequestToSend event) {
-            LOG.debug("Handling local RTS event from {}", event.getSource());
-            
-            // just allow unlimited flows in simulation for now
-            
-            ClearToSend cts = event.getEvent();
-            cts.setFlowId(-1);
-            cts.setQuota(Integer.MAX_VALUE);
-            cts.setRequestId(-1);
-            trigger(cts, network);
-        }
-    };
-    Handler<DataMessage> handleData = new Handler<DataMessage>() {
+    Handler<MessageNotify.Req> notifyHandler = new Handler<MessageNotify.Req>() {
 
         @Override
-        public void handle(DataMessage event) {
+        public void handle(MessageNotify.Req notify) {
+            Msg e = notify.msg;
             random.nextInt();
-            LOG.debug("DataMessage send: {}", event.getMessage());
+            LOG.debug("Message send: {}", e);
+            answer(notify);
+
+            Msg event = e;
+            if (serialize) {
+                Serializers.toBinary(e, bbuf);
+                event = (Msg) Serializers.fromBinary(bbuf, Optional.absent());
+                if (event == null) {
+                    LOG.error("Message {} could not be (de-)serialized!", e);
+                    throw new RuntimeException(e.getClass().getCanonicalName());
+                }
+                bbuf.clear();
+            }
 
             if (networkModel != null) {
-                long latency = networkModel.getLatencyMs(event.getMessage());
+                long latency = networkModel.getLatencyMs(event);
                 futureEventList.scheduleFutureEvent(CLOCK,
                         new KompicsSimulatorEvent(event, CLOCK + latency));
             } else {
                 // we just echo the message on the network port
-                trigger(event.getMessage(), network);
+                trigger(event, network);
             }
         }
     };
     Handler<ScheduleTimeout> handleST = new Handler<ScheduleTimeout>() {
         public void handle(ScheduleTimeout event) {
             LOG.debug("ScheduleTimeout@{} : {} {} AT={}", new Object[]{
-                        event.getDelay(), event.getTimeoutEvent(),
-                        event.getTimeoutEvent().getTimeoutId(),
-                        activeTimers.keySet()});
+                event.getDelay(), event.getTimeoutEvent(),
+                event.getTimeoutEvent().getTimeoutId(),
+                activeTimers.keySet()});
 
             if (event.getDelay() < 0) {
                 throw new RuntimeException(

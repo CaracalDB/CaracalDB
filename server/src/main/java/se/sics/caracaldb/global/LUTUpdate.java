@@ -20,13 +20,12 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.io.Closer;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.util.ArrayList;
 import org.slf4j.Logger;
@@ -34,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.address.Address;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  *
@@ -68,51 +68,49 @@ public class LUTUpdate implements Maintenance {
         return previousVersion;
     }
 
-    public byte[] serialise() throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-            DataOutputStream w = closer.register(new DataOutputStream(baos));
+    public byte[] serialise() {
+        ByteBuf buf = Unpooled.buffer();
 
-            w.writeLong(previousVersion);
-            w.writeLong(version);
+        serialise(buf);
 
-            w.writeInt(diff.length);
-            for (Action a : diff) {
-                a.serialise(w);
-            }
+        byte[] data = new byte[buf.readableBytes()];
+        buf.readBytes(data);
+        buf.release();
 
-            w.flush();
+        return data;
+    }
 
-            return baos.toByteArray();
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
+    public void serialise(ByteBuf buf) {
+        buf.writeLong(previousVersion);
+        buf.writeLong(version);
+
+        buf.writeInt(diff.length);
+        for (Action a : diff) {
+            a.serialise(buf);
         }
     }
 
-    public static LUTUpdate deserialise(byte[] bytes) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(bytes));
-            DataInputStream r = closer.register(new DataInputStream(bais));
+    public static LUTUpdate deserialise(byte[] bytes) throws InstantiationException, IllegalAccessException {
+        ByteBuf buf = Unpooled.wrappedBuffer(bytes);
 
-            long previousVersion = r.readLong();
-            long version = r.readLong();
+        LUTUpdate lutu = deserialise(buf);
 
-            int numActions = r.readInt();
-            Action[] actions = new Action[numActions];
-            for (int i = 0; i < numActions; i++) {
-                actions[i] = Action.deserialise(r);
-            }
+        buf.release();
 
-            return new LUTUpdate(previousVersion, version, actions);
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
+        return lutu;
+    }
+
+    public static LUTUpdate deserialise(ByteBuf buf) throws InstantiationException, IllegalAccessException {
+        long previousVersion = buf.readLong();
+        long version = buf.readLong();
+
+        int numActions = buf.readInt();
+        Action[] actions = new Action[numActions];
+        for (int i = 0; i < numActions; i++) {
+            actions[i] = Action.deserialise(buf);
         }
+
+        return new LUTUpdate(previousVersion, version, actions);
     }
 
     public static abstract class Action {
@@ -134,15 +132,15 @@ public class LUTUpdate implements Maintenance {
 
         public abstract void apply(LookupTable lut);
 
-        public abstract void serialise(DataOutputStream w) throws IOException;
+        public abstract void serialise(ByteBuf buf);
 
-        public abstract void fill(DataInputStream r) throws IOException;
+        public abstract void fill(ByteBuf buf);
 
-        public static Action deserialise(DataInputStream r) throws IOException, InstantiationException, IllegalAccessException {
-            byte type = r.readByte();
+        public static Action deserialise(ByteBuf buf) throws InstantiationException, IllegalAccessException {
+            byte type = buf.readByte();
             Class<? extends Action> clazz = TYPES.get(type);
             Action a = clazz.newInstance();
-            a.fill(r);
+            a.fill(buf);
             return a;
         }
     }
@@ -171,16 +169,16 @@ public class LUTUpdate implements Maintenance {
         }
 
         @Override
-        public void serialise(DataOutputStream w) throws IOException {
-            w.writeByte(code());
-            w.writeInt(id);
-            CustomSerialisers.serialiseAddress(addr, w);
+        public void serialise(ByteBuf buf) {
+            buf.writeByte(code());
+            buf.writeInt(id);
+            SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
         }
 
         @Override
-        public void fill(DataInputStream r) throws IOException {
-            id = r.readInt();
-            addr = CustomSerialisers.deserialiseAddress(r);
+        public void fill(ByteBuf buf) {
+            id = buf.readInt();
+            addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         }
 
     }
@@ -226,24 +224,24 @@ public class LUTUpdate implements Maintenance {
         }
 
         @Override
-        public void serialise(DataOutputStream w) throws IOException {
-            w.writeByte(code());
-            w.writeInt(id);
-            w.writeInt(version);
-            w.writeInt(hosts.length);
+        public void serialise(ByteBuf buf) {
+            buf.writeByte(code());
+            buf.writeInt(id);
+            buf.writeInt(version);
+            buf.writeInt(hosts.length);
             for (Integer hostId : hosts) {
-                w.writeInt(hostId);
+                buf.writeInt(hostId);
             }
         }
 
         @Override
-        public void fill(DataInputStream r) throws IOException {
-            id = r.readInt();
-            version = r.readInt();
-            int numHosts = r.readInt();
+        public void fill(ByteBuf buf) {
+            id = buf.readInt();
+            version = buf.readInt();
+            int numHosts = buf.readInt();
             hosts = new Integer[numHosts];
             for (int i = 0; i < numHosts; i++) {
-                hosts[i] = r.readInt();
+                hosts[i] = buf.readInt();
             }
         }
 
@@ -269,16 +267,16 @@ public class LUTUpdate implements Maintenance {
         }
 
         @Override
-        public void serialise(DataOutputStream w) throws IOException {
-            w.writeByte(code());
-            CustomSerialisers.serialiseKey(key, w);
-            w.writeInt(replicationSet);
+        public void serialise(ByteBuf buf) {
+            buf.writeByte(code());
+            CustomSerialisers.serialiseKey(key, buf);
+            buf.writeInt(replicationSet);
         }
 
         @Override
-        public void fill(DataInputStream r) throws IOException {
-            key = CustomSerialisers.deserialiseKey(r);
-            replicationSet = r.readInt();
+        public void fill(ByteBuf buf) {
+            key = CustomSerialisers.deserialiseKey(buf);
+            replicationSet = buf.readInt();
         }
     }
 }

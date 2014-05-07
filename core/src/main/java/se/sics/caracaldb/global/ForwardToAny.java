@@ -21,15 +21,13 @@
 package se.sics.caracaldb.global;
 
 import se.sics.caracaldb.Key;
-import se.sics.kompics.Event;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.KompicsEvent;
 
 /**
  * 
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class ForwardToAny extends Event {
+public class ForwardToAny implements KompicsEvent {
     
     public final Key key;
     public final Forwardable msg;

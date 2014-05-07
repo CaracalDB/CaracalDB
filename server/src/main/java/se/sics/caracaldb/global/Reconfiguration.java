@@ -20,7 +20,6 @@
  */
 package se.sics.caracaldb.global;
 
-import se.sics.caracaldb.replication.log.Value;
 import se.sics.caracaldb.replication.linearisable.ViewChange;
 
 /**

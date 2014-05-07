@@ -20,14 +20,14 @@
  */
 package se.sics.caracaldb.replication.log;
 
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
 
 /**
  * Prune the ReplicatedLog up to <i>position</i>.
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class Prune extends Event {
+public class Prune implements KompicsEvent {
     public final long position;
     
     public Prune(long pos) {

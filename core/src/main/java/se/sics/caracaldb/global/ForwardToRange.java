@@ -23,29 +23,29 @@ package se.sics.caracaldb.global;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.RangeQuery;
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
 
 /**
  *
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class ForwardToRange extends Event {
+public class ForwardToRange implements KompicsEvent {
 
     private final RangeQuery.Request rangeReq;
-    public final Address src;
+    public final Address orig;
     public final RangeQuery.Type execType;
     public final KeyRange range;
 
-    public ForwardToRange(RangeQuery.Request rangeReq, KeyRange range, Address src) {
+    public ForwardToRange(RangeQuery.Request rangeReq, KeyRange range, Address orig) {
         this.rangeReq = rangeReq;
-        this.src = src;
+        this.orig = orig;
         this.execType = rangeReq.execType;
         this.range = range;
     }
 
-    public Message getSubRangeMessage(KeyRange subRange, Address dst) {
-        return new CaracalMsg(src, dst, rangeReq.subRange(subRange));
+    public Msg getSubRangeMessage(KeyRange subRange, Address src, Address dst) {
+        return new CaracalMsg(src, dst, orig, rangeReq.subRange(subRange));
     }
 }

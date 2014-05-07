@@ -24,8 +24,8 @@ import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.ControlPort;
-import se.sics.kompics.Event;
 import se.sics.kompics.Init;
+import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
@@ -37,7 +37,7 @@ import se.sics.kompics.Positive;
  */
 public interface ComponentProxy {
 
-    public <P extends PortType> void trigger(Event e, Port<P> p);
+    public <P extends PortType> void trigger(KompicsEvent e, Port<P> p);
 
     public <T extends ComponentDefinition> Component create(Class<T> definition, Init<T> initEvent);
     

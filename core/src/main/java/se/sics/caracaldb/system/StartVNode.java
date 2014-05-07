@@ -21,13 +21,12 @@
 package se.sics.caracaldb.system;
 
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class StartVNode extends Message {
+public class StartVNode extends SystemMsg {
     
     public final byte[] nodeId;
     

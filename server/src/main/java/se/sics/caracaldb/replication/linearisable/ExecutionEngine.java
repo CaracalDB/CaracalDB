@@ -167,7 +167,7 @@ public class ExecutionEngine extends ComponentDefinition {
     Handler<RangeResp> rangeHandler = new Handler<RangeResp>() {
         @Override
         public void handle(RangeResp resp) {
-            trigger(new RangeQuery.Response(resp), rep);
+            trigger(new RangeQuery.InternalResponse(resp), rep);
         }
     };
     Handler<StorageResponse> diffHandler = new Handler<StorageResponse>() {
@@ -553,12 +553,12 @@ public class ExecutionEngine extends ComponentDefinition {
         }
         for (Address adr : responsible) {
             final Address dst = adr;
-            long id = UUID.randomUUID().getLeastSignificantBits(); // TODO there's certainly better ways...
+            UUID id = UUID.randomUUID(); // TODO there's certainly better ways...
             Map<String, Object> metadata = new HashMap<String, Object>();
             metadata.put("snapshotId", lastSnapshotId);
             final Component sender = create(DataSender.class,
                     new DataSenderInit(id, init.range, self, dst,
-                            2 * init.keepAlivePeriod, init.dataMessageSize, metadata));
+                            2 * init.keepAlivePeriod, metadata));
             connect(sender.getNegative(Network.class), net, new TransferFilter(id));
             connect(sender.getNegative(Timer.class), timer);
             connect(sender.getNegative(Store.class), store);
@@ -620,6 +620,13 @@ public class ExecutionEngine extends ComponentDefinition {
             super(UUID.randomUUID().getLeastSignificantBits());
         }
 
+        /**
+         * Serialization use only
+         */
+        SyncedUp(long id) {
+            super(id);
+        }
+
         @Override
         public int compareTo(Value o) {
             return super.baseCompareTo(o);
@@ -633,6 +640,14 @@ public class ExecutionEngine extends ComponentDefinition {
         public Scan(KeyRange range) {
             super(UUID.randomUUID().getLeastSignificantBits());
 
+            this.range = range;
+        }
+
+        /**
+         * Serialization use only
+         */
+        Scan(long id, KeyRange range) {
+            super(id);
             this.range = range;
         }
 

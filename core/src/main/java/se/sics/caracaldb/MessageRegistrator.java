@@ -20,26 +20,31 @@
  */
 package se.sics.caracaldb;
 
-import se.sics.kompics.network.grizzly.kryo.KryoMessage;
+import se.sics.caracaldb.global.ForwardMessage;
+import se.sics.caracaldb.operations.CaracalMsg;
+import se.sics.caracaldb.operations.CaracalOp;
+import se.sics.caracaldb.system.StartVNode;
+import se.sics.caracaldb.system.StopVNode;
+import se.sics.kompics.network.netty.serialization.Serializers;
 
 /**
- * Register all necessary messages here so they get done before Grizzly is loaded
- * 
+ * Register all necessary messages here so they get done before Grizzly is
+ * loaded
+ *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class MessageRegistrator {
+
     public static void register() {
-        KryoMessage.register(se.sics.caracaldb.system.StartVNode.class);
-        
-        KryoMessage.register(se.sics.caracaldb.operations.CaracalMsg.class);
-        
-        KryoMessage.register(se.sics.caracaldb.datatransfer.TransferMessage.class);
-        
-        KryoMessage.register(se.sics.caracaldb.global.ForwardMessage.class);
-        KryoMessage.register(se.sics.caracaldb.global.SampleRequest.class);
-        KryoMessage.register(se.sics.caracaldb.global.Sample.class);
-        
-        KryoMessage.register(se.sics.caracaldb.paxos.Paxos.PaxosMsg.class);
-        
+        Serializers.register(CoreSerializer.SYSTEM.instance, "systemS");
+        Serializers.register(StartVNode.class, "systemS");
+        Serializers.register(StopVNode.class, "systemS");
+        Serializers.register(CoreSerializer.OP.instance, "opS");
+        Serializers.register(CaracalMsg.class, "opS");
+        Serializers.register(CaracalOp.class, "opS");
+        //
+        Serializers.register(CoreSerializer.LOOKUP.instance, "lookupS");
+        Serializers.register(ForwardMessage.class, "lookupS");
+        Serializers.register(se.sics.caracaldb.global.Message.class, "lookupS");
     }
 }

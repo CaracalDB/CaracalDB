@@ -20,17 +20,15 @@
  */
 package se.sics.caracaldb.datatransfer;
 
-import com.google.common.io.Closer;
-import com.google.common.primitives.UnsignedBytes;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.UUID;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.flow.DataFlow;
 import se.sics.caracaldb.store.Store;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.ComponentDefinition;
@@ -38,9 +36,7 @@ import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.ClearToSend;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.network.RequestToSend;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
 import se.sics.kompics.timer.Timeout;
 import se.sics.kompics.timer.Timer;
@@ -50,9 +46,9 @@ import se.sics.kompics.timer.Timer;
  * @author Lars Kroll <lkroll@sics.se>
  */
 abstract class DataTransferComponent extends ComponentDefinition {
-    
+
     public enum State {
-        
+
         INITIALISING,
         TRANSFERRING,
         WAITING,
@@ -60,26 +56,26 @@ abstract class DataTransferComponent extends ComponentDefinition {
     }
 
     Negative<DataTransfer> transfer = provides(DataTransfer.class);
+    Positive<DataFlow> flow = requires(DataFlow.class);
     Positive<Network> net = requires(Network.class);
     Positive<Timer> timer = requires(Timer.class);
     Positive<Store> store = requires(Store.class);
-    
-    
-    protected final long id;
+
+    protected final UUID id;
     protected State state;
-    
+
     protected Key lastKey;
-    
+
     // statistics
     protected long dataSent = 0;
     protected long itemsSent = 0;
-    
-    DataTransferComponent(long id) {
+
+    DataTransferComponent(UUID id) {
         this.id = id;
-        
+
         subscribe(statusHandler, transfer);
     }
-    
+
     Handler<StatusRequest> statusHandler = new Handler<StatusRequest>() {
 
         @Override
@@ -88,9 +84,7 @@ abstract class DataTransferComponent extends ComponentDefinition {
         }
     };
 
-    
     // internal messages and events
-
     public static class RetryTimeout extends Timeout {
 
         public RetryTimeout(SchedulePeriodicTimeout request) {
@@ -100,95 +94,42 @@ abstract class DataTransferComponent extends ComponentDefinition {
 
     public static class Ack extends TransferMessage {
 
-        public Ack(Address src, Address dst, long id) {
+        public Ack(Address src, Address dst, UUID id) {
             super(src, dst, id);
         }
     }
 
-    public static class TransferClearToSend extends ClearToSend {
-
-        public TransferClearToSend(Address src, Address dst, RequestToSend req) {
-            super(src, dst, req);
-        }
-    }
-
-    public static class Complete extends TransferMessage {
-
-        public Complete(Address src, Address dst, long id) {
-            super(src, dst, id);
-        }
-    }
-
-    public static class Data extends TransferMessage {
-
-        public final byte[] data;
-
-        public Data(Address src, Address dst, long id, byte[] data) {
-            super(src, dst, id);
-            this.data = data;
-        }
-    }
-    
     protected static byte[] serialise(SortedMap<Key, byte[]> result) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-            DataOutputStream w = closer.register(new DataOutputStream(baos));
+        ByteBuf buf = Unpooled.buffer();
 
-            w.writeInt(result.size());
-            for (Map.Entry<Key, byte[]> e : result.entrySet()) {
-                Key k = e.getKey();
-                byte[] val = e.getValue();
-                CustomSerialisers.serialiseKey(k, w);
-                w.writeInt(val.length);
-                w.write(val);
-            }
-
-            w.flush();
-
-            return baos.toByteArray();
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
+        buf.writeInt(result.size());
+        for (Map.Entry<Key, byte[]> e : result.entrySet()) {
+            Key k = e.getKey();
+            byte[] val = e.getValue();
+            CustomSerialisers.serialiseKey(k, buf);
+            buf.writeInt(val.length);
+            buf.writeBytes(val);
         }
+        byte[] data = new byte[buf.readableBytes()];
+        buf.readBytes(data);
+        buf.release();
+        return data;
     }
-    
+
     protected static SortedMap<Key, byte[]> deserialise(byte[] data) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(data));
-            DataInputStream r = closer.register(new DataInputStream(bais));
+        ByteBuf buf = Unpooled.wrappedBuffer(data);
 
-            int size = r.readInt();
-            TreeMap<Key, byte[]> map = new TreeMap<Key, byte[]>();
-            for (int i = 0; i < size; i++) {
-                boolean isByteLength = r.readBoolean();
-                int keysize;
-                if (isByteLength) {
-                    keysize = UnsignedBytes.toInt(r.readByte());
-                } else {
-                    keysize = r.readInt();
-                }
-                byte[] keydata = new byte[keysize];
-                if (r.read(keydata) != keysize) {
-                    throw new IOException("Data seems incomplete.");
-                }
-                Key k = new Key(keydata);
-                int valsize = r.readInt();
-                byte[] valdata = new byte[valsize];
-                if (r.read(valdata) != valsize) {
-                    throw new IOException("Data seems incomplete.");
-                }
-                map.put(k, valdata);
-            }
-
-
-            return map;
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
+        int size = buf.readInt();
+        TreeMap<Key, byte[]> map = new TreeMap<Key, byte[]>();
+        for (int i = 0; i < size; i++) {
+            Key k = CustomSerialisers.deserialiseKey(buf);
+            int valsize = buf.readInt();
+            byte[] valdata = new byte[valsize];
+            buf.readBytes(valdata);
+            map.put(k, valdata);
         }
+        buf.release();
+
+        return map;
     }
 }

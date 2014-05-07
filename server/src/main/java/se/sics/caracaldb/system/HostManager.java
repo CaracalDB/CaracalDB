@@ -42,10 +42,10 @@ import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.ControlPort;
-import se.sics.kompics.Event;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Init.None;
+import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
@@ -73,7 +73,7 @@ public class HostManager extends ComponentDefinition {
     private Positive<Bootstrap> bootPort;
     private ComponentProxy proxy = new ComponentProxy() {
         @Override
-        public <P extends PortType> void trigger(Event e, Port<P> p) {
+        public <P extends PortType> void trigger(KompicsEvent e, Port<P> p) {
             HostManager.this.trigger(e, p);
         }
 

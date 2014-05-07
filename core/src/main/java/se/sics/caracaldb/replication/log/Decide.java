@@ -20,13 +20,13 @@
  */
 package se.sics.caracaldb.replication.log;
 
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class Decide<T extends Value> extends Event {
+public class Decide<T extends Value> implements KompicsEvent {
     public final long position;
     public final T value;
     

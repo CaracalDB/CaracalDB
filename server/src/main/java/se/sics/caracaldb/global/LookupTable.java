@@ -20,15 +20,13 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSortedSet;
-import com.google.common.io.Closer;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.common.primitives.UnsignedInteger;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,8 +45,8 @@ import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
-import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.address.Address;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>
@@ -180,12 +178,12 @@ public class LookupTable {
         }
         Key endR = virtualHostsGetSuccessor(rgKey);
         KeyRange firstRange;
-        if(endR == null || endR.compareTo(range.end) >= 0) {  
+        if (endR == null || endR.compareTo(range.end) >= 0) {
             firstRange = range;
         } else {
             firstRange = KeyRange.startFrom(range).open(endR);
         }
-        
+
         Address[] group = getVirtualHosts(rgId, rgKey);
         return Pair.with(firstRange, group);
     }
@@ -360,107 +358,93 @@ public class LookupTable {
     }
 
     public byte[] serialise() throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-            DataOutputStream w = closer.register(new DataOutputStream(baos));
+        ByteBuf buf = Unpooled.buffer();
 
-            w.writeLong(versionId);
+        buf.writeLong(versionId);
 
-            // hosts
-            w.writeInt(hosts.size());
-            for (Address addr : hosts) {
-                CustomSerialisers.serialiseAddress(addr, w);
-            }
-
-            // replicationgroups
-            w.writeInt(replicationSets.size());
-            for (ListIterator<Integer[]> it = replicationSets.listIterator(); it.hasNext();) {
-                int pos = it.nextIndex();
-                Integer[] group = it.next();
-                Integer version = replicationSetVersions.get(pos);
-                serialiseReplicationSet(version, group, w);
-            }
-
-            // virtualHostGroups
-            for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
-                w.writeLong(virtualHostGroupVersions[i]);
-                byte[] lgbytes = virtualHostGroups[i].serialise();
-                w.writeInt(lgbytes.length);
-                w.write(lgbytes);
-            }
-
-            w.flush();
-
-            return baos.toByteArray();
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
+        // hosts
+        buf.writeInt(hosts.size());
+        for (Address addr : hosts) {
+            SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
         }
+
+        // replicationgroups
+        buf.writeInt(replicationSets.size());
+        for (ListIterator<Integer[]> it = replicationSets.listIterator(); it.hasNext();) {
+            int pos = it.nextIndex();
+            Integer[] group = it.next();
+            Integer version = replicationSetVersions.get(pos);
+            serialiseReplicationSet(version, group, buf);
+        }
+
+        // virtualHostGroups
+        for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
+            buf.writeLong(virtualHostGroupVersions[i]);
+            byte[] lgbytes = virtualHostGroups[i].serialise();
+            buf.writeInt(lgbytes.length);
+            buf.writeBytes(lgbytes);
+        }
+
+        byte[] data = new byte[buf.readableBytes()];
+        buf.readBytes(data);
+        buf.release();
+
+        return data;
     }
 
     public static LookupTable deserialise(byte[] bytes) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(bytes));
-            DataInputStream r = closer.register(new DataInputStream(bais));
 
-            INSTANCE = new LookupTable();
+        ByteBuf buf = Unpooled.wrappedBuffer(bytes);
 
-            INSTANCE.versionId = r.readLong();
+        INSTANCE = new LookupTable();
 
-            // hosts
-            int numHosts = r.readInt();
-            INSTANCE.hosts = new ArrayList<Address>(numHosts);
-            for (int i = 0; i < numHosts; i++) {
-                INSTANCE.hosts.add(CustomSerialisers.deserialiseAddress(r));
-            }
+        INSTANCE.versionId = buf.readLong();
 
-            // replicationgroups
-            int numRGs = r.readInt();
-            INSTANCE.replicationSets = new ArrayList<Integer[]>(numRGs);
-            INSTANCE.replicationSetVersions = new ArrayList<Integer>(numRGs);
-            for (int i = 0; i < numRGs; i++) {
-                Pair<Integer, Integer[]> group = deserialiseReplicationGroup(r);
-                INSTANCE.replicationSets.add(group.getValue1());
-                INSTANCE.replicationSetVersions.add(group.getValue0());
-            }
-
-            // virtualHostGroups
-            for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
-                INSTANCE.virtualHostGroupVersions[i] = r.readLong();
-                int groupLength = r.readInt();
-                byte[] groupBytes = new byte[groupLength];
-                if (r.read(groupBytes) != groupLength) {
-                    throw new IOException("Incomplete dataset!");
-                }
-                INSTANCE.virtualHostGroups[i] = LookupGroup.deserialise(groupBytes);
-            }
-
-            return INSTANCE;
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
+        // hosts
+        int numHosts = buf.readInt();
+        INSTANCE.hosts = new ArrayList<Address>(numHosts);
+        for (int i = 0; i < numHosts; i++) {
+            Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            INSTANCE.hosts.add(addr);
         }
+
+        // replicationgroups
+        int numRGs = buf.readInt();
+        INSTANCE.replicationSets = new ArrayList<Integer[]>(numRGs);
+        INSTANCE.replicationSetVersions = new ArrayList<Integer>(numRGs);
+        for (int i = 0; i < numRGs; i++) {
+            Pair<Integer, Integer[]> group = deserialiseReplicationGroup(buf);
+            INSTANCE.replicationSets.add(group.getValue1());
+            INSTANCE.replicationSetVersions.add(group.getValue0());
+        }
+
+        // virtualHostGroups
+        for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
+            INSTANCE.virtualHostGroupVersions[i] = buf.readLong();
+            int groupLength = buf.readInt();
+            byte[] groupBytes = new byte[groupLength];
+            buf.readBytes(groupBytes);
+            INSTANCE.virtualHostGroups[i] = LookupGroup.deserialise(groupBytes);
+        }
+
+        return INSTANCE;
     }
 
-    private static void serialiseReplicationSet(Integer version, Integer[] group, DataOutputStream w) throws IOException {
-        w.writeInt(version);
+    private static void serialiseReplicationSet(Integer version, Integer[] group, ByteBuf buf) throws IOException {
+        buf.writeInt(version);
         byte groupSize = UnsignedBytes.checkedCast(group.length);
-        w.writeByte(groupSize);
+        buf.writeByte(groupSize);
         for (Integer i : group) {
-            w.writeInt(i);
+            buf.writeInt(i);
         }
     }
 
-    private static Pair<Integer, Integer[]> deserialiseReplicationGroup(DataInputStream r) throws IOException {
-        int version = r.readInt();
-        int groupSize = UnsignedBytes.toInt(r.readByte());
+    private static Pair<Integer, Integer[]> deserialiseReplicationGroup(ByteBuf buf) throws IOException {
+        int version = buf.readInt();
+        int groupSize = UnsignedBytes.toInt(buf.readByte());
         Integer[] group = new Integer[groupSize];
         for (int i = 0; i < groupSize; i++) {
-            group[i] = r.readInt();
+            group[i] = buf.readInt();
         }
         return Pair.with(version, group);
     }
@@ -556,11 +540,11 @@ public class LookupTable {
     ArrayList<Address> hosts() {
         return this.hosts;
     }
-    
+
     ArrayList<Integer> replicationSetVersions() {
         return this.replicationSetVersions;
     }
-    
+
     ArrayList<Integer[]> replicationSets() {
         return this.replicationSets;
     }

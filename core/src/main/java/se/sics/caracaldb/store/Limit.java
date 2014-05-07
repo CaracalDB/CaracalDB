@@ -20,6 +20,8 @@
  */
 package se.sics.caracaldb.store;
 
+import java.io.Serializable;
+
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
@@ -50,7 +52,7 @@ public abstract class Limit {
     /**
      * LimitTrackers are statefull
      */
-    public interface LimitTracker {
+    public interface LimitTracker extends Serializable {
 
         /**
          * @param value
@@ -66,7 +68,7 @@ public abstract class Limit {
         public LimitTracker doClone();
     }
 
-    private static class NoLimit implements LimitTracker {
+    private static class NoLimit implements LimitTracker, Serializable {
 
         @Override
         public boolean read(byte[] value) {
@@ -84,7 +86,7 @@ public abstract class Limit {
         }
     }
 
-    private static class ItemCount implements LimitTracker {
+    private static class ItemCount implements LimitTracker, Serializable {
 
         private int itemCount;
 
@@ -112,7 +114,7 @@ public abstract class Limit {
         }
     }
 
-    private static class ByteSize implements LimitTracker {
+    private static class ByteSize implements LimitTracker, Serializable {
 
         private int byteSize;
 

@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.datatransfer;
 
+import java.util.UUID;
 import se.sics.kompics.Event;
 
 /**
@@ -27,9 +28,9 @@ import se.sics.kompics.Event;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class Completed extends Event {
-    public final long id;
+    public final UUID id;
     
-    public Completed(long id) {
+    public Completed(UUID id) {
         this.id = id;
     }
 }

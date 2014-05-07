@@ -18,44 +18,87 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.kompics.virtual.simulator;
-
-import se.sics.kompics.virtual.networkmodel.NetworkModel;
-import se.sics.kompics.Init;
-import se.sics.kompics.virtual.networkmodel.NetworkModel;
-import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
-import se.sics.kompics.simulation.SimulatorScheduler;
-import se.sics.kompics.virtual.simulator.VirtualSimulator;
-
-/**
- * The <code>P2pSimulatorInit</code> class.
- * 
- * @author Cosmin Arad <cosmin@sics.se>
- * @version $Id: P2pSimulatorInit.java 1102 2009-08-31 13:23:16Z Cosmin $
- */
-public final class VirtualSimulatorInit extends Init<VirtualSimulator> {
-
-	private final SimulatorScheduler scheduler;
-	private final SimulationScenario scenario;
-	private final NetworkModel networkModel;
-
-	public VirtualSimulatorInit(SimulatorScheduler scheduler,
-			SimulationScenario scenario, NetworkModel networkModel) {
-		super();
-		this.scheduler = scheduler;
-		this.scenario = scenario;
-		this.networkModel = networkModel;
-	}
-
-	public final SimulatorScheduler getScheduler() {
-		return scheduler;
-	}
-
-	public final SimulationScenario getScenario() {
-		return scenario;
-	}
-
-	public final NetworkModel getNetworkModel() {
-		return networkModel;
-	}
-}
+package se.sics.kompics.virtual.simulator;
+
+import se.sics.kompics.virtual.networkmodel.NetworkModel;
+
+import se.sics.kompics.Init;
+
+import se.sics.kompics.virtual.networkmodel.NetworkModel;
+
+import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
+
+import se.sics.kompics.simulation.SimulatorScheduler;
+
+import se.sics.kompics.virtual.simulator.VirtualSimulator;
+
+/**
+ *
+ * The <code>P2pSimulatorInit</code> class.
+ *
+ *
+ *
+ * @author Cosmin Arad <cosmin@sics.se>
+ *
+ * @version $Id: P2pSimulatorInit.java 1102 2009-08-31 13:23:16Z Cosmin $
+ *
+ */
+public final class VirtualSimulatorInit extends Init<VirtualSimulator> {
+
+    private final SimulatorScheduler scheduler;
+
+    private final SimulationScenario scenario;
+
+    private final NetworkModel networkModel;
+
+    public final boolean serialize;
+
+    public VirtualSimulatorInit(SimulatorScheduler scheduler,
+            SimulationScenario scenario, NetworkModel networkModel) {
+
+        super();
+
+        this.scheduler = scheduler;
+
+        this.scenario = scenario;
+
+        this.networkModel = networkModel;
+
+        serialize = true;
+
+    }
+
+    public VirtualSimulatorInit(SimulatorScheduler scheduler,
+            SimulationScenario scenario, NetworkModel networkModel, boolean serialize) {
+
+        super();
+
+        this.scheduler = scheduler;
+
+        this.scenario = scenario;
+
+        this.networkModel = networkModel;
+
+        this.serialize = serialize;
+
+    }
+
+    public final SimulatorScheduler getScheduler() {
+
+        return scheduler;
+
+    }
+
+    public final SimulationScenario getScenario() {
+
+        return scenario;
+
+    }
+
+    public final NetworkModel getNetworkModel() {
+
+        return networkModel;
+
+    }
+
+}

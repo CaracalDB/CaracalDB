@@ -21,7 +21,7 @@
 package se.sics.kompics.virtual.networkmodel;
 
 import java.util.Random;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
 
 /**
  *
@@ -46,7 +46,7 @@ public class UniformRandomModel implements NetworkModel {
     }
 
     @Override
-    public long getLatencyMs(Message message) {
+    public long getLatencyMs(Msg message) {
         return min + (long)Math.floor(rand.nextDouble() * diff);
     }
     

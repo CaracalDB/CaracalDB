@@ -20,17 +20,17 @@
  */
 package se.sics.caracaldb.datatransfer;
 
-import com.google.common.io.Closer;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.Map;
-import java.util.SortedMap;
+import java.util.Queue;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.flow.ClearToSend;
+import se.sics.caracaldb.flow.DataMessage;
+import se.sics.caracaldb.flow.RequestToSend;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
@@ -38,8 +38,6 @@ import se.sics.caracaldb.store.TFFactory;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.DataMessage;
-import se.sics.kompics.network.RequestToSend;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
 
@@ -48,30 +46,25 @@ import se.sics.kompics.timer.SchedulePeriodicTimeout;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class DataSender extends DataTransferComponent {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(DataSender.class);
-    
-    
+
     // instance
-    
     private final KeyRange range;
     private final Address self;
     private final Address destination;
     private final long retryTime;
-    private final int maxSize;
     private final Map<String, Object> metadata;
     private UUID timeoutId;
-    private int remainingQuota = 0;
-    private TransferClearToSend activeCTS;
-    
-    
+    private ClearToSend activeCTS;
+    private final Queue<ClearToSend> pendingCTS = new LinkedList<>();
+
     public DataSender(DataSenderInit init) {
         super(init.id);
         range = init.range;
         self = init.self;
         destination = init.destination;
         retryTime = init.retryTime;
-        maxSize = init.maxSize;
         metadata = init.metadata;
         // subscriptions
         subscribe(startHandler, control);
@@ -85,8 +78,8 @@ public class DataSender extends DataTransferComponent {
         @Override
         public void handle(Start event) {
             state = State.INITIALISING;
-            SchedulePeriodicTimeout spt =
-                    new SchedulePeriodicTimeout(0, retryTime);
+            SchedulePeriodicTimeout spt
+                    = new SchedulePeriodicTimeout(0, retryTime);
             RetryTimeout timeoutEvent = new RetryTimeout(spt);
             spt.setTimeoutEvent(timeoutEvent);
             trigger(spt, timer);
@@ -105,24 +98,25 @@ public class DataSender extends DataTransferComponent {
         public void handle(Ack event) {
             if (state == State.INITIALISING) {
                 state = State.WAITING;
+                ClearToSend cts = new ClearToSend(destination, self, id);
                 RequestToSend rts = new RequestToSend();
-                TransferClearToSend tcts = new TransferClearToSend(destination, self, rts);
+                rts.setEvent(cts);
                 trigger(rts, net);
                 trigger(new CancelPeriodicTimeout(timeoutId), timer);
             }
         }
     };
-    Handler<TransferClearToSend> ctsHandler = new Handler<TransferClearToSend>() {
+    Handler<ClearToSend> ctsHandler = new Handler<ClearToSend>() {
         @Override
-        public void handle(TransferClearToSend event) {
+        public void handle(ClearToSend event) {
             if (state != State.WAITING) {
-                LOG.warn("Got {} while not waiting. Something is out of place!", event);
+                LOG.info("Got {} while not waiting. Queuing it up.", event);
+                pendingCTS.offer(event);
                 return;
             }
-            remainingQuota = event.getQuota();
             activeCTS = event;
             state = State.TRANSFERRING;
-            requestData();
+            requestData(event.getQuota());
         }
     };
     Handler<RangeResp> responseHandler = new Handler<RangeResp>() {
@@ -133,8 +127,7 @@ public class DataSender extends DataTransferComponent {
                 return;
             }
             if (event.result.isEmpty()) {
-                DataMessage finalMsg = activeCTS.constructMessage(new Complete(self, destination, id));
-                finalMsg.setFinal();
+                DataMessage finalMsg = activeCTS.constructFinalMessage(new byte[0]);
                 trigger(finalMsg, net);
                 trigger(new Completed(id), transfer);
                 state = State.DONE;
@@ -143,29 +136,38 @@ public class DataSender extends DataTransferComponent {
             lastKey = event.result.lastKey();
             try {
                 byte[] data = serialise(event.result);
-                DataMessage msg = activeCTS.constructMessage(new Data(self, destination, id, data));
+                DataMessage msg;
+                if (data.length < activeCTS.getQuota()) {
+                    msg = activeCTS.constructFinalMessage(data);
+                    trigger(new Completed(id), transfer);
+                    state = State.DONE;
+                } else { // It might actually still be final, but we can't really figure that out without trying again
+                    msg = activeCTS.constructMessage(data);
+                }
                 trigger(msg, net);
                 dataSent += data.length;
                 itemsSent += event.result.size();
-                remainingQuota--;
-                requestData();
             } catch (IOException ex) {
                 LOG.error("Could not serialise {}. Ignoring!", event);
             }
+            ClearToSend next = pendingCTS.poll();
+            if (next != null) {
+                activeCTS = next;
+                requestData(next.getQuota());
+            } else {
+                activeCTS = null;
+                state = State.WAITING;
+            }
         }
     };
-    
-    private void requestData() {
-        if (remainingQuota <= 0) {
-            state = State.WAITING;
-            return;
-        }
+
+    private void requestData(int quota) {
         if (lastKey == null) {
-            trigger(new RangeReq(range, Limit.toBytes(maxSize), TFFactory.tombstoneFilter()), store);
+            trigger(new RangeReq(range, Limit.toBytes(quota), TFFactory.tombstoneFilter()), store);
             return;
         }
-        
+
         KeyRange subRange = KeyRange.open(lastKey).endFrom(range);
-        trigger(new RangeReq(subRange, Limit.toBytes(maxSize), TFFactory.tombstoneFilter()), store);
+        trigger(new RangeReq(subRange, Limit.toBytes(quota), TFFactory.tombstoneFilter()), store);
     }
 }

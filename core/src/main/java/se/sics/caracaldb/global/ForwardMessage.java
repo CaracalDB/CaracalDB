@@ -22,34 +22,78 @@ package se.sics.caracaldb.global;
 
 import se.sics.caracaldb.Key;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
+import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class ForwardMessage extends Message {
+public class ForwardMessage implements Msg, Forwardable<ForwardMessage> {
+
+    public final Address src;
+    public final Address dst;
+    public final Address orig;
+    public final Transport protocol;
+
     public final Key forwardTo;
     public final Forwardable msg;
 
     public ForwardMessage(Address src, Address dst, Key forwardTo, Forwardable msg) {
-        super(src, dst);
-        assert(forwardTo != null); // or bad things happen -.-
+        this(src, dst, src, Transport.TCP, forwardTo, msg);
+    }
+
+    public ForwardMessage(Address src, Address dst, Address orig, Transport protocol, Key forwardTo, Forwardable msg) {
+        this.src = src;
+        this.dst = dst;
+        this.orig = orig;
+        this.protocol = protocol;
+        assert (forwardTo != null); // or bad things happen -.-
         this.forwardTo = forwardTo;
         this.msg = msg;
     }
 
-    public ForwardMessage forward(Address newDest) {
-        return new ForwardMessage(getSource(), newDest, forwardTo, msg);
-    }
-    
     @Override
     public String toString() {
-        String str = "ForwardMessage(";
-        str += getSource().toString() + ", ";
-        str += getDestination().toString() + ", ";
-        str += forwardTo.toString() + ", ";
-        str += msg.toString() + ")";
-        return str;
+        StringBuilder sb = new StringBuilder();
+        sb.append("ForwardMessage(");
+        sb.append(src.toString());
+        sb.append(" -> ");
+        sb.append(dst.toString());
+        sb.append(" from ");
+        sb.append(orig.toString());
+        sb.append(" over ");
+        sb.append(protocol.name());
+        sb.append(" forward to ");
+        sb.append(forwardTo.toString());
+        sb.append(": \n     ");
+        sb.append(msg.toString());
+        sb.append("\n)");
+        return sb.toString();
+    }
+
+    @Override
+    public Address getSource() {
+        return src;
+    }
+
+    @Override
+    public Address getDestination() {
+        return dst;
+    }
+
+    @Override
+    public Address getOrigin() {
+        return orig;
+    }
+
+    @Override
+    public Transport getProtocol() {
+        return protocol;
+    }
+
+    @Override
+    public ForwardMessage insertDestination(Address src, Address dest) {
+        return new ForwardMessage(src, dest, orig, protocol, forwardTo, msg);
     }
 }

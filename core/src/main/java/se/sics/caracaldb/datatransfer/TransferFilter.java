@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -20,20 +20,22 @@
  */
 package se.sics.caracaldb.datatransfer;
 
+import java.util.UUID;
 import se.sics.kompics.ChannelFilter;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author lkroll
  */
-public class TransferFilter extends ChannelFilter<TransferMessage, Long> {
+public class TransferFilter extends ChannelFilter<TransferMessage, UUID> {
 
-    public TransferFilter(Long val) {
+    public TransferFilter(UUID val) {
         super(TransferMessage.class, val, true);
     }
 
     @Override
-    public Long getValue(TransferMessage event) {
+    public UUID getValue(TransferMessage event) {
         return event.id;
     }
+
 }

@@ -24,8 +24,6 @@ import se.sics.caracaldb.replication.log.Reconfigure;
 import se.sics.caracaldb.replication.log.Propose;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
-import com.google.common.collect.LinkedListMultimap;
-import com.google.common.collect.Multimap;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map.Entry;

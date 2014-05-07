@@ -20,12 +20,10 @@
  */
 package se.sics.caracaldb.system;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.Ordering;
-import com.google.common.io.Closer;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -42,6 +40,7 @@ import se.sics.caracaldb.global.NodeStats;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.caracaldb.utils.TopKMap;
 import se.sics.kompics.address.Address;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  *
@@ -73,13 +72,13 @@ public class Stats {
             LOG.error("Sigar Cpu Error: ", se);
             return null;
         }
-        
+
         TopKMap<Long, Address> topKSize = new TopKMap<Long, Address>(K);
         Comparator<Long> revcomp = Ordering.natural().reverse();
         TopKMap<Long, Address> bottomKSize = new TopKMap<Long, Address>(K, revcomp);
         TopKMap<Long, Address> topKOps = new TopKMap<Long, Address>(K);
         TopKMap<Long, Address> bottomKOps = new TopKMap<Long, Address>(K, revcomp);
-        
+
         for (Entry<Address, NodeStats> e : nodeStats.entrySet()) {
             Address addr = e.getKey();
             NodeStats stats = e.getValue();
@@ -88,12 +87,12 @@ public class Stats {
             topKOps.put(stats.ops, addr);
             bottomKOps.put(stats.ops, addr);
         }
-        
-        return new Report(atHost, mem.getUsedPercent(), previousCpuUsage, 
-                mapToList(topKSize), mapToList(bottomKSize), 
+
+        return new Report(atHost, mem.getUsedPercent(), previousCpuUsage,
+                mapToList(topKSize), mapToList(bottomKSize),
                 mapToList(topKOps), mapToList(bottomKOps));
     }
-    
+
     private static List<Key> mapToList(TopKMap<?, Address> map) {
         ArrayList<Key> list = new ArrayList<Key>(map.size());
         for (Entry<?, Address> e : map.entryList()) {
@@ -161,64 +160,50 @@ public class Stats {
         }
 
         public byte[] serialise() throws IOException {
-            Closer closer = Closer.create();
-            try {
-                ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-                DataOutputStream w = closer.register(new DataOutputStream(baos));
+            ByteBuf buf = Unpooled.buffer();
 
-                CustomSerialisers.serialiseAddress(atHost, w);
-                w.writeDouble(memoryUsage);
-                w.writeDouble(cpuUsage);
+            SpecialSerializers.AddressSerializer.INSTANCE.toBinary(atHost, buf);
+            buf.writeDouble(memoryUsage);
+            buf.writeDouble(cpuUsage);
 
-                w.writeInt(topKSize.size()); // They better all be the same size -.-
+            buf.writeInt(topKSize.size()); // They better all be the same size -.-
 
-                for (int i = 0; i < topKSize.size(); i++) {
-                    CustomSerialisers.serialiseKey(topKSize.get(i), w);
-                    CustomSerialisers.serialiseKey(bottomKSize.get(i), w);
-                    CustomSerialisers.serialiseKey(topKOps.get(i), w);
-                    CustomSerialisers.serialiseKey(bottomKOps.get(i), w);
-                }
-
-                w.flush();
-
-                return baos.toByteArray();
-            } catch (Throwable e) {
-                throw closer.rethrow(e);
-            } finally {
-                closer.close();
+            for (int i = 0; i < topKSize.size(); i++) {
+                CustomSerialisers.serialiseKey(topKSize.get(i), buf);
+                CustomSerialisers.serialiseKey(bottomKSize.get(i), buf);
+                CustomSerialisers.serialiseKey(topKOps.get(i), buf);
+                CustomSerialisers.serialiseKey(bottomKOps.get(i), buf);
             }
+
+            byte[] data = new byte[buf.readableBytes()];
+            buf.readBytes(data);
+            buf.release();
+
+            return data;
         }
 
         public static Report deserialise(byte[] bytes) throws IOException {
-            Closer closer = Closer.create();
-            try {
-                ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(bytes));
-                DataInputStream r = closer.register(new DataInputStream(bais));
+            ByteBuf buf = Unpooled.wrappedBuffer(bytes);
 
-                Address atHost = CustomSerialisers.deserialiseAddress(r);
-                double memoryUsage = r.readDouble();
-                double cpuUsage = r.readDouble();
+            Address atHost = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            double memoryUsage = buf.readDouble();
+            double cpuUsage = buf.readDouble();
 
-                int k = r.readInt();
+            int k = buf.readInt();
 
-                ArrayList<Key> topKSize = new ArrayList<Key>(k);
-                ArrayList<Key> bottomKSize = new ArrayList<Key>(k);
-                ArrayList<Key> topKOps = new ArrayList<Key>(k);
-                ArrayList<Key> bottomKOps = new ArrayList<Key>(k);
+            ArrayList<Key> topKSize = new ArrayList<Key>(k);
+            ArrayList<Key> bottomKSize = new ArrayList<Key>(k);
+            ArrayList<Key> topKOps = new ArrayList<Key>(k);
+            ArrayList<Key> bottomKOps = new ArrayList<Key>(k);
 
-                for (int i = 0; i < k; i++) {
-                    topKSize.add(CustomSerialisers.deserialiseKey(r));
-                    bottomKSize.add(CustomSerialisers.deserialiseKey(r));
-                    topKOps.add(CustomSerialisers.deserialiseKey(r));
-                    bottomKSize.add(CustomSerialisers.deserialiseKey(r));
-                }
-
-                return new Report(atHost, memoryUsage, cpuUsage, topKSize, bottomKSize, topKOps, bottomKOps);
-            } catch (Throwable e) {
-                throw closer.rethrow(e);
-            } finally {
-                closer.close();
+            for (int i = 0; i < k; i++) {
+                topKSize.add(CustomSerialisers.deserialiseKey(buf));
+                bottomKSize.add(CustomSerialisers.deserialiseKey(buf));
+                topKOps.add(CustomSerialisers.deserialiseKey(buf));
+                bottomKSize.add(CustomSerialisers.deserialiseKey(buf));
             }
+
+            return new Report(atHost, memoryUsage, cpuUsage, topKSize, bottomKSize, topKOps, bottomKOps);
         }
     }
 }

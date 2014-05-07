@@ -20,11 +20,8 @@
  */
 package se.sics.caracaldb.global;
 
-import com.google.common.io.Closer;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
@@ -129,51 +126,37 @@ public class LookupGroup {
 
     public byte[] serialise() throws IOException {
 
-        Closer closer = Closer.create();
-        try {
-            ByteArrayOutputStream baos = closer.register(new ByteArrayOutputStream());
-            DataOutputStream w = closer.register(new DataOutputStream(baos));
+        ByteBuf buf = Unpooled.buffer();
 
-            w.writeByte(prefix);
-            w.writeInt(virtualHosts.size());
-            for (Map.Entry<Key, Integer> e : virtualHosts.entrySet()) {
-                Key k = e.getKey();
-                Integer val = e.getValue();
-                CustomSerialisers.serialiseKey(k, w);
-                w.writeInt(val);
-            }
-
-            w.flush();
-
-            return baos.toByteArray();
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
+        buf.writeByte(prefix);
+        buf.writeInt(virtualHosts.size());
+        for (Map.Entry<Key, Integer> e : virtualHosts.entrySet()) {
+            Key k = e.getKey();
+            Integer val = e.getValue();
+            CustomSerialisers.serialiseKey(k, buf);
+            buf.writeInt(val);
         }
+
+        byte[] data = new byte[buf.readableBytes()];
+        buf.readBytes(data);
+        buf.release();
+
+        return data;
     }
 
     public static LookupGroup deserialise(byte[] bytes) throws IOException {
-        Closer closer = Closer.create();
-        try {
-            ByteArrayInputStream bais = closer.register(new ByteArrayInputStream(bytes));
-            DataInputStream r = closer.register(new DataInputStream(bais));
 
-            byte prefix = r.readByte();
-            LookupGroup lg = new LookupGroup(prefix);
-            int size = r.readInt();
-            for (int i = 0; i < size; i++) {
-                Key k = CustomSerialisers.deserialiseKey(r);
-                Integer val = r.readInt();
-                lg.put(k, val);
-            }
-
-            return lg;
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
-        } finally {
-            closer.close();
+        ByteBuf buf = Unpooled.wrappedBuffer(bytes);
+        byte prefix = buf.readByte();
+        LookupGroup lg = new LookupGroup(prefix);
+        int size = buf.readInt();
+        for (int i = 0; i < size; i++) {
+            Key k = CustomSerialisers.deserialiseKey(buf);
+            Integer val = buf.readInt();
+            lg.put(k, val);
         }
+
+        return lg;
     }
 
     public void printFormat(StringBuilder sb) {

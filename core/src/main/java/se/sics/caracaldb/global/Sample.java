@@ -21,10 +21,8 @@
 package se.sics.caracaldb.global;
 
 import com.google.common.collect.ImmutableSet;
-import java.util.HashSet;
-import java.util.Set;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Transport;
 
 /**
  *
@@ -32,11 +30,10 @@ import se.sics.kompics.network.Message;
  */
 public class Sample extends Message {
     
-    // Should be Immutable, but tell that to Kryo -.-
-    public final Set<Address> nodes;
+    public final ImmutableSet<Address> nodes;
     
     public Sample(Address src, Address dest, ImmutableSet<Address> nodes) {
-        super(src, dest);
-        this.nodes = new HashSet<Address>(nodes);
+        super(src, dest, src, Transport.TCP);
+        this.nodes = nodes;
     }
 }

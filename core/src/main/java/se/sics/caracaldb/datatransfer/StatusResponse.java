@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.datatransfer;
 
+import java.util.UUID;
 import se.sics.kompics.Response;
 
 /**
@@ -31,9 +32,9 @@ public class StatusResponse extends Response {
     public final long dataSent;
     public final long itemsSent;
     public final DataSender.State currentState;
-    public final long id;
+    public final UUID id;
     
-    public StatusResponse(StatusRequest req, long id, long dataSent, 
+    public StatusResponse(StatusRequest req, UUID id, long dataSent, 
             long itemsSent, DataSender.State currentState) {
         super(req);
         this.id = id;

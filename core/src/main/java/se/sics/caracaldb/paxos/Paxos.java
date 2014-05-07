@@ -21,6 +21,7 @@
 package se.sics.caracaldb.paxos;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.Sets;
 import com.google.common.collect.SortedSetMultimap;
 import com.google.common.collect.TreeMultimap;
@@ -36,6 +37,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.leader.GroupStatusChange;
@@ -59,14 +61,24 @@ import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stopped;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
+import se.sics.kompics.network.Transport;
+import se.sics.kompics.network.netty.serialization.Serializers;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class Paxos extends ComponentDefinition {
+
+    static {
+        Serializers.register(CoreSerializer.PAXOS.instance, "paxosS");
+        Serializers.register(PaxosMsg.class, "paxosS");
+        Serializers.register(Forward.class, "paxosS");
+        Serializers.register(CoreSerializer.VALUE.instance, "valueS");
+        Serializers.register(Value.class, "valueS");
+    }
 
     public static enum State {
 
@@ -452,7 +464,7 @@ public class Paxos extends ComponentDefinition {
         LOG.debug("Forwarding {}", p);
         // Forward to everyone to avoid message losses when leader fails
         for (Address adr : view.members) {
-            trigger(new Forward(self, adr, p), net);
+            trigger(new Forward(self, adr, self, p), net);
         }
 
     }
@@ -502,7 +514,7 @@ public class Paxos extends ComponentDefinition {
             }
             for (Address adr : Sets.difference(rconf.view.members, view.members)) {
                 // for all newly added nodes
-                trigger(new Install(self, adr, b, rconf, highestDecidedId, decidedLog), net);
+                trigger(new Install(self, adr, b, rconf, highestDecidedId, ImmutableSortedMap.copyOf(decidedLog)), net);
             }
             trigger(toELDReconf(rconf), eld);
             view = rconf.view;
@@ -538,13 +550,39 @@ public class Paxos extends ComponentDefinition {
     }
 
     // Other Classes
-    public static class Forward extends Message {
+    public static class Forward implements Msg {
 
+        public final Address src;
+        public final Address dst;
+        public final Address orig;
+        public final Transport protocol = Transport.TCP;
         public final Value p;
 
-        public Forward(Address src, Address dst, Value p) {
-            super(src, dst);
+        public Forward(Address src, Address dst, Address orig, Value p) {
+            this.src = src;
+            this.dst = dst;
+            this.orig = orig;
             this.p = p;
+        }
+
+        @Override
+        public Address getSource() {
+            return this.src;
+        }
+
+        @Override
+        public Address getDestination() {
+            return this.dst;
+        }
+
+        @Override
+        public Address getOrigin() {
+            return this.orig;
+        }
+
+        @Override
+        public Transport getProtocol() {
+            return this.protocol;
         }
     }
 
@@ -560,6 +598,15 @@ public class Paxos extends ComponentDefinition {
             this.value = value;
         }
 
+        @Override
+        public boolean equals(Object o) {
+            if (o instanceof Instance) {
+                Instance that = (Instance) o;
+                return this.compareTo(that) == 0;
+            }
+            return false;
+        }
+        
         @Override
         public int compareTo(Instance that) {
             if (id != that.id) {
@@ -583,13 +630,38 @@ public class Paxos extends ComponentDefinition {
     }
 
     // Messages
-    public static abstract class PaxosMsg extends Message {
+    public static abstract class PaxosMsg implements Msg {
+
+        public final Address src;
+        public final Address dst;
+        public final Transport protocol = Transport.TCP;
 
         public final int ballot;
 
         public PaxosMsg(Address src, Address dst, int ballot) {
-            super(src, dst);
+            this.src = src;
+            this.dst = dst;
             this.ballot = ballot;
+        }
+
+        @Override
+        public Address getSource() {
+            return src;
+        }
+
+        @Override
+        public Address getDestination() {
+            return dst;
+        }
+
+        @Override
+        public Address getOrigin() {
+            return src;
+        }
+
+        @Override
+        public Transport getProtocol() {
+            return protocol;
         }
     }
 
@@ -602,13 +674,12 @@ public class Paxos extends ComponentDefinition {
 
     public static class Promise extends PaxosMsg {
 
-        // Should be Immutable, but tell that to Kryo -.-
-        public final Set<Instance> maxInstances;
+        public final ImmutableSet<Instance> maxInstances;
         public final View view;
 
         public Promise(Address src, Address dst, int ballot, ImmutableSet<Instance> maxInstances, View v) {
             super(src, dst, ballot);
-            this.maxInstances = new HashSet<Instance>(maxInstances);
+            this.maxInstances = maxInstances;
             this.view = v;
         }
     }
@@ -680,13 +751,13 @@ public class Paxos extends ComponentDefinition {
 
         public final Reconfigure event;
         public final long highestDecided;
-        public final SortedMap<Long, Value> log;
+        public final ImmutableSortedMap<Long, Value> log;
 
-        public Install(Address src, Address dst, int ballot, Reconfigure event, long highestDecided, SortedMap<Long, Value> log) {
+        public Install(Address src, Address dst, int ballot, Reconfigure event, long highestDecided, ImmutableSortedMap<Long, Value> log) {
             super(src, dst, ballot);
             this.event = event;
             this.highestDecided = highestDecided;
-            this.log = new TreeMap<Long, Value>(log);
+            this.log = log;
         }
     }
 }

@@ -25,3 +25,12 @@ project/plugins/project/
 
 # Other
 # src/main/resources/application.conf
+.DS_STORE
+
+# IDEA
+.idea/
+.idea_modules/
+*.iml
+
+
+
