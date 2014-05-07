@@ -3,7 +3,7 @@
     <groupId>se.sics.caracaldb</groupId>
     <artifactId>caracaldb-parent-pom</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.4-SNAPSHOT</version>
+    <version>0.0.5-SNAPSHOT</version>
 
     <name>CaracalDB</name>
     <!-- <url>http://kompics.sics.se</url> //-->
@@ -32,7 +32,7 @@
     <properties>
         <java.compiler.version>1.8</java.compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <kompics.version>0.5.1-SNAPSHOT</kompics.version>
+        <kompics.version>0.6.0-SNAPSHOT</kompics.version>
     </properties>
 
     <modules>
