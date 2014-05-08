@@ -157,7 +157,6 @@ public class ClientManager extends ComponentDefinition {
                 new ConstantQuotaAllocator(5)));
         timer = create(JavaTimer.class, Init.NONE);
         vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
-
     }
 
     public static ClientManager getInstance() {

@@ -27,12 +27,14 @@ import java.util.Set;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.store.Limit.LimitTracker;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.QueryObj;
 import se.sics.datamodel.operations.primitives.DMCRQOp;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
 import se.sics.caracaldb.utils.TimestampIdFactory;
+import se.sics.datamodel.QueryType;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -40,13 +42,15 @@ import se.sics.caracaldb.utils.TimestampIdFactory;
 public class DMQueryObjOp extends DMSequentialOp {
     private final Pair<ByteId, ByteId>  typeId;
     private final ByteId indexId;
-    private final Object indexValue;
+    private final QueryType indexVal;
+    private final LimitTracker limit;
     
-    public DMQueryObjOp(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, ByteId indexId, Object indexValue) {
+    public DMQueryObjOp(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType indexValue, LimitTracker limit) {
         super(id, operationsMaster);
         this.typeId = typeId;
         this.indexId = indexId;
-        this.indexValue = indexValue;
+        this.indexVal = indexValue;
+        this.limit = limit;
     }
     
     //*****DMOperations*****
@@ -57,12 +61,11 @@ public class DMQueryObjOp extends DMSequentialOp {
         
         KeyRange indexRange;
         try {
-            indexRange = DMKeyFactory.getIndexRangeIS(typeId.getValue0(), typeId.getValue1(), indexId, indexValue);
+            indexRange = indexVal.getIndexRange(typeId, indexId);
         } catch (IOException ex) {
-            fail(DMMessage.ResponseCode.FAILURE);
-            return;
+            throw new RuntimeException(ex);
         }
-        pendingOp = new DMCRQOp(tidFactory.newId(), this, indexRange);
+        pendingOp = new DMCRQOp(tidFactory.newId(), this, indexRange, limit);
         pendingOp.start();
     }
     

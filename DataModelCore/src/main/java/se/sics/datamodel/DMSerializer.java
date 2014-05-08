@@ -21,7 +21,7 @@
 package se.sics.datamodel;
 
 import java.io.UnsupportedEncodingException;
-import se.sics.datamodel.util.gson.GsonHelper;
+import se.sics.datamodel.gson.GsonHelper;
 
 /**
  * @author Alex Ormenisan <aaor@scis.se>

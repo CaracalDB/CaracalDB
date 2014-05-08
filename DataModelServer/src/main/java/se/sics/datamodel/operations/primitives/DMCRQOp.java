@@ -31,6 +31,7 @@ import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.operations.ResponseCode;
 import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.store.Limit.LimitTracker;
 import se.sics.caracaldb.store.TFFactory;
 
 /**
@@ -46,6 +47,13 @@ public class DMCRQOp extends DMOperation {
         super(id);
         this.operationsManager = operationsManager;
         this.req = new RangeQuery.Request(id, range, Limit.noLimit(), TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
+        this.collector = new RangeQuery.SeqCollector(req);
+    }
+    
+    public DMCRQOp(long id, DMOperationsManager operationsManager, KeyRange range, LimitTracker limit) {
+        super(id);
+        this.operationsManager = operationsManager;
+        this.req = new RangeQuery.Request(id, range, limit, TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
         this.collector = new RangeQuery.SeqCollector(req);
     }
 

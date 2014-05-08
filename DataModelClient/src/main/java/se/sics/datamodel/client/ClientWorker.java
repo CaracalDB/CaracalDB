@@ -26,6 +26,7 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.global.Sample;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.DMNetworkMessage;
 import se.sics.caracaldb.global.SampleRequest;
@@ -68,6 +69,7 @@ public class ClientWorker extends ComponentDefinition {
 
         // Subscriptions
         subscribe(startHandler, control);
+        subscribe(sampleHandler, net);
         subscribe(dataModelReqHandler, client);
         subscribe(dataModelRespHandler, net);
     }
@@ -77,6 +79,14 @@ public class ClientWorker extends ComponentDefinition {
             LOG.debug("Starting new worker {}", self);
             SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize);
             trigger(req, net);
+        }
+    };
+    
+    Handler<Sample> sampleHandler = new Handler<Sample>() {
+        @Override
+        public void handle(Sample event) {
+            LOG.debug("Got Sample {}", event);
+            knownNodes.addAll(event.nodes);
         }
     };
 

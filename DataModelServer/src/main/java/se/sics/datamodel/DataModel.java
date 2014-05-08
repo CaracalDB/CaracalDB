@@ -138,7 +138,7 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(QueryObj.Req req) {
-            DMOperation op = new DMQueryObjOp(req.id, operationsManager, Pair.with(req.dbId, req.typeId), req.indexId, req.indexVal);
+            DMOperation op = new DMQueryObjOp(req.id, operationsManager, Pair.with(req.dbId, req.typeId), req.indexId, req.indexVal, req.limit);
             pendingOps.put(op.id, op);
             op.start();
         }
@@ -149,7 +149,11 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(CaracalResponse event) {
-            long opId = pendingReqs.remove(event.id);
+            Long opId = pendingReqs.remove(event.id);
+            if(opId == null) {
+                LOG.warn("opId null - investigate");
+                return;
+            }
             DMOperation op = pendingOps.get(opId);
             op.handleMessage(event);
         }

@@ -23,7 +23,7 @@ package se.sics.datamodel.client;
 
 import com.google.gson.JsonElement;
 import java.io.UnsupportedEncodingException;
-import se.sics.datamodel.client.util.gson.CGsonHelper;
+import se.sics.datamodel.client.gson.CGsonHelper;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>

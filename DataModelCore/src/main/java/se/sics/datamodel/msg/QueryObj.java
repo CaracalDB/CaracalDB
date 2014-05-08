@@ -23,10 +23,11 @@ package se.sics.datamodel.msg;
 
 import java.util.Map;
 import org.javatuples.Pair;
+import se.sics.caracaldb.store.Limit.LimitTracker;
+import se.sics.datamodel.QueryType;
 import se.sics.datamodel.util.ByteId;
 
 /**
- *
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class QueryObj {
@@ -35,14 +36,16 @@ public class QueryObj {
         public final ByteId dbId;
         public final ByteId typeId;
         public final ByteId indexId;
-        public final Object indexVal;
+        public final QueryType indexVal;
+        public final LimitTracker limit;
         
-        public Req(long id, Pair<ByteId, ByteId> typeId, ByteId indexId, Object indexVal) {
+        public Req(long id, Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType indexVal, LimitTracker limit) {
             super(id);
             this.dbId = typeId.getValue0();
             this.typeId = typeId.getValue1();
             this.indexId = indexId;
             this.indexVal = indexVal;
+            this.limit = limit;
         }
         
         @Override

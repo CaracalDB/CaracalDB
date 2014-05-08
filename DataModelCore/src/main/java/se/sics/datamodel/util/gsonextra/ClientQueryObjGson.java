@@ -29,7 +29,7 @@ import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import se.sics.datamodel.util.ByteId;
-import se.sics.datamodel.util.gson.GsonHelper;
+import se.sics.datamodel.gson.GsonHelper;
 
 /**
  *

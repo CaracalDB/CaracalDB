@@ -21,13 +21,11 @@
 package se.sics.datamodel.simulation.cmd;
 
 import com.google.gson.Gson;
-import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.javatuples.Pair;
 import org.javatuples.Triplet;
+import se.sics.caracaldb.store.Limit;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetObj;
 import se.sics.datamodel.msg.GetType;
@@ -36,7 +34,7 @@ import se.sics.datamodel.msg.PutType;
 import se.sics.datamodel.msg.QueryObj;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.ByteIdFactory;
-import se.sics.datamodel.util.gson.GsonHelper;
+import se.sics.datamodel.gson.GsonHelper;
 import se.sics.datamodel.simulation.DMExperiment;
 import se.sics.datamodel.simulation.validators.GetObjValidator;
 import se.sics.datamodel.simulation.validators.GetTypeValidator;
@@ -50,6 +48,8 @@ import se.sics.datamodel.FieldType;
 import se.sics.datamodel.IndexHelper;
 import se.sics.datamodel.ObjectValue;
 import se.sics.datamodel.TypeInfo;
+import se.sics.datamodel.util.FieldIs;
+import se.sics.datamodel.util.FieldScan;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -118,25 +118,41 @@ public class DMExp1Cmd extends DMExpCmd {
             PutObjValidator putObj_val9 = new PutObjValidator(putObj_req9.id, DMMessage.ResponseCode.SUCCESS);
             builder.add(putObj_req9, putObj_val9);
             
-            QueryObj.Req queryObj_req10 = new QueryObj.Req(tidFactory.newId(), typeId2, new ByteId(new byte[]{1,3}), 15);
+            QueryObj.Req queryObj_req10 = new QueryObj.Req(tidFactory.newId(), typeId2, new ByteId(new byte[]{1,3}), new FieldIs(15), Limit.noLimit());
             Map<ByteId, byte[]> objs10 = new HashMap<ByteId, byte[]>();
             objs10.put(objId2.getValue2(), DMSerializer.serialize(obj2_type2));
             objs10.put(objId3.getValue2(), DMSerializer.serialize(obj3_type2));
             QueryObjValidator queryObj_val10 = new QueryObjValidator(queryObj_req10.id, DMMessage.ResponseCode.SUCCESS, objs10);
             builder.add(queryObj_req10, queryObj_val10);
             
-            QueryObj.Req queryObj_req11 = new QueryObj.Req(tidFactory.newId(), typeId2, new ByteId(new byte[]{1,3}), 15);
+            QueryObj.Req queryObj_req11 = new QueryObj.Req(tidFactory.newId(), typeId2, new ByteId(new byte[]{1,3}), new FieldIs(15), Limit.noLimit());
             Map<ByteId, byte[]> objs11 = new HashMap<ByteId, byte[]>();
             objs11.put(objId2.getValue2(), DMSerializer.serialize(obj2_type2));
             objs11.put(objId3.getValue2(), DMSerializer.serialize(obj3_type2));
             QueryObjValidator queryObj_val11 = new QueryObjValidator(queryObj_req11.id, DMMessage.ResponseCode.SUCCESS, objs11);
             builder.add(queryObj_req11, queryObj_val11);
             
-            QueryObj.Req queryObj_req12 = new QueryObj.Req(tidFactory.newId(), typeId2, new ByteId(new byte[]{1,3}), 16);
+            QueryObj.Req queryObj_req12 = new QueryObj.Req(tidFactory.newId(), typeId2, new ByteId(new byte[]{1,3}), new FieldIs(16), Limit.noLimit());
             Map<ByteId, byte[]> objs12 = new HashMap<ByteId, byte[]>();
             objs12.put(objId4.getValue2(), DMSerializer.serialize(obj4_type2));
             QueryObjValidator queryObj_val12 = new QueryObjValidator(queryObj_req12.id, DMMessage.ResponseCode.SUCCESS, objs12);
             builder.add(queryObj_req12, queryObj_val12);
+            
+            QueryObj.Req queryObj_req13 = new QueryObj.Req(tidFactory.newId(), typeId2, new ByteId(new byte[]{1,3}), new FieldScan(14,16), Limit.noLimit());
+            Map<ByteId, byte[]> objs13 = new HashMap<ByteId, byte[]>();
+            objs13.put(objId2.getValue2(), DMSerializer.serialize(obj2_type2));
+            objs13.put(objId3.getValue2(), DMSerializer.serialize(obj3_type2));
+            objs13.put(objId4.getValue2(), DMSerializer.serialize(obj4_type2));
+            QueryObjValidator queryObj_val13 = new QueryObjValidator(queryObj_req13.id, DMMessage.ResponseCode.SUCCESS, objs13);
+            builder.add(queryObj_req13, queryObj_val13);
+            
+            QueryObj.Req queryObj_req14 = new QueryObj.Req(tidFactory.newId(), typeId2, new ByteId(new byte[]{1,3}), new FieldScan(14,16), Limit.toItems(2));
+            Map<ByteId, byte[]> objs14 = new HashMap<ByteId, byte[]>();
+            objs14.put(objId2.getValue2(), DMSerializer.serialize(obj2_type2));
+            objs14.put(objId3.getValue2(), DMSerializer.serialize(obj3_type2));
+//            objs14.put(objId4.getValue2(), DMSerializer.serialize(obj4_type2));
+            QueryObjValidator queryObj_val14 = new QueryObjValidator(queryObj_req14.id, DMMessage.ResponseCode.SUCCESS, objs14);
+            builder.add(queryObj_req14, queryObj_val14);
             
             return builder.build();
         } catch (TypeInfo.InconsistencyException ex) {

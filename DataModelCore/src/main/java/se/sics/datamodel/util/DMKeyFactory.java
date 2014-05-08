@@ -375,6 +375,14 @@ public class DMKeyFactory {
         KeyRange range = KeyRange.closed(begin).closed(end);
         return range;
     }
+    
+    // ["dbId.4.typeId.idxId.idxVal1.byteIdMin", "dbId.4.typeId.idxId.idxVal2.byteIdMax"]
+    public static KeyRange getIndexRangeBetween(ByteId dbId, ByteId typeId, ByteId idxId, Object idxVal1, Object idxVal2) throws IOException {
+        Key begin = getIndexKey(dbId, typeId, idxId, idxVal1, ByteIdFactory.MIN_BYTE_ID);
+        Key end = getIndexKey(dbId, typeId, idxId, idxVal2, ByteIdFactory.MAX_BYTE_ID);
+        KeyRange range = KeyRange.closed(begin).closed(end);
+        return range;
+    }
 
     // ["dbId.4.typeId.idxId.idxValMin.byteIdMin", "dbId.4.typeId.idxId.idxVal.byteIdMax"]
     public static KeyRange getIndexRangeLTE(ByteId dbId, ByteId typeId, ByteId idxId, Object idxVal) throws IOException {

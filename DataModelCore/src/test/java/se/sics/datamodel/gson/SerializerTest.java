@@ -29,8 +29,7 @@ import se.sics.datamodel.DMSerializer;
 import se.sics.datamodel.FieldInfo;
 import se.sics.datamodel.ObjectValue;
 import se.sics.datamodel.TypeInfo;
-import se.sics.datamodel.util.gson.GsonHelper;
-import se.sics.datamodel.ValueHolder;
+import se.sics.datamodel.gson.util.ValueHolder;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
