@@ -13,43 +13,52 @@ case class GetRequest(key: Key) extends CaracalRequest
 case class PutRequest(key: Key, value: Array[Byte]) extends CaracalRequest
 case class RangeRequest(range: KeyRange) extends CaracalRequest
 
-
 class CaracalWorker extends Actor with ActorLogging {
-	import context._
-	import scala.collection.JavaConversions._
-	
-	private val utf8 = Charset.forName("UTF-8");
-	
-	val worker = ClientManager.newClient();
-	
-	def receive = {
-		case GetRequest(key) => {
-			log.debug("GET {}", key);
-			val resp = worker.get(key);
-			log.debug("GET response: {}", resp);
-			if (resp.code == ResponseCode.SUCCESS) {
-				sender ! Entry(resp.key.toString(), new String(resp.data, utf8));
-			} else {
-				sender ! Operation(resp.code);
-			}
-		}
-		case PutRequest(key, value) => {
-			log.debug("PUT ({}, {})", key, value);
-			val resp = worker.put(key, value);
-			log.debug("PUT response: {}", resp);
-			sender ! Operation(resp);
-		}
-		case RangeRequest(range) => {
-			log.debug("Range {}", range);
-			val resp = worker.rangeRequest(range);
-			if (resp.code == ResponseCode.SUCCESS) {
-				val res: scala.collection.mutable.Map[Key, Array[Byte]] = resp.results;
-				sender ! Entries(res.map {
-					case (k, v) => Entry(k.toString(), new String(v, utf8));
-				}.toList);
-			} else {
-				sender ! Operation(resp.code);
-			}
-		}
-	}
+  import context._
+  import scala.collection.JavaConversions._
+
+  private val utf8 = Charset.forName("UTF-8");
+
+  val worker = ClientManager.newClient();
+
+  def receive = {
+    case GetRequest(key) => {
+      log.debug("GET {}", key);
+      val resp = worker.get(key);
+      log.debug("GET response: {}", resp);
+      if (resp.code == ResponseCode.SUCCESS) {
+        val respStr = resp.data match {
+          case null => "";
+          case x: Array[Byte] => new String(x, utf8);
+        }
+        sender ! Entry(resp.key.toString(), respStr);
+      } else {
+        sender ! Operation(resp.code);
+      }
+    }
+    case PutRequest(key, value) => {
+      log.debug("PUT ({}, {})", key, value);
+      val resp = worker.put(key, value);
+      log.debug("PUT response: {}", resp);
+      sender ! Operation(resp);
+    }
+    case RangeRequest(range) => {
+      log.debug("Range {}", range);
+      val resp = worker.rangeRequest(range);
+      if (resp.code == ResponseCode.SUCCESS) {
+        val res: scala.collection.mutable.Map[Key, Array[Byte]] = resp.results;
+        sender ! Entries(res.map {
+          case (k, v) => {
+            val respStr = v match {
+              case null => "";
+              case x: Array[Byte] => new String(x, utf8);
+            }
+            Entry(k.toString(), new String(v, utf8));
+          }
+        }.toList);
+      } else {
+        sender ! Operation(resp.code);
+      }
+    }
+  }
 }

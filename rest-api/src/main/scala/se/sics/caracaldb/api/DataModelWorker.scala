@@ -9,6 +9,8 @@ import se.sics.caracaldb.api.data._
 import se.sics.datamodel.msg.DMMessage
 import java.nio.charset.Charset
 import se.sics.datamodel.util.ByteId
+import java.nio.ByteBuffer
+import se.sics.datamodel.client.BlockingClient
 
 
 // ObjModel
@@ -24,7 +26,7 @@ class DataModelWorker extends Actor with ActorLogging {
 	
 	private val utf8 = Charset.forName("UTF-8");
 	
-	val worker = ClientManager.newClient();
+	val worker: BlockingClient = null;//ClientManager.newClient();
 	
 	def receive = {
 		case GetTypeRequest(req) => {
@@ -61,9 +63,9 @@ class DataModelWorker extends Actor with ActorLogging {
 			log.debug("QueryObj {}", req);
 			val resp = worker.queryObj(req);
 			if (resp.respCode == DMMessage.ResponseCode.SUCCESS) {
-				val res: scala.collection.mutable.Map[ByteId, Array[Byte]] = resp.objs;
+				val res: scala.collection.mutable.Map[ByteId, ByteBuffer] = resp.objs;
 				sender ! Entries(res.map {
-					case (k, v) => Entry(k.toString(), new String(v, utf8));
+					case (k, v) => Entry(k.toString(), new String(v.array(), utf8));
 				}.toList);
 			} else {
 				sender ! DMOperation(resp.respCode);

@@ -4,9 +4,14 @@ import 'dart:convert';
 final String apiUrl = "http://127.0.0.1:8088/";
 
 typedef void DataLoadHandler(String responseText);
+typedef void ResponseHandler(HttpRequest response);
 
 void apiRequest(String url, DataLoadHandler handler) {
   HttpRequest.getString(apiUrl + url).then(handler);
+}
+
+void apiMethodRequest(String url, String type, String data, ResponseHandler handler) {
+  HttpRequest.request(apiUrl + url, method: type, sendData: data).then(handler);
 }
 
 ParagraphElement keyP;
@@ -19,6 +24,7 @@ RadioButtonInputElement putRadio;
 RadioButtonInputElement getRadio;
 RadioButtonInputElement rangeRadio;
 ParagraphElement buttonsP;
+ParagraphElement noResultsP;
 DivElement result;
 Function submitHandler;
 
@@ -31,6 +37,7 @@ void main() {
   endKeyField = querySelector("#endKeyField");
   valueField = querySelector("#valueField");
   buttonsP = querySelector("#buttons");
+  noResultsP = querySelector("#noresults");
   result = querySelector("#result");
 
   putRadio = querySelector("#operation_put");
@@ -56,11 +63,19 @@ void displayResult(String resultText) {
   res.text = resultText;
   result.insertBefore(new Element.hr(), result.childNodes.first);
   result.insertBefore(res, result.childNodes.first);
+  noResultsP.style.display = "none";
+}
+
+void displayHttpResult(HttpRequest resultRequest) {
+  displayResult(resultRequest.responseText);
 }
 
 void preparePut(MouseEvent event) {
   resetFields();
-
+  submitHandler = () {
+    String path = "schema/test/key/" + keyField.value;
+    apiMethodRequest(path, "POST", valueField.value, displayHttpResult);
+  };
   keyP.style.display = "block";
   valueP.style.display = "block";
   buttonsP.style.display = "block";
@@ -78,6 +93,18 @@ void prepareGet(MouseEvent event) {
 
 void prepareRange(MouseEvent event) {
   resetFields();
+  submitHandler = () {
+    if (keyField.value == "") {
+      String path = "schema/test";
+      apiRequest(path, displayResult);
+    } else if (endKeyField.value == "") {
+      String path = "schema/test/prefix/" + keyField.value;
+      apiRequest(path, displayResult);
+    } else {
+      String path = "schema/test/range/" + keyField.value + "/" + endKeyField.value;
+      apiRequest(path, displayResult);
+    }
+  };
   keyP.style.display = "block";
   endKeyP.style.display = "block";
   buttonsP.style.display = "block";
@@ -102,5 +129,6 @@ void resetFields() {
 
 void clearResults(MouseEvent event) {
   result.children.clear();
-  result.text = "No results, yet.";
+  result.children.add(noResultsP);
+  noResultsP.style.display = "block";
 }
