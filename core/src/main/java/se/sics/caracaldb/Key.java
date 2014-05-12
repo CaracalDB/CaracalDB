@@ -82,6 +82,9 @@ public class Key implements Comparable<Key> {
     }
     
     public KeyBuilder append(Key k) {
+        if(k.equals(Key.NULL_KEY)) {
+            return new KeyBuilder(data);
+        }
         return append(k.data);
     }
     
@@ -92,6 +95,9 @@ public class Key implements Comparable<Key> {
     }
     
     public KeyBuilder prepend(Key k) {
+        if(k.equals(Key.NULL_KEY)) {
+            return new KeyBuilder(data);
+        }
         return prepend(k.data);
     }
     
@@ -254,6 +260,9 @@ public class Key implements Comparable<Key> {
     }
 
     public static Key fromHex(String hex) {
+        if(hex.equals("")) {
+            return Key.NULL_KEY;
+        }
         String[] byteBlocks = hex.split("\\s");
         byte[] bytes = new byte[byteBlocks.length];
         for (int i = 0; i < bytes.length; i++) {

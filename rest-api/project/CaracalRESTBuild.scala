@@ -42,6 +42,7 @@ object CaracalRESTBuild extends Build {
       libraryDependencies += "io.spray" %% "spray-json" % "1.2.5",
       libraryDependencies += "se.sics.caracaldb" % "caracaldb-core" % "0.0.5-SNAPSHOT",
       libraryDependencies += "se.sics.caracaldb" % "caracaldb-client" % "0.0.5-SNAPSHOT",
+      libraryDependencies += "se.sics.caracaldb" % "DataModelClient" % "0.0.5-SNAPSHOT",
       libraryDependencies += "com.google.code.findbugs" % "jsr305" % "2.0.2",
       libraryDependencies += "com.google.inject" % "guice-parent" % "3.0"
       //libraryDependencies += "com.beimin" % "eveapi" % "5.1.2",

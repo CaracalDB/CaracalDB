@@ -370,6 +370,10 @@ public final class VirtualSimulator extends ComponentDefinition implements
                     Serializers.toBinary(e, bbuf);
                 } catch (Exception ex) {
                     LOG.error("Message {} could not be serialized!\n {}", e, ex);
+                    //TODO Alex remove after fix maybe
+                    for (StackTraceElement item : ex.getStackTrace()) {
+                        LOG.error("{}", item);
+                    }
                     throw new RuntimeException(e.getClass().getCanonicalName());
                 }
                 try {
