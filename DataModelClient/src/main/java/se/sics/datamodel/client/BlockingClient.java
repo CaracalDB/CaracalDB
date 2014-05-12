@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.client;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -187,14 +188,14 @@ public class BlockingClient {
         if(typeResp.getValue0() == DMMessage.ResponseCode.SUCCESS) {
             QueryType queryType = cqueryObj.indexVal.getQueryType(typeResp.getValue1().get(cqueryObj.indexId).type);
             LimitTracker limit = Limit.noLimit();
-            Pair<DMMessage.ResponseCode, Map<ByteId, byte[]>> queryResp = queryObj(cqueryObj.typeId, cqueryObj.indexId, queryType, limit);
+            Pair<DMMessage.ResponseCode, Map<ByteId, ByteBuffer>> queryResp = queryObj(cqueryObj.typeId, cqueryObj.indexId, queryType, limit);
             //fix later
             return new QueryObj.Resp(tidFactory.newId(), queryResp.getValue0(), cqueryObj.typeId, queryResp.getValue1());
         }
         return new QueryObj.Resp(tidFactory.newId(), typeResp.getValue0(), cqueryObj.typeId, null);
     }   
 
-    public Pair<DMMessage.ResponseCode, Map<ByteId, byte[]>> queryObj(Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType query, LimitTracker limit) {
+    public Pair<DMMessage.ResponseCode, Map<ByteId, ByteBuffer>> queryObj(Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType query, LimitTracker limit) {
         LOG.debug("QueryObj {} indexId {}", typeId, indexId);
         worker.dataModelTrigger(new QueryObj.Req(tidFactory.newId(), typeId, indexId, query, limit));
         try {

@@ -31,6 +31,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import se.sics.caracaldb.MessageRegistrator;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.system.ComponentProxy;
 import se.sics.caracaldb.utils.TimestampIdFactory;
@@ -42,6 +43,7 @@ import se.sics.kompics.ControlPort;
 import se.sics.kompics.Event;
 import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
+import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
@@ -50,9 +52,8 @@ import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.VirtualNetworkChannel;
-import se.sics.kompics.network.grizzly.ConstantQuotaAllocator;
-import se.sics.kompics.network.grizzly.GrizzlyNetwork;
-import se.sics.kompics.network.grizzly.GrizzlyNetworkInit;
+import se.sics.kompics.network.netty.NettyInit;
+import se.sics.kompics.network.netty.NettyNetwork;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.timer.java.JavaTimer;
 
@@ -71,15 +72,20 @@ public class ClientManager extends ComponentDefinition {
     private final int messageBufferSizeMax;
     private final int messageBufferSize;
     private final int sampleSize;
-    private final Config conf;
+    private static Config conf = null;
     private final Address bootstrapServer;
     private final Address self;
     private final SortedSet<Address> vNodes = new TreeSet<Address>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+
+    static {
+        MessageRegistrator.register();
+    }
+
     private ComponentProxy proxy = new ComponentProxy() {
         @Override
-        public <P extends PortType> void trigger(Event e, Port<P> p) {
+        public <P extends PortType> void trigger(KompicsEvent e, Port<P> p) {
             ClientManager.this.trigger(e, p);
         }
 
@@ -130,7 +136,9 @@ public class ClientManager extends ComponentDefinition {
         } else {
             throw new RuntimeException("Don't start the ClientManager twice! You are doing it wrong -.-");
         }
-        conf = ConfigFactory.load();
+        if (conf == null) {
+            conf = ConfigFactory.load();
+        }
         messageBufferSizeMax = conf.getInt("caracal.messageBufferSizeMax") * 1024;
         messageBufferSize = conf.getInt("caracal.messageBufferSize") * 1024;
         sampleSize = conf.getInt("bootstrap.sampleSize");
@@ -150,11 +158,7 @@ public class ClientManager extends ComponentDefinition {
         self = new Address(localIP, localPort, null);
         TimestampIdFactory.init(self);
 
-        network = create(GrizzlyNetwork.class, new GrizzlyNetworkInit(self, 8, 0, 0,
-                messageBufferSize, messageBufferSizeMax,
-                Runtime.getRuntime().availableProcessors(),
-                Runtime.getRuntime().availableProcessors(),
-                new ConstantQuotaAllocator(5)));
+        network = create(NettyNetwork.class, new NettyInit(self));
         timer = create(JavaTimer.class, Init.NONE);
         vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
     }
@@ -181,6 +185,12 @@ public class ClientManager extends ComponentDefinition {
             }
         }
         return INSTANCE.addClient();
+    }
+
+    public static void setConfig(Config c) {
+        synchronized (ClientManager.class) {
+            conf = c;
+        }
     }
 
     public BlockingClient addClient() {

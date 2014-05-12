@@ -32,6 +32,8 @@ import se.sics.caracaldb.system.ComponentProxy;
 import se.sics.caracaldb.system.Configuration.SystemPhase;
 import se.sics.caracaldb.system.HostSharedComponents;
 import se.sics.caracaldb.system.Launcher;
+import se.sics.caracaldb.system.ServerMessageRegistrator;
+import se.sics.datamodel.DMCoreMessageRegistrator;
 import se.sics.kompics.Component;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Start;
@@ -43,6 +45,11 @@ public class DataModelLauncher {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataModelLauncher.class);
 
+    static {
+        DMCoreMessageRegistrator.register();
+        ServerMessageRegistrator.register();
+    }
+    
     public static void main(String[] args) {
         Launcher.reset();
         connectDataModel();

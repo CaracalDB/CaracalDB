@@ -22,6 +22,7 @@
 package se.sics.datamodel.msg;
 
 import java.util.Map;
+import java.util.Objects;
 import se.sics.datamodel.util.ByteId;
 
 /**
@@ -41,6 +42,32 @@ public class GetAllTypes {
         public String toString() {
             return "GET_ALLTYPES - request(" + id + ")";
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 73 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 73 * hash + Objects.hashCode(this.dbId);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Req other = (Req) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (!Objects.equals(this.dbId, other.dbId)) {
+                return false;
+            }
+            return true;
+        }
     }
 
     public static class Resp extends DMMessage.Resp {
@@ -53,9 +80,43 @@ public class GetAllTypes {
             this.types = typesMap;
         }
 
-		@Override
+        @Override
         public String toString() {
             return "GET_ALLTYPES - response(" + id + ")";
+        }
+        
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 59 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 59 * hash + Objects.hashCode(this.respCode);
+            hash = 59 * hash + Objects.hashCode(this.dbId);
+            hash = 59 * hash + Objects.hashCode(this.types);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Resp other = (Resp) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (this.respCode != other.respCode) {
+                return false;
+            }
+            if (!Objects.equals(this.dbId, other.dbId)) {
+                return false;
+            }
+            if (!Objects.equals(this.types, other.types)) {
+                return false;
+            }
+            return true;
         }
     }
 }

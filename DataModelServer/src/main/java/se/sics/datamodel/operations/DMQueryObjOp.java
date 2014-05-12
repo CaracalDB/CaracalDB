@@ -21,6 +21,7 @@
 package se.sics.datamodel.operations;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -110,7 +111,7 @@ public class DMQueryObjOp extends DMSequentialOp {
         finish(result);
     }
     
-    private void success(Map<ByteId, byte[]> objs) {
+    private void success(Map<ByteId, ByteBuffer> objs) {
         Result result = new Result(DMMessage.ResponseCode.SUCCESS, typeId, objs);
         finish(result);
     }
@@ -136,9 +137,9 @@ public class DMQueryObjOp extends DMSequentialOp {
     
     public static class Result extends DMOperation.Result {
         public final Pair<ByteId, ByteId> typeId;
-        public final Map<ByteId, byte[]> objs;
+        public final Map<ByteId, ByteBuffer> objs;
         
-        public Result(DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, byte[]> objs) {
+        public Result(DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, ByteBuffer> objs) {
             super(respCode);
             this.typeId = typeId;
             this.objs = objs;

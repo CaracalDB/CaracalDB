@@ -73,7 +73,7 @@ public class ServerInterface extends ComponentDefinition {
     Handler<DMNetworkMessage.Req> networkRequestHandler = new Handler<DMNetworkMessage.Req>() {
         @Override
         public void handle(DMNetworkMessage.Req netReq) {
-            DMMessage.Req localReq = netReq.message;
+            DMMessage.Req localReq = netReq.payload;
             pendingRequests.put(localReq.id, netReq.getSource());
 
             LOG.debug("{}: received message {} from {}", new Object[]{self, localReq, netReq.getSource()});

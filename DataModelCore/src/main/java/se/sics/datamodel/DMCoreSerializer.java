@@ -18,32 +18,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.datamodel;
+package se.sics.datamodel;
 
-import org.junit.Before;
-import org.junit.Test;
-import se.sics.datamodel.system.DataModelLauncher;
-import se.sics.datamodel.simulation.SimulationGen;
-import se.sics.caracaldb.system.Launcher;
-import se.sics.datamodel.simulation.DMSimulatorMain;
-import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
+import se.sics.datamodel.msg.DMNetMsgSerializer;
+import se.sics.kompics.network.netty.serialization.Serializer;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
 
-public class DataModelOpTest {
-    private static final int BOOT_NUM = 6;
 
-    @Before
-    public void setUp() {
-        Launcher.reset();
-    }
-
-    @Test 
-    public void testExp1() {
-        DataModelLauncher.connectDataModel();
-        SimulationScenario exp1Scen = SimulationGen.exp1Scenario(BOOT_NUM);
-        Launcher.newSimulate(DMSimulatorMain.class, exp1Scen);
+public class DMCoreSerializer <S extends Serializer> {
+    public static final DMCoreSerializer<DMNetMsgSerializer> DM = new DMCoreSerializer<>(150, new DMNetMsgSerializer());
+    
+    public final int id;
+    public final S instance;
+    
+    public DMCoreSerializer(int id, S instance) {
+        this.id = id;
+        this.instance = instance;
     }
 }

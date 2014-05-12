@@ -24,12 +24,10 @@
 //import com.google.gson.Gson;
 //import junit.framework.Assert;
 //import org.junit.Test;
+//import se.sics.datamodel.gson.GsonHelper;
 //import se.sics.datamodel.util.ByteId;
-//import se.sics.datamodel.util.gson.GsonHelper;
-//import se.sics.datamodel.util.gsonextra.ClientGetTypeGson;
 //
 ///**
-// *
 // * @author Alex Ormenisan <aaor@sics.se>
 // */
 //public class ClientGetTypeGsonTest {

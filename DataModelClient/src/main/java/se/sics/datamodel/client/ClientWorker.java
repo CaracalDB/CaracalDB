@@ -106,11 +106,11 @@ public class ClientWorker extends ComponentDefinition {
         @Override
         public void handle(DMNetworkMessage.Resp resp) {
             LOG.debug("Handling Message {}", resp);
-            if (resp.message.id != currentRequestId) {
-                LOG.debug("Ignoring {} as it has already been received.", resp.message);
+            if (resp.payload.id != currentRequestId) {
+                LOG.debug("Ignoring {} as it has already been received.", resp.payload);
                 return;
             }
-            dmEnqueue(resp.message);
+            dmEnqueue(resp.payload);
         }
 
     };

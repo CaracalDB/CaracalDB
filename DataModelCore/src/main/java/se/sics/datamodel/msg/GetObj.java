@@ -20,6 +20,8 @@
  */
 package se.sics.datamodel.msg;
 
+import java.util.Arrays;
+import java.util.Objects;
 import org.javatuples.Triplet;
 import se.sics.datamodel.util.ByteId;
 
@@ -30,38 +32,53 @@ public class GetObj {
 
     public static class Req extends DMMessage.Req {
 
-//        public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
-
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
         
         public Req(long id, Triplet<ByteId, ByteId, ByteId> objId) {
             super(id);
-            this.dbId = objId.getValue0();
-            this.typeId = objId.getValue1();
-            this.objId = objId.getValue2();
+            this.objId = objId;
         }
 
         @Override
         public String toString() {
             return "DM_GET_GSONOBJ_REQ(" + id + ")";
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 79 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 79 * hash + Objects.hashCode(this.objId);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Req other = (Req) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (!Objects.equals(this.objId, other.objId)) {
+                return false;
+            }
+            return true;
+        }
     }
 
     public static class Resp extends DMMessage.Resp {
-//        public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
         
         public final byte[] value;
 
         public Resp(long id, DMMessage.ResponseCode opResult, Triplet<ByteId, ByteId, ByteId> objId, byte[] value) {
             super(id, opResult);
-            this.dbId = objId.getValue0();
-            this.typeId = objId.getValue1();
-            this.objId = objId.getValue2();
+            this.objId = objId;
             this.value = value;
         }
 
@@ -69,5 +86,41 @@ public class GetObj {
         public String toString() {
             return "DM_GET_GSONOBJ_RESP(" + id + ")";
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 53 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 53 * hash + Objects.hashCode(this.respCode);
+            hash = 53 * hash + Objects.hashCode(this.objId);
+            hash = 53 * hash + Arrays.hashCode(this.value);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Resp other = (Resp) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (this.respCode != other.respCode) {
+                return false;
+            }
+            if (!Objects.equals(this.objId, other.objId)) {
+                return false;
+            }
+            if (!Arrays.equals(this.value, other.value)) {
+                return false;
+            }
+            return true;
+        }
+        
+        
     }
 }

@@ -20,13 +20,14 @@
  */
 package se.sics.datamodel.util;
 
-import com.google.common.primitives.Ints;
-import java.io.IOException;
-import org.junit.Assert;
+import com.google.common.primitives.Longs;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import se.sics.kompics.address.IdUtils;
+import se.sics.caracaldb.utils.TimestampIdFactory;
+import se.sics.kompics.address.Address;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>

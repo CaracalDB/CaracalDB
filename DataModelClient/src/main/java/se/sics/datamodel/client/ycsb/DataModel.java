@@ -24,6 +24,7 @@ import com.google.common.primitives.Longs;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -152,7 +153,7 @@ public class DataModel extends DB {
             to = from;
         }
         QueryType qt = new FieldScan(from, to);
-        Pair<DMMessage.ResponseCode, Map<ByteId, byte[]>> resp = client.queryObj(typeId, new ByteId(new byte[]{1,1}), qt, Limit.toItems(recordcount));
+        Pair<DMMessage.ResponseCode, Map<ByteId, ByteBuffer>> resp = client.queryObj(typeId, new ByteId(new byte[]{1,1}), qt, Limit.toItems(recordcount));
         if(resp.getValue1() == null || resp.getValue1().size() == 0) {
             System.out.println(0);
         }

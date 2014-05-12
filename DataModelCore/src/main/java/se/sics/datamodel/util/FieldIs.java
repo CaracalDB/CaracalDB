@@ -18,10 +18,9 @@ package se.sics.datamodel.util;
 
 import se.sics.datamodel.QueryType;
 import java.io.IOException;
+import java.util.Objects;
 import org.javatuples.Pair;
 import se.sics.caracaldb.KeyRange;
-import se.sics.datamodel.util.ByteId;
-import se.sics.datamodel.util.DMKeyFactory;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -39,4 +38,28 @@ public class FieldIs implements QueryType {
     public KeyRange getIndexRange(Pair<ByteId, ByteId> typeId, ByteId indexId) throws IOException {
         return DMKeyFactory.getIndexRangeIS(typeId.getValue0(), typeId.getValue1(), indexId, indexVal);
     }
+
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 89 * hash + Objects.hashCode(this.indexVal);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final FieldIs other = (FieldIs) obj;
+        if (!Objects.equals(this.indexVal, other.indexVal)) {
+            return false;
+        }
+        return true;
+    }
+    
+    
 }

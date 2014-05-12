@@ -20,7 +20,6 @@
  */
 package se.sics.datamodel.gson;
 
-import org.javatuples.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 import se.sics.datamodel.FieldType;

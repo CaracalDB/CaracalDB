@@ -127,7 +127,7 @@ public class DMPutObjOp extends DMParallelOp {
 
         @Override
         public DMMessage.Resp getMsg(long msgId) {
-            return new PutObj.Resp(msgId, objId, responseCode);
+            return new PutObj.Resp(msgId, responseCode, objId);
         }
     }
 }

@@ -20,32 +20,139 @@
  */
 package se.sics.datamodel.msg;
 
-import se.sics.datamodel.msg.DMMessage;
+import java.util.Objects;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.kompics.network.Msg;
+import se.sics.kompics.network.Transport;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
 public class DMNetworkMessage {
 
-    public static class Req extends Message {
+    public static class Req implements Msg {
+        
+        public final Address src;
+        public final Address dst;
+        public final DMMessage.Req payload;
 
-        public final DMMessage.Req message;
+        public Req(Address src, Address dst, DMMessage.Req payload) {
+            this.src = src;
+            this.dst = dst;
+            this.payload = payload;
+        }
 
-        public Req(Address src, Address dst, DMMessage.Req message) {
-            super(src, dst);
-            this.message = message;
+        @Override
+        public Address getSource() {
+            return src;
+        }
+
+        @Override
+        public Address getDestination() {
+            return dst;
+        }
+
+        @Override
+        public Address getOrigin() {
+            return src;
+        }
+
+        @Override
+        public Transport getProtocol() {
+            return Transport.TCP;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 11 * hash + Objects.hashCode(this.src);
+            hash = 11 * hash + Objects.hashCode(this.dst);
+            hash = 11 * hash + Objects.hashCode(this.payload);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Req other = (Req) obj;
+            if (!Objects.equals(this.src, other.src)) {
+                return false;
+            }
+            if (!Objects.equals(this.dst, other.dst)) {
+                return false;
+            }
+            if (!Objects.equals(this.payload, other.payload)) {
+                return false;
+            }
+            return true;
         }
     }
 
-    public static class Resp extends Message {
+    public static class Resp implements Msg {
 
-        public final DMMessage.Resp message;
+        public final Address src;
+        public final Address dst;
+        public final DMMessage.Resp payload;
 
-        public Resp(Address src, Address dst, DMMessage.Resp message) {
-            super(src, dst);
-            this.message = message;
+        public Resp(Address src, Address dst, DMMessage.Resp payload) {
+            this.src = src;
+            this.dst = dst;
+            this.payload = payload;
+        }
+
+        @Override
+        public Address getSource() {
+            return src;
+        }
+
+        @Override
+        public Address getDestination() {
+            return dst;
+        }
+
+        @Override
+        public Address getOrigin() {
+            return src;
+        }
+
+        @Override
+        public Transport getProtocol() {
+            return Transport.TCP;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            hash = 47 * hash + Objects.hashCode(this.src);
+            hash = 47 * hash + Objects.hashCode(this.dst);
+            hash = 47 * hash + Objects.hashCode(this.payload);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Resp other = (Resp) obj;
+            if (!Objects.equals(this.src, other.src)) {
+                return false;
+            }
+            if (!Objects.equals(this.dst, other.dst)) {
+                return false;
+            }
+            if (!Objects.equals(this.payload, other.payload)) {
+                return false;
+            }
+            return true;
         }
     }
 }

@@ -21,7 +21,9 @@
 
 package se.sics.datamodel.msg;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import org.javatuples.Triplet;
 import se.sics.datamodel.util.ByteId;
 
@@ -30,18 +32,13 @@ import se.sics.datamodel.util.ByteId;
  */
 public class PutObj {
     public static class Req extends DMMessage.Req {
-//        public final Triplet<ByteId, ByteId, ByteId> objId; //<dbId, typeId, objId> //revert once support for serializing Tuples
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId;
         public final byte[] objValue;
         public final Map<ByteId, Object> indexValue;
 
         public Req(long id, Triplet<ByteId, ByteId, ByteId> objId, byte[] value, Map<ByteId, Object> indexValue) {
             super(id);
-            this.dbId = objId.getValue0();
-            this.typeId = objId.getValue1();
-            this.objId = objId.getValue2();
+            this.objId = objId;
             this.objValue = value;
             this.indexValue = indexValue;
         }
@@ -50,24 +47,87 @@ public class PutObj {
         public String toString() {
             return "DM_PUT_GSONOBJ_REQ(" + id + ")";
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 17 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 17 * hash + Objects.hashCode(this.objId);
+            hash = 17 * hash + Arrays.hashCode(this.objValue);
+            hash = 17 * hash + Objects.hashCode(this.indexValue);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Req other = (Req) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (!Objects.equals(this.objId, other.objId)) {
+                return false;
+            }
+            if (!Arrays.equals(this.objValue, other.objValue)) {
+                return false;
+            }
+            if (!Objects.equals(this.indexValue, other.indexValue)) {
+                return false;
+            }
+            return true;
+        }
+        
+        
     }
 
     public static class Resp extends DMMessage.Resp {
-//        public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final ByteId objId;
+        public final Triplet<ByteId, ByteId, ByteId> objId;
         
-        public Resp(long id, Triplet<ByteId, ByteId, ByteId> objId, DMMessage.ResponseCode opResult) {
+        public Resp(long id, DMMessage.ResponseCode opResult, Triplet<ByteId, ByteId, ByteId> objId) {
             super(id, opResult);
-            this.dbId = objId.getValue0();
-            this.typeId = objId.getValue1();
-            this.objId = objId.getValue2();
+            this.objId = objId;
         }
 
         @Override
         public String toString() {
             return "DM_PUT_GSONOBJ_RESP(" + id + ")";
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 67 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 67 * hash + Objects.hashCode(this.respCode);
+            hash = 67 * hash + Objects.hashCode(this.objId);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Resp other = (Resp) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (this.respCode != other.respCode) {
+                return false;
+            }
+            if (!Objects.equals(this.objId, other.objId)) {
+                return false;
+            }
+            return true;
+        }
+        
+        
     }
 }

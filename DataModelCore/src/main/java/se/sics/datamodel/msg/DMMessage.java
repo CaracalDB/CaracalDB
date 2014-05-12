@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.msg;
 
+import java.util.Objects;
 import se.sics.kompics.Event;
 
 /**
@@ -48,7 +49,6 @@ public class DMMessage {
     }
 
     public static enum ResponseCode {
-
         SUCCESS, FAILURE, TIMEOUT;
     }
 }

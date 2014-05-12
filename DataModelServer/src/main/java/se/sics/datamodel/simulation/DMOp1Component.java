@@ -139,12 +139,12 @@ public class DMOp1Component extends ComponentDefinition {
                 LOG.debug("Terminated - dropping msg...");
                 return;
             }
-            LOG.debug("received datamodel resp {} from {}", new Object[]{netResp.message, target});
-            pendingMsg.remove(netResp.message.id);
-            if (netResp.message instanceof DMMessage.Resp) {
-                handleTestResp(netResp.message);
+            LOG.debug("received datamodel resp {} from {}", new Object[]{netResp.payload, target});
+            pendingMsg.remove(netResp.payload.id);
+            if (netResp.payload instanceof DMMessage.Resp) {
+                handleTestResp(netResp.payload);
             } else {
-                LOG.warn("unknown resp {}. Dropping...", netResp.message);
+                LOG.warn("unknown resp {}. Dropping...", netResp.payload);
             }
         }
 

@@ -20,6 +20,8 @@
  */
 package se.sics.datamodel.msg;
 
+import java.util.Arrays;
+import java.util.Objects;
 import org.javatuples.Pair;
 import se.sics.datamodel.util.ByteId;
 
@@ -30,38 +32,92 @@ public class GetType {
 
     public static class Req extends DMMessage.Req {
 
-//        public final Pair<ByteId,ByteId> typeId; //<dbId, typeId>//fix later to serialize Tuples
+        public final Pair<ByteId,ByteId> typeId; //<dbId, typeId>//fix later to serialize Tuples
 
-        public final ByteId dbId;
-        public final ByteId typeId;
-        
         public Req(long id, Pair<ByteId, ByteId> typeId) {
             super(id);
-            this.dbId = typeId.getValue0();
-            this.typeId = typeId.getValue1();
+            this.typeId = typeId;
         }
 
         @Override
         public String toString() {
             return "DM_GET_TYPE_REQ(" + id + ")";
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 97 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 97 * hash + Objects.hashCode(this.typeId);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Req other = (Req) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (!Objects.equals(this.typeId, other.typeId)) {
+                return false;
+            }
+            return true;
+        }
     }
 
     public static class Resp extends DMMessage.Resp {
-        public final ByteId dbId;
-        public final ByteId typeId;
+        public final Pair<ByteId, ByteId> typeId;
         public final byte[] typeInfo;
 
         public Resp(long id, DMMessage.ResponseCode opResult, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
             super(id, opResult);
-            this.dbId = typeId.getValue0();
-            this.typeId = typeId.getValue1();
+            this.typeId = typeId;
             this.typeInfo = typeInfo;
         }
 
         @Override
         public String toString() {
             return "DM_GET_TYPE_RESP(" + id + ")";
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 19 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 19 * hash + Objects.hashCode(this.respCode);
+            hash = 19 * hash + Objects.hashCode(this.typeId);
+            hash = 19 * hash + Arrays.hashCode(this.typeInfo);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Resp other = (Resp) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (this.respCode != other.respCode) {
+                return false;
+            }
+            if (!Objects.equals(this.typeId, other.typeId)) {
+                return false;
+            }
+            if (!Arrays.equals(this.typeInfo, other.typeInfo)) {
+                return false;
+            }
+            return true;
         }
     }
 }

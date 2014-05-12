@@ -26,6 +26,7 @@ project/plugins/project/
 # Other
 # src/main/resources/application.conf
 .DS_STORE
+nb-configuration.xml
 
 # IDEA
 .idea/

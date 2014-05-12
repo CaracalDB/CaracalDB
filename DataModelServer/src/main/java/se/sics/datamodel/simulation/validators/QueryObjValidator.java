@@ -20,7 +20,7 @@
  */
 package se.sics.datamodel.simulation.validators;
 
-import java.util.Arrays;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import org.junit.Assert;
 import se.sics.datamodel.msg.DMMessage;
@@ -34,9 +34,9 @@ import se.sics.datamodel.util.ByteId;
 public class QueryObjValidator implements RespValidator {
     private final long id;
     private final DMMessage.ResponseCode respCode;
-    private final Map<ByteId, byte[]> objs;
+    private final Map<ByteId, ByteBuffer> objs;
     
-    public QueryObjValidator(long id, DMMessage.ResponseCode respCode, Map<ByteId, byte[]> objs) {
+    public QueryObjValidator(long id, DMMessage.ResponseCode respCode, Map<ByteId, ByteBuffer> objs) {
         this.id = id;
         this.respCode = respCode;
         this.objs = objs;
@@ -51,13 +51,6 @@ public class QueryObjValidator implements RespValidator {
         Assert.assertEquals("Wrong ResponseCode", respCode, resp.respCode);
         
         QueryObj.Resp typedResp = (QueryObj.Resp) resp;
-        if(objs == typedResp.objs) {
-            return;
-        }
-        Assert.assertEquals("Wrong results", objs.size(), typedResp.objs.size());
-        for(Map.Entry<ByteId, byte[]> e : objs.entrySet()) {
-            byte[] obj = typedResp.objs.get(e.getKey());
-            Assert.assertTrue("Wrong results - objects are not equal", Arrays.equals(e.getValue(), obj));
-        }
+        Assert.assertEquals("Wrong results", objs, typedResp.objs);
     }
 }

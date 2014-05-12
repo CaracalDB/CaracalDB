@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.operations;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -47,8 +48,10 @@ public class DMMultiGetObj extends DMParallelOp {
         LOG.debug("Operation {}  - started", toString());
 
         TimestampIdFactory tidFactory = TimestampIdFactory.get();
+        int i = 0;
         for (ByteId objId : resultBuilder.objs.keySet()) {
-            DMOperation pendingOp = new DMGetObjOp(tidFactory.newId(), this, resultBuilder.typeId.add(objId));
+            i++;
+            DMOperation pendingOp = new DMGetObjOp(tidFactory.newId() + i, this, resultBuilder.typeId.add(objId));
             pendingOps.put(pendingOp.id, pendingOp);
             pendingOp.start();
         }
@@ -68,7 +71,6 @@ public class DMMultiGetObj extends DMParallelOp {
             if (result.responseCode.equals(DMMessage.ResponseCode.SUCCESS)) {
                 DMGetObjOp.Result typedResult = (DMGetObjOp.Result) result;
                 resultBuilder.addResult(typedResult.objId.getValue2(), typedResult.value);
-
                 cleanChildOp(opId);
                 if (pendingOps.isEmpty()) {
                     success();
@@ -100,18 +102,18 @@ public class DMMultiGetObj extends DMParallelOp {
     private static class ResultBuilder {
 
         final Pair<ByteId, ByteId> typeId;
-        final Map<ByteId, byte[]> objs;
+        final Map<ByteId, ByteBuffer> objs;
 
         ResultBuilder(Pair<ByteId, ByteId> typeId, Set<ByteId> objIds) {
             this.typeId = typeId;
-            this.objs = new TreeMap<ByteId, byte[]>();
+            this.objs = new TreeMap<ByteId, ByteBuffer>();
             for (ByteId objId : objIds) {
                 objs.put(objId, null);
             }
         }
 
         void addResult(ByteId objId, byte[] value) {
-            objs.put(objId, value);
+            objs.put(objId, ByteBuffer.wrap(value));
         }
 
         Result build() {
@@ -126,9 +128,9 @@ public class DMMultiGetObj extends DMParallelOp {
     public static class Result extends DMOperation.Result {
 
         public final Pair<ByteId, ByteId> typeId;
-        public final Map<ByteId, byte[]> values;
+        public final Map<ByteId, ByteBuffer> values;
 
-        Result(DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, byte[]> values) {
+        Result(DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, ByteBuffer> values) {
             super(respCode);
             this.typeId = typeId;
             this.values = values;

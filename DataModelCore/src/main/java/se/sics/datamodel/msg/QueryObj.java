@@ -21,7 +21,9 @@
 
 package se.sics.datamodel.msg;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 import org.javatuples.Pair;
 import se.sics.caracaldb.store.Limit.LimitTracker;
 import se.sics.datamodel.QueryType;
@@ -32,17 +34,14 @@ import se.sics.datamodel.util.ByteId;
  */
 public class QueryObj {
     public static class Req extends DMMessage.Req {
-//        public final Pair<ByteId, ByteId> typeId; //revert once support for serializing Tuples
-        public final ByteId dbId;
-        public final ByteId typeId;
+        public final Pair<ByteId, ByteId> typeId; 
         public final ByteId indexId;
         public final QueryType indexVal;
         public final LimitTracker limit;
         
         public Req(long id, Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType indexVal, LimitTracker limit) {
             super(id);
-            this.dbId = typeId.getValue0();
-            this.typeId = typeId.getValue1();
+            this.typeId = typeId;
             this.indexId = indexId;
             this.indexVal = indexVal;
             this.limit = limit;
@@ -52,23 +51,89 @@ public class QueryObj {
         public String toString() {
             return "DM_QUERY_OBJ_REQ(" + id + ")";
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 59 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 59 * hash + Objects.hashCode(this.typeId);
+            hash = 59 * hash + Objects.hashCode(this.indexId);
+            hash = 59 * hash + Objects.hashCode(this.indexVal);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Req other = (Req) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (!Objects.equals(this.typeId, other.typeId)) {
+                return false;
+            }
+            if (!Objects.equals(this.indexId, other.indexId)) {
+                return false;
+            }
+            if (!Objects.equals(this.indexVal, other.indexVal)) {
+                return false;
+            }
+            return true;
+        }
     }
     
     public static class Resp extends DMMessage.Resp {
-        public final ByteId dbId;
-        public final ByteId typeId;
-        public final Map<ByteId, byte[]> objs;
+        public final Pair<ByteId, ByteId> typeId; 
+        public final Map<ByteId, ByteBuffer> objs;
         
-        public Resp(long id, DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, byte[]> objs) {
+        public Resp(long id, DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, ByteBuffer> objs) {
             super(id, respCode);
-            this.dbId = typeId.getValue0();
-            this.typeId = typeId.getValue1();
+            this.typeId = typeId;
             this.objs = objs;
         }
         
         @Override
         public String toString() {
             return "DM_QUERY_OBJ_RESP(" + id + ")";
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            hash = 11 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 11 * hash + Objects.hashCode(this.respCode);
+            hash = 11 * hash + Objects.hashCode(this.typeId);
+            hash = 11 * hash + Objects.hashCode(this.objs);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Resp other = (Resp) obj;
+            if (this.id != other.id) {
+                return false;
+            }
+            if (this.respCode != other.respCode) {
+                return false;
+            }
+            if (!Objects.equals(this.typeId, other.typeId)) {
+                return false;
+            }
+            if (!Objects.equals(this.objs, other.objs)) {
+                return false;
+            }
+            return true;
         }
     }
 }
