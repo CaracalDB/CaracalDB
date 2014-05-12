@@ -30,6 +30,7 @@ import java.util.UUID;
 import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Key;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.ComponentDefinition;
@@ -163,7 +164,8 @@ public class BootstrapServer extends ComponentDefinition {
         log.info("Threshold reached. Seeding LUT.");
         bootSet = ImmutableSet.copyOf(active);
         waitSet = ImmutableSet.copyOf(active);
-        lut = LookupTable.generateInitial(bootSet, config.getInt("caracal.bootVNodes"));
+        Key vnodePrefix = Key.fromHex(config.getString("caracal.vnodePrefix"));
+        lut = LookupTable.generateInitial(bootSet, config.getInt("caracal.bootVNodes"), vnodePrefix);
         StringBuilder sb = new StringBuilder();
         lut.printFormat(sb);
         System.out.println(sb.toString());

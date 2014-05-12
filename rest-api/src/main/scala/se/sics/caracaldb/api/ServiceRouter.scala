@@ -20,7 +20,7 @@ import spray.json.DefaultJsonProtocol._
 import spray.routing.ExceptionHandler
 import akka.actor.Props
 import se.sics.caracaldb.operations.ResponseCode
-import se.sics.caracaldb.datamodel.msg.DMMessage
+import se.sics.datamodel.msg.DMMessage
 import akka.routing._
 import se.sics.caracaldb.api.data._
 import java.nio.charset.Charset
@@ -48,8 +48,11 @@ trait ServiceRouter extends HttpService {
 
 	val conf = Main.system.settings.config;
 	val numWorkers = conf.getInt("caracal.api.workers");
+	val numDMWorkers = conf.getInt("datamodel.workers");
 	val workers = actorRefFactory.actorOf(Props[CaracalWorker].withRouter(SmallestMailboxRouter(numWorkers)), "caracal-workers");
+	val dmWorkers = actorRefFactory.actorOf(Props[DataModelWorker].withRouter(SmallestMailboxRouter(numDMWorkers)), "datamodel-workers");
 
+	
 	import ExecutionDirectives._
 	def debugHandler(implicit log: LoggingContext) = ExceptionHandler {
 		case e => ctx =>
@@ -208,7 +211,7 @@ trait ServiceRouter extends HttpService {
 	}
 
 	private def objMGetPutOp(req: CaracalRequest): Either[FormattedResponse, DMOperation] = {
-		val f = workers ? req;
+		val f = dmWorkers ? req;
 		val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
 		logger.debug("ObjM OP result was {}", res);
 		res match {
@@ -218,7 +221,7 @@ trait ServiceRouter extends HttpService {
 	}
 
 	private def objMQuery(str: String): Either[List[Entry], DMOperation] = {
-		val f = workers ? QueryObjRequest(str);
+		val f = dmWorkers ? QueryObjRequest(str);
 		val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
 		logger.debug("ObjM OP result was {}", res);
 		res match {

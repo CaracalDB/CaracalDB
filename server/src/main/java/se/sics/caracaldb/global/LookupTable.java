@@ -43,6 +43,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.Key.KeyBuilder;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.kompics.address.Address;
@@ -449,11 +450,11 @@ public class LookupTable {
         return Pair.with(version, group);
     }
 
-    public static LookupTable generateInitial(Set<Address> hosts, int vNodesPerHost) {
+    public static LookupTable generateInitial(Set<Address> hosts, int vNodesPerHost, Key vnodePrefix) {
         LookupTable lut = new LookupTable();
         lut.generateHosts(hosts);
         lut.generateReplicationSets(hosts);
-        lut.generateInitialVirtuals(vNodesPerHost);
+        lut.generateInitialVirtuals(vNodesPerHost, vnodePrefix);
 
         INSTANCE = lut;
 
@@ -497,7 +498,7 @@ public class LookupTable {
         }
     }
 
-    private void generateInitialVirtuals(int vNodesPerHost) {
+    private void generateInitialVirtuals(int vNodesPerHost, Key vnodePrefix) {
         Arrays.fill(virtualHostGroupVersions, 0l);
         for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
             virtualHostGroups[i] = new LookupGroup(Ints.toByteArray(i)[3]);
@@ -514,7 +515,8 @@ public class LookupTable {
         UnsignedInteger ceiling = UnsignedInteger.MAX_VALUE.minus(incr);
         while (last.compareTo(ceiling) <= 0) {
             last = last.plus(incr);
-            virtualHostsPut(new Key(last.intValue()), RAND.nextInt(replicationSets.size()));
+            Key vnodeKey = new Key(last.intValue()).prepend(vnodePrefix).get();
+            virtualHostsPut(vnodeKey, RAND.nextInt(replicationSets.size()));
         }
     }
 

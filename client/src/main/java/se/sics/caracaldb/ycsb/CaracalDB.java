@@ -84,12 +84,14 @@ public class CaracalDB extends DB {
         if (resp.results == null || resp.results.isEmpty()) {
             return 1;
         }
+
         for (Entry<Key, byte[]> e : resp.results.entrySet()) {
             String key = new String(e.getKey().getArray());
             HashMap<String, ByteIterator> r = new HashMap<String, ByteIterator>();
             r.put(key, new ByteArrayByteIterator(e.getValue()));
             result.add(r);
         }
+
         return 0;
     }
 

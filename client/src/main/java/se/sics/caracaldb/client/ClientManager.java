@@ -32,13 +32,21 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import se.sics.caracaldb.MessageRegistrator;
-import se.sics.caracaldb.datamodel.msg.DMMessage;
 import se.sics.caracaldb.operations.CaracalResponse;
+import se.sics.caracaldb.system.ComponentProxy;
 import se.sics.caracaldb.utils.TimestampIdFactory;
+import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.ControlPort;
+import se.sics.kompics.Event;
 import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
+import se.sics.kompics.KompicsEvent;
+import se.sics.kompics.Negative;
+import se.sics.kompics.Port;
+import se.sics.kompics.PortType;
+import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
@@ -69,9 +77,58 @@ public class ClientManager extends ComponentDefinition {
     private final SortedSet<Address> vNodes = new TreeSet<>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+
     static {
         MessageRegistrator.register();
     }
+
+    private ComponentProxy proxy = new ComponentProxy() {
+        @Override
+        public <P extends PortType> void trigger(KompicsEvent e, Port<P> p) {
+            ClientManager.this.trigger(e, p);
+        }
+
+        @Override
+        public void destroy(Component component) {
+            ClientManager.this.destroy(component);
+        }
+
+        @Override
+        public <P extends PortType> Channel<P> connect(Positive<P> positive, Negative<P> negative) {
+            return ClientManager.this.connect(positive, negative);
+        }
+
+        @Override
+        public <P extends PortType> Channel<P> connect(Negative<P> negative, Positive<P> positive) {
+            return ClientManager.this.connect(negative, positive);
+        }
+
+        @Override
+        public <P extends PortType> void disconnect(Negative<P> negative, Positive<P> positive) {
+            ClientManager.this.disconnect(negative, positive);
+        }
+
+        @Override
+        public <P extends PortType> void disconnect(Positive<P> positive, Negative<P> negative) {
+            ClientManager.this.disconnect(positive, negative);
+        }
+
+        @Override
+        public Negative<ControlPort> getControlPort() {
+            return ClientManager.this.control;
+        }
+
+        @Override
+        public <T extends ComponentDefinition> Component create(Class<T> definition, Init<T> initEvent) {
+            return ClientManager.this.create(definition, initEvent);
+        }
+
+        @Override
+        public <T extends ComponentDefinition> Component create(Class<T> definition, Init.None initEvent) {
+            return ClientManager.this.create(definition, initEvent);
+        }
+
+    };
 
     public ClientManager() {
         if (INSTANCE == null) {
@@ -141,14 +198,30 @@ public class ClientManager extends ComponentDefinition {
         lock.writeLock().lock();
         try {
             Address adr = addVNode();
-            BlockingQueue<CaracalResponse> q = new LinkedBlockingQueue<>();
-            BlockingQueue<DMMessage.Resp> dataModelQ = new LinkedBlockingQueue<>();
-            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, dataModelQ, adr, bootstrapServer, sampleSize));
+            BlockingQueue<CaracalResponse> q = new LinkedBlockingQueue<CaracalResponse>();
+            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, adr, bootstrapServer, sampleSize));
             vnc.addConnection(adr.getId(), cw.getNegative(Network.class));
             connect(timer.getPositive(Timer.class), cw.getNegative(Timer.class));
             trigger(Start.event, cw.control());
             ClientWorker worker = (ClientWorker) cw.getComponent();
-            return new BlockingClient(q, dataModelQ, worker);
+            return new BlockingClient(q, worker);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    public void addCustomClient(ClientHook hook) {
+        lock.writeLock().lock();
+        try {
+            Address vadd = addVNode();
+            ClientSharedComponents sharedComponents = new ClientSharedComponents(vadd.getId());
+            sharedComponents.setNetwork(vnc);
+            sharedComponents.setSelf(vadd);
+            sharedComponents.setTimer(timer.getPositive(Timer.class));
+            sharedComponents.setBootstrapServer(bootstrapServer);
+            sharedComponents.setSampleSize(sampleSize);
+
+            hook.setUp(sharedComponents, proxy);
         } finally {
             lock.writeLock().unlock();
         }

@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb;
 
+import junit.framework.Assert;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -104,5 +105,11 @@ public class KeyTest {
         Key someKeyInc = Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F7");
         System.out.println("Not so signed Key");
         assertTrue(someKey.inc().compareTo(someKeyInc) == 0);
+    }
+    
+    @Test
+    public void getHexKeyEmptyStringTest() {
+        Key nullKey = Key.fromHex("");
+        Assert.assertEquals(Key.NULL_KEY, nullKey);
     }
 }

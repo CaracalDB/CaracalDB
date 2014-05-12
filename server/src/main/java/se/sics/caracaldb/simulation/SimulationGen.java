@@ -26,8 +26,6 @@ import se.sics.caracaldb.simulation.command.PutCmd;
 import se.sics.caracaldb.simulation.command.RQCmd;
 import se.sics.caracaldb.simulation.command.TerminateCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;
-import se.sics.caracaldb.simulation.common.cmd.Cmd;
-import se.sics.caracaldb.simulation.operations.datamodel.cmd.DMTestCmd;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 import se.sics.kompics.p2p.experiment.dsl.adaptor.Operation;
 
@@ -158,34 +156,6 @@ public class SimulationGen {
         return scen;
     }
 
-    public static SimulationScenario testScenario(final int boot) {
-        SimulationScenario scen = new SimulationScenario() {
-            {
-                StochasticProcess bootProc = new SimulationScenario.StochasticProcess() {
-                    {
-                        eventInterArrivalTime(constant(0));
-                        raise(1, opBoot(boot));
-                    }
-                };
-
-                StochasticProcess testProc = new SimulationScenario.StochasticProcess() {
-                    {
-                        eventInterArrivalTime(constant(500));
-                        raise(10, testCmd());
-                    }
-                };
-
-                bootProc.start();
-                testProc.startAfterTerminationOf(10000, bootProc);
-                terminateAfterTerminationOf(20000, testProc);
-            }
-        };
-
-        scen.setSeed(seed);
-
-        return scen;
-    }
-
     public static Operation<BootCmd> opBoot(final int n) {
         return new Operation<BootCmd>() {
             @Override
@@ -225,26 +195,6 @@ public class SimulationGen {
         };
     }
 
-    public static Operation<Cmd> testCmd() {
-        return new Operation<Cmd>() {
-
-            @Override
-            public Cmd generate() {
-                return new DMTestCmd();
-            }
-
-        };
-    }
-
-//    public static Operation<OpCmd> opOp() {
-//        return new Operation<OpCmd>() {
-//
-//            @Override
-//            public OpCmd generate() {
-//                
-//            }
-//        };
-//    }
     public static Operation<TerminateCmd> opTerminate() {
         return new Operation<TerminateCmd>() {
             @Override

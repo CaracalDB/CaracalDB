@@ -53,7 +53,7 @@ public class LUTTest {
     @Test
     public void generationTest() {
         Set<Address> addrs = generateAddresses(5);
-        LookupTable lut = LookupTable.generateInitial(addrs, 2);
+        LookupTable lut = LookupTable.generateInitial(addrs, 2, Key.fromHex(""));
 
         assertEquals(addrs.size(), lut.numHosts());
         assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationSets());
@@ -66,7 +66,7 @@ public class LUTTest {
     @Test
     public void localNodesTest() {
         Set<Address> addrs = generateAddresses(3);
-        LookupTable lut = LookupTable.generateInitial(addrs, 1);
+        LookupTable lut = LookupTable.generateInitial(addrs, 1, Key.fromHex(""));
 
         StringBuilder sb = new StringBuilder();
         lut.printFormat(sb);
@@ -91,7 +91,7 @@ public class LUTTest {
         try {
             final int n = 5;
             Set<Address> addrs = generateAddresses(n);
-            LookupTable lut = LookupTable.generateInitial(addrs, 2);
+            LookupTable lut = LookupTable.generateInitial(addrs, 2, Key.fromHex(""));
 
             byte[] lutbytes = lut.serialise();
 
