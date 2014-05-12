@@ -34,3 +34,12 @@ project/plugins/project/
 
 
 
+# Dart
+packages/
+pubspec.lock  // Except for application packages
+.project
+.buildlog
+*.js_
+*.js.deps
+*.js.map
+*.dart.js

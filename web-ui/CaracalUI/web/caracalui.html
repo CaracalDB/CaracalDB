@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>CaracalUI</title>
+    <link rel="stylesheet" href="caracalui.css">
+  </head>
+  <body>
+    <div id="logo"><img src="CaracalDB.png"></div>
+    
+    <div id="main">
+      <ul id="oplist">
+        <li>Operations: </li>
+        <li><input type="radio" name="operation" id="operation_put" value="PUT">PUT</li>
+        <li><input type="radio" name="operation" id="operation_get" value="GET">GET</li>
+        <li><input type="radio" name="operation" id="operation_range" value="RANGE">RANGE</li>
+      </ul>
+      <br />
+      <p id="keyP">Key: <input type="text" id="keyField"></p>
+      <p id="endKeyP">Range End Key: <input type="text" id="endKeyField"></p>
+      <p id="valueP">Value: <input type="text" id="valueField"></p>
+      <p id="buttons">
+        <input id="resetButton" type="button" value="Reset"/> &nbsp; 
+        <input id="submitButton" type="button" value="Submit" />
+      </p>
+      <hr />
+      <input id="clearButton" type="button" value="Clear" />
+      <div id="result"></div>
+    </div>
+
+    <script type="application/dart" src="caracalui.dart"></script>
+    <script src="packages/browser/dart.js"></script>
+  </body>
+</html>
