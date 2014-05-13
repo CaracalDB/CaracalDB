@@ -102,12 +102,6 @@
             <artifactId>config</artifactId>
             <version>1.0.1</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.avro</groupId>
-            <artifactId>avro</artifactId>
-            <version>1.7.6</version>
-            <scope>compile</scope>
-        </dependency>
     </dependencies>
 
     <build>

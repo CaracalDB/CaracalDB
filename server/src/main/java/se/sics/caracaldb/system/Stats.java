@@ -22,14 +22,25 @@ package se.sics.caracaldb.system;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.Ordering;
+import com.google.common.util.concurrent.AtomicDouble;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectName;
 import org.hyperic.sigar.Mem;
 import org.hyperic.sigar.Sigar;
 import org.hyperic.sigar.SigarException;
@@ -53,6 +64,17 @@ public class Stats {
 
     private final static Sigar sigar = new Sigar();
     private static double previousCpuUsage = 0.0;
+    private final static CaracalStats mbean = new CaracalStats();
+
+    static {
+        try {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            ObjectName name = new ObjectName("se.sics.caracaldb.system:type=CaracalStats");
+            mbs.registerMBean(mbean, name);
+        } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException ex) {
+            LOG.warn("Couldn't subscribe JMX object: {}", ex);
+        }
+    }
 
     public static Report collect(Address atHost, Map<Address, NodeStats> nodeStats) {
         Mem mem;
@@ -78,17 +100,37 @@ public class Stats {
         TopKMap<Long, Address> bottomKSize = new TopKMap<Long, Address>(K, revcomp);
         TopKMap<Long, Address> topKOps = new TopKMap<Long, Address>(K);
         TopKMap<Long, Address> bottomKOps = new TopKMap<Long, Address>(K, revcomp);
+        long totalStoreSize = 0;
+        long totalNumKeys = 0;
+        long totalOpS = 0;
 
         for (Entry<Address, NodeStats> e : nodeStats.entrySet()) {
             Address addr = e.getKey();
             NodeStats stats = e.getValue();
+            totalStoreSize += stats.storeSize;
+            totalNumKeys += stats.storeNumberOfKeys;
+            totalOpS += stats.ops;
             topKSize.put(stats.storeSize, addr);
             bottomKSize.put(stats.storeSize, addr);
             topKOps.put(stats.ops, addr);
             bottomKOps.put(stats.ops, addr);
         }
 
-        return new Report(atHost, mem.getUsedPercent(), previousCpuUsage,
+        double memUsage = mem.getUsedPercent();
+        int numVN = nodeStats.size();
+
+        mbean.cpuUsage.set(previousCpuUsage);
+        mbean.memoryUsage.set(memUsage);
+        mbean.storeSize.set(totalStoreSize);
+        mbean.numberOfVNodes.set(numVN);
+        mbean.numberOfKeys.set(totalNumKeys);
+        try {
+            mbean.averageOpS.set(Math.floorDiv(totalOpS, numVN));
+        } catch (ArithmeticException ex) {
+            mbean.averageOpS.set(0);
+        }
+
+        return new Report(atHost, memUsage, previousCpuUsage,
                 mapToList(topKSize), mapToList(bottomKSize),
                 mapToList(topKOps), mapToList(bottomKOps));
     }

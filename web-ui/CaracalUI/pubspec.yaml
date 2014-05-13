@@ -1,4 +1,7 @@
-name: CaracalUI
-description: A sample web application
+name: caracalui
+version: 0.0.1
+author: SICS
+description: A demo UI for CaracalDB
 dependencies:
   browser: any
+  dart_config: any
