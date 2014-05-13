@@ -26,7 +26,7 @@ class DataModelWorker extends Actor with ActorLogging {
 	
 	private val utf8 = Charset.forName("UTF-8");
 	
-	val worker: BlockingClient = null;//ClientManager.newClient();
+	val worker: BlockingClient = ClientManager.newClient();
 	
 	def receive = {
 		case GetTypeRequest(req) => {

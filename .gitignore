@@ -37,7 +37,7 @@ nb-configuration.xml
 
 
 # Dart
-packages/
+packages
 pubspec.lock  // Except for application packages
 .project
 .buildlog

@@ -23,6 +23,13 @@
         
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
+            <artifactId>caracaldb-client</artifactId>
+            <version>0.0.5-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>se.sics.caracaldb</groupId>
             <artifactId>DataModelCore</artifactId>
             <version>0.0.5-SNAPSHOT</version>
             <scope>compile</scope>
