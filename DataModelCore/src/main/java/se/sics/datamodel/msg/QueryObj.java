@@ -24,6 +24,7 @@ package se.sics.datamodel.msg;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.store.Limit.LimitTracker;
 import se.sics.datamodel.QueryType;
@@ -39,7 +40,7 @@ public class QueryObj {
         public final QueryType indexVal;
         public final LimitTracker limit;
         
-        public Req(long id, Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType indexVal, LimitTracker limit) {
+        public Req(UUID id, Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType indexVal, LimitTracker limit) {
             super(id);
             this.typeId = typeId;
             this.indexId = indexId;
@@ -55,7 +56,7 @@ public class QueryObj {
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 59 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 59 * hash + Objects.hashCode(this.id);
             hash = 59 * hash + Objects.hashCode(this.typeId);
             hash = 59 * hash + Objects.hashCode(this.indexId);
             hash = 59 * hash + Objects.hashCode(this.indexVal);
@@ -71,7 +72,7 @@ public class QueryObj {
                 return false;
             }
             final Req other = (Req) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (!Objects.equals(this.typeId, other.typeId)) {
@@ -91,7 +92,7 @@ public class QueryObj {
         public final Pair<ByteId, ByteId> typeId; 
         public final Map<ByteId, ByteBuffer> objs;
         
-        public Resp(long id, DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, ByteBuffer> objs) {
+        public Resp(UUID id, DMMessage.ResponseCode respCode, Pair<ByteId, ByteId> typeId, Map<ByteId, ByteBuffer> objs) {
             super(id, respCode);
             this.typeId = typeId;
             this.objs = objs;
@@ -105,7 +106,7 @@ public class QueryObj {
         @Override
         public int hashCode() {
             int hash = 5;
-            hash = 11 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 11 * hash + Objects.hashCode(this.id);
             hash = 11 * hash + Objects.hashCode(this.respCode);
             hash = 11 * hash + Objects.hashCode(this.typeId);
             hash = 11 * hash + Objects.hashCode(this.objs);
@@ -121,7 +122,7 @@ public class QueryObj {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {

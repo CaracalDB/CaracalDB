@@ -18,26 +18,27 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 package se.sics.caracaldb.replication.log;
 
 import com.google.common.base.Optional;
 import io.netty.buffer.ByteBuf;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  *
  * @author lkroll
  */
 public class ValueSerializer implements Serializer {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(ValueSerializer.class);
-    
+
     static final byte NOOP = 0;
     static final byte RECONFIGURE = 1;
 
@@ -53,7 +54,7 @@ public class ValueSerializer implements Serializer {
             return;
         }
         Value val = (Value) o;
-        buf.writeLong(val.id);
+        SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(val.id, buf);
         if (val instanceof Noop) {
             buf.writeByte(NOOP);
             return;
@@ -70,10 +71,11 @@ public class ValueSerializer implements Serializer {
 
     @Override
     public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
-        long id = buf.readLong();
+        UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         byte type = buf.readByte();
-        switch(type) {
-            case NOOP: return Noop.val;
+        switch (type) {
+            case NOOP:
+                return Noop.val;
             case RECONFIGURE:
                 View v = CustomSerialisers.deserialiseView(buf);
                 int quorum = buf.readInt();
@@ -83,5 +85,5 @@ public class ValueSerializer implements Serializer {
                 return null;
         }
     }
-    
+
 }

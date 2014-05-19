@@ -24,6 +24,7 @@ import com.google.gson.Gson;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -84,7 +85,7 @@ public class BlockingClient {
 
     public GetResponse get(Key k) {
         LOG.debug("Getting for {}", k);
-        long id = TimestampIdFactory.get().newId();
+        UUID id = TimestampIdFactory.get().newId();
         GetRequest req = new GetRequest(id, k);
         worker.triggerOnSelf(req);
         try {
@@ -108,7 +109,7 @@ public class BlockingClient {
     
     public RangeResponse rangeRequest(KeyRange range, LimitTracker limit) {
         LOG.debug("RangeRequest for {}", range);
-        long id = TimestampIdFactory.get().newId();
+        UUID id = TimestampIdFactory.get().newId();
         RangeQuery.Request req = new RangeQuery.Request(id, range, limit, TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
         worker.triggerOnSelf(req);
         try {

@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.operations;
 
+import java.util.UUID;
 import se.sics.caracaldb.Key;
 
 /**
@@ -29,11 +30,11 @@ import se.sics.caracaldb.Key;
 public final class PutResponse extends CaracalResponse {
     public final Key key;
 
-    public PutResponse(long id, Key key) {
+    public PutResponse(UUID id, Key key) {
         this(id, key, ResponseCode.SUCCESS);
     }
     
-    public PutResponse(long id, Key key, ResponseCode code) {
+    public PutResponse(UUID id, Key key, ResponseCode code) {
         super(id, code);
         this.key = key;
     }

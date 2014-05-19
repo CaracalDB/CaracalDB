@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.client.gson.msg;
 
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.datamodel.DMSerializer;
 import se.sics.datamodel.TypeInfo;
@@ -39,7 +40,7 @@ public class CPutType {
         this.typeInfo = typeInfo;
     }
     
-    public PutType.Req getReq(long reqId) {
+    public PutType.Req getReq(UUID reqId) {
         return new PutType.Req(reqId, typeId, DMSerializer.serialize(typeInfo));
     }
 }

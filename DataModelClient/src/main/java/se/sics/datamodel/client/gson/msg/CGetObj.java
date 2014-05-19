@@ -21,6 +21,7 @@
 
 package se.sics.datamodel.client.gson.msg;
 
+import java.util.UUID;
 import org.javatuples.Triplet;
 import se.sics.datamodel.msg.GetObj;
 import se.sics.datamodel.util.ByteId;
@@ -37,7 +38,7 @@ public class CGetObj {
         this.objId = objId;
     }
     
-    public GetObj.Req getReq(long reqId) {
+    public GetObj.Req getReq(UUID reqId) {
         return new GetObj.Req(reqId, objId);
     }
 }

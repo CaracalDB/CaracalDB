@@ -24,6 +24,7 @@ package se.sics.datamodel.msg;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import org.javatuples.Triplet;
 import se.sics.datamodel.util.ByteId;
 
@@ -36,7 +37,7 @@ public class PutObj {
         public final byte[] objValue;
         public final Map<ByteId, Object> indexValue;
 
-        public Req(long id, Triplet<ByteId, ByteId, ByteId> objId, byte[] value, Map<ByteId, Object> indexValue) {
+        public Req(UUID id, Triplet<ByteId, ByteId, ByteId> objId, byte[] value, Map<ByteId, Object> indexValue) {
             super(id);
             this.objId = objId;
             this.objValue = value;
@@ -51,7 +52,7 @@ public class PutObj {
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 17 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 17 * hash + Objects.hashCode(this.id);
             hash = 17 * hash + Objects.hashCode(this.objId);
             hash = 17 * hash + Arrays.hashCode(this.objValue);
             hash = 17 * hash + Objects.hashCode(this.indexValue);
@@ -67,7 +68,7 @@ public class PutObj {
                 return false;
             }
             final Req other = (Req) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (!Objects.equals(this.objId, other.objId)) {
@@ -88,7 +89,7 @@ public class PutObj {
     public static class Resp extends DMMessage.Resp {
         public final Triplet<ByteId, ByteId, ByteId> objId;
         
-        public Resp(long id, DMMessage.ResponseCode opResult, Triplet<ByteId, ByteId, ByteId> objId) {
+        public Resp(UUID id, DMMessage.ResponseCode opResult, Triplet<ByteId, ByteId, ByteId> objId) {
             super(id, opResult);
             this.objId = objId;
         }
@@ -101,7 +102,7 @@ public class PutObj {
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 67 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 67 * hash + Objects.hashCode(this.id);
             hash = 67 * hash + Objects.hashCode(this.respCode);
             hash = 67 * hash + Objects.hashCode(this.objId);
             return hash;
@@ -116,7 +117,7 @@ public class PutObj {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id,other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {

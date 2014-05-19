@@ -23,6 +23,7 @@ package se.sics.datamodel.msg;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import se.sics.datamodel.util.ByteId;
 
 /**
@@ -33,7 +34,7 @@ public class GetAllTypes {
 
         public final ByteId dbId;
         
-        public Req(long id, ByteId dbId) {
+        public Req(UUID id, ByteId dbId) {
             super(id);
             this.dbId = dbId;
         }
@@ -46,7 +47,7 @@ public class GetAllTypes {
         @Override
         public int hashCode() {
             int hash = 3;
-            hash = 73 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 73 * hash + Objects.hashCode(this.id);
             hash = 73 * hash + Objects.hashCode(this.dbId);
             return hash;
         }
@@ -60,7 +61,7 @@ public class GetAllTypes {
                 return false;
             }
             final Req other = (Req) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (!Objects.equals(this.dbId, other.dbId)) {
@@ -74,7 +75,7 @@ public class GetAllTypes {
         public final ByteId dbId;
         public final Map<String, ByteId> types;
 
-        public Resp(long id, DMMessage.ResponseCode opResult, ByteId dbId, Map<String, ByteId> typesMap) {
+        public Resp(UUID id, DMMessage.ResponseCode opResult, ByteId dbId, Map<String, ByteId> typesMap) {
             super(id, opResult);
             this.dbId = dbId;
             this.types = typesMap;
@@ -88,7 +89,7 @@ public class GetAllTypes {
         @Override
         public int hashCode() {
             int hash = 3;
-            hash = 59 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 59 * hash + Objects.hashCode(this.id);
             hash = 59 * hash + Objects.hashCode(this.respCode);
             hash = 59 * hash + Objects.hashCode(this.dbId);
             hash = 59 * hash + Objects.hashCode(this.types);
@@ -104,7 +105,7 @@ public class GetAllTypes {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {

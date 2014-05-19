@@ -21,18 +21,19 @@
 package se.sics.datamodel.operations.primitives;
 
 import java.util.TreeMap;
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
-import se.sics.datamodel.msg.DMMessage;
-import se.sics.datamodel.operations.DMOperation;
-import se.sics.datamodel.operations.DMOperationsManager;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.operations.ResponseCode;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.Limit.LimitTracker;
 import se.sics.caracaldb.store.TFFactory;
+import se.sics.datamodel.msg.DMMessage;
+import se.sics.datamodel.operations.DMOperation;
+import se.sics.datamodel.operations.DMOperationsManager;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -43,14 +44,14 @@ public class DMCRQOp extends DMOperation {
     private final RangeQuery.Request req;
     private final RangeQuery.SeqCollector collector;
 
-    public DMCRQOp(long id, DMOperationsManager operationsManager, KeyRange range) {
+    public DMCRQOp(UUID id, DMOperationsManager operationsManager, KeyRange range) {
         super(id);
         this.operationsManager = operationsManager;
         this.req = new RangeQuery.Request(id, range, Limit.noLimit(), TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
         this.collector = new RangeQuery.SeqCollector(req);
     }
     
-    public DMCRQOp(long id, DMOperationsManager operationsManager, KeyRange range, LimitTracker limit) {
+    public DMCRQOp(UUID id, DMOperationsManager operationsManager, KeyRange range, LimitTracker limit) {
         super(id);
         this.operationsManager = operationsManager;
         this.req = new RangeQuery.Request(id, range, limit, TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
@@ -121,7 +122,7 @@ public class DMCRQOp extends DMOperation {
         }
 
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
     }

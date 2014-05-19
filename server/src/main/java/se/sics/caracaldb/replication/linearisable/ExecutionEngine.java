@@ -187,7 +187,7 @@ public class ExecutionEngine extends ComponentDefinition {
                         view, event.view);
                 return;
             }
-            Reconfigure reconf = new Reconfigure(UUID.randomUUID().getLeastSignificantBits(), event.view, event.quorum);
+            Reconfigure reconf = new Reconfigure(UUID.randomUUID(), event.view, event.quorum);
             trigger(new Propose(reconf), rLog);
         }
     };
@@ -590,7 +590,7 @@ public class ExecutionEngine extends ComponentDefinition {
 
         public final CaracalOp op;
 
-        public SMROp(long id, CaracalOp op) {
+        public SMROp(UUID id, CaracalOp op) {
             super(id);
             this.op = op;
         }
@@ -599,9 +599,9 @@ public class ExecutionEngine extends ComponentDefinition {
         public int compareTo(Value o) {
             if (o instanceof SMROp) {
                 SMROp that = (SMROp) o;
-                if (this.op.id != that.op.id) {
-                    long diff = this.op.id - that.op.id;
-                    return Ints.saturatedCast(diff);
+                int ids = this.op.id.compareTo(that.op.id);
+                if (ids != 0) {
+                    return ids;
                 }
                 return 0;
             }
@@ -617,13 +617,13 @@ public class ExecutionEngine extends ComponentDefinition {
     public static class SyncedUp extends Value {
 
         public SyncedUp() {
-            super(UUID.randomUUID().getLeastSignificantBits());
+            super(UUID.randomUUID());
         }
 
         /**
          * Serialization use only
          */
-        SyncedUp(long id) {
+        SyncedUp(UUID id) {
             super(id);
         }
 
@@ -638,7 +638,7 @@ public class ExecutionEngine extends ComponentDefinition {
         public final KeyRange range;
 
         public Scan(KeyRange range) {
-            super(UUID.randomUUID().getLeastSignificantBits());
+            super(UUID.randomUUID());
 
             this.range = range;
         }
@@ -646,7 +646,7 @@ public class ExecutionEngine extends ComponentDefinition {
         /**
          * Serialization use only
          */
-        Scan(long id, KeyRange range) {
+        Scan(UUID id, KeyRange range) {
             super(id);
             this.range = range;
         }

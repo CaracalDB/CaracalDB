@@ -20,6 +20,8 @@
  */
 package se.sics.caracaldb.replication.log;
 
+import java.util.UUID;
+
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
@@ -29,7 +31,7 @@ public final class Noop extends Value {
     public static final Noop val = new Noop();
     
     private Noop() {
-        super(0);
+        super(new UUID(0, 0));
     }
 
     @Override

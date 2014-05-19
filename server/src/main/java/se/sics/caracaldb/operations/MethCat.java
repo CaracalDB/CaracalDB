@@ -73,7 +73,7 @@ public class MethCat extends ComponentDefinition {
     private State state;
     private KeyRange responsibility;
     private Address self;
-    private Map<Long, CaracalMsg> openOps = new TreeMap<Long, CaracalMsg>();
+    private Map<UUID, CaracalMsg> openOps = new TreeMap<UUID, CaracalMsg>();
     private View view;
 
     // Stats

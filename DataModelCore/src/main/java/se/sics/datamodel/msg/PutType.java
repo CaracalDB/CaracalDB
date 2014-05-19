@@ -22,6 +22,7 @@ package se.sics.datamodel.msg;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.datamodel.util.ByteId;
 
@@ -35,7 +36,7 @@ public class PutType {
         public final Pair<ByteId,ByteId> typeId;
         public final byte[] typeInfo;
 
-        public Req(long id, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
+        public Req(UUID id, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
             super(id);
             this.typeId = typeId;
             this.typeInfo = typeInfo;
@@ -49,7 +50,7 @@ public class PutType {
         @Override
         public int hashCode() {
             int hash = 5;
-            hash = 71 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 71 * hash + Objects.hashCode(this.id);
             hash = 71 * hash + Objects.hashCode(this.typeId);
             hash = 71 * hash + Arrays.hashCode(this.typeInfo);
             return hash;
@@ -64,7 +65,7 @@ public class PutType {
                 return false;
             }
             final Req other = (Req) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (!Objects.equals(this.typeId, other.typeId)) {
@@ -80,7 +81,7 @@ public class PutType {
     public static class Resp extends DMMessage.Resp {
         public final Pair<ByteId, ByteId> typeId;
         
-        public Resp(long id, DMMessage.ResponseCode opResult, Pair<ByteId, ByteId> typeId) {
+        public Resp(UUID id, DMMessage.ResponseCode opResult, Pair<ByteId, ByteId> typeId) {
             super(id, opResult);
             this.typeId = typeId;
         }
@@ -93,7 +94,7 @@ public class PutType {
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 41 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 41 * hash + Objects.hashCode(this.id);
             hash = 41 * hash + Objects.hashCode(this.respCode);
             hash = 41 * hash + Objects.hashCode(this.typeId);
             return hash;
@@ -108,7 +109,7 @@ public class PutType {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {

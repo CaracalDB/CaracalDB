@@ -35,6 +35,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.junit.Assert;
@@ -46,12 +47,14 @@ import se.sics.kompics.address.Address;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class DecisionStore {
+    
+    private static final UUID negId = new UUID(-1, -1);
 
     private TreeMap<Integer, EpochStore> stores = new TreeMap<Integer, EpochStore>();
-    private SortedMap<Long, Address> ops = new TreeMap<Long, Address>();
+    private SortedMap<UUID, Address> ops = new TreeMap<UUID, Address>();
     private final ReadWriteLock rwlock = new ReentrantReadWriteLock();
     private Set<Address> failed = new HashSet<Address>();
-    private Set<Long> decided = new TreeSet<Long>();
+    private Set<UUID> decided = new TreeSet<UUID>();
     private Set<Address> currentGroup = new HashSet<Address>();
 
     public DecisionStore(ImmutableSet<Address> group) {
@@ -68,7 +71,7 @@ public class DecisionStore {
         }
     }
 
-    public void decided(int epoch, Address node, long value) {
+    public void decided(int epoch, Address node, UUID value) {
         rwlock.readLock().lock();
         try {
 
@@ -109,7 +112,7 @@ public class DecisionStore {
         try {
             currentGroup.remove(node);
             EpochStore store = stores.get(epoch);
-            store.decided(node, -1l);
+            store.decided(node, negId);
             failed.add(node);
         } finally {
             rwlock.readLock().unlock();
@@ -137,8 +140,8 @@ public class DecisionStore {
              * with a -1 as last message in the store.
              * 
              */
-            SortedSet<Long> validateOps = new TreeSet<Long>(ops.keySet()); // take a copy
-            ImmutableSortedSet<Long> readOnlyOps = ImmutableSortedSet.copyOf(ops.keySet());
+            SortedSet<UUID> validateOps = new TreeSet<UUID>(ops.keySet()); // take a copy
+            ImmutableSortedSet<UUID> readOnlyOps = ImmutableSortedSet.copyOf(ops.keySet());
             for (EpochStore store : stores.values()) {
                 /*
                  * Since this is a reconfigurable implementation (4) only needs
@@ -149,7 +152,7 @@ public class DecisionStore {
             }
             //Assert.assertTrue("Violated property (2)", validateOps.isEmpty());
             if (!validateOps.isEmpty()) {
-                for (Long val : validateOps) {
+                for (UUID val : validateOps) {
                     Address proposer = ops.get(val);
                     Assert.assertTrue("Violated property (2)", failed.contains(proposer));
                 }
@@ -184,7 +187,7 @@ public class DecisionStore {
             sb.append("<h2>Proposed Values</h2>");
             sb.append("<table>");
             sb.append("<tr>");
-            for (Long l : ops.keySet()) {
+            for (UUID l : ops.keySet()) {
                 sb.append("<td>");
                 sb.append(l);
                 sb.append("</td>");
@@ -208,8 +211,10 @@ public class DecisionStore {
 
     public static class EpochStore {
 
+        private static final UUID zeroId = new UUID(0, 0);
+        
         private final int epoch;
-        private LinkedListMultimap<Address, Long> decidedMap = LinkedListMultimap.create();
+        private LinkedListMultimap<Address, UUID> decidedMap = LinkedListMultimap.create();
         public final ImmutableSet<Address> group;
         private final Set<Address> active;
 
@@ -219,10 +224,10 @@ public class DecisionStore {
             this.active = new HashSet<Address>(group);
         }
 
-        public void decided(Address node, long value) {
+        public void decided(Address node, UUID value) {
             if (group.contains(node)) {
                 decidedMap.put(node, value);
-                if (value < 0) {
+                if (value.compareTo(zeroId) < 0) {
                     active.remove(node);
                 }
             } else {
@@ -231,25 +236,25 @@ public class DecisionStore {
             }
         }
 
-        public void validate(SortedSet<Long> validateOps, ImmutableSortedSet<Long> ops) {
-            Map<Address, Iterator<Long>> its = new HashMap<Address, Iterator<Long>>();
+        public void validate(SortedSet<UUID> validateOps, ImmutableSortedSet<UUID> ops) {
+            Map<Address, Iterator<UUID>> its = new HashMap<Address, Iterator<UUID>>();
             //Map<Address, Long> lastValue = new HashMap<Address, Long>();
-            for (Entry<Address, Collection<Long>> e : decidedMap.asMap().entrySet()) {
+            for (Entry<Address, Collection<UUID>> e : decidedMap.asMap().entrySet()) {
                 its.put(e.getKey(), e.getValue().iterator());
             }
             while (!its.isEmpty()) {
-                Long val = null;
+                UUID val = null;
                 boolean first = true;
                 boolean end = false;
                 // copy to avoid concurrent modification exceptions
-                ImmutableSet<Entry<Address, Iterator<Long>>> entrySet = ImmutableSet.copyOf(its.entrySet());
-                for (Entry<Address, Iterator<Long>> e : entrySet) {
+                ImmutableSet<Entry<Address, Iterator<UUID>>> entrySet = ImmutableSet.copyOf(its.entrySet());
+                for (Entry<Address, Iterator<UUID>> e : entrySet) {
                     Address adr = e.getKey();
-                    Iterator<Long> it = e.getValue();
+                    Iterator<UUID> it = e.getValue();
                     if (it.hasNext()) {
-                        long iVal = it.next();
+                        UUID iVal = it.next();
                         //lastValue.put(adr, iVal);
-                        if (iVal >= 0) {
+                        if (iVal.compareTo(zeroId) >= 0) {
                             if (first) {
                                 first = false;
                                 val = iVal;
@@ -259,7 +264,7 @@ public class DecisionStore {
                                 //Assert.assertTrue("Violated property (3): Already decided " + val, validateOps.remove(val));
                             } else {
                                 if (!end) {
-                                    Assert.assertEquals("Violated propery (4)", (long) val, iVal);
+                                    Assert.assertEquals("Violated propery (4)", val, iVal);
                                 } else {
                                     Assert.fail("Violated propery (4): Some process didn't decide " + iVal);
                                 }
@@ -295,9 +300,9 @@ public class DecisionStore {
 
 
 
-            Map<Address, Iterator<Long>> its = new HashMap<Address, Iterator<Long>>();
+            Map<Address, Iterator<UUID>> its = new HashMap<Address, Iterator<UUID>>();
             //Map<Address, Long> lastValue = new HashMap<Address, Long>();
-            for (Entry<Address, Collection<Long>> e : decidedMap.asMap().entrySet()) {
+            for (Entry<Address, Collection<UUID>> e : decidedMap.asMap().entrySet()) {
                 its.put(e.getKey(), e.getValue().iterator());
             }
 
@@ -319,11 +324,11 @@ public class DecisionStore {
                 pos++;
                 //System.out.println("Printing decision " + pos + " in epoch " + epoch + " its size: " + its.size());
                 for (Address adr : group) {
-                    Iterator<Long> it = its.get(adr);
+                    Iterator<UUID> it = its.get(adr);
                     if (it != null) {
                         if (it.hasNext()) {
-                            Long val = it.next();
-                            if (val < 0) {
+                            UUID val = it.next();
+                            if (val.compareTo(zeroId) < 0) {
                                 lines.put(adr, "<td>X</td>");
                             } else {
                                 lines.put(adr, "<td>" + val + "</td>");

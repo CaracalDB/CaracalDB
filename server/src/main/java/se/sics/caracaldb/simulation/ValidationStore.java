@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.UUID;
 import junit.framework.Assert;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
@@ -35,8 +36,8 @@ import se.sics.caracaldb.operations.ResponseCode;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class ValidationStore {
-    private Map<Long, CaracalOp> requests = new TreeMap<Long, CaracalOp>();
-    private Map<Long, CaracalResponse> responses = new TreeMap<Long, CaracalResponse>();
+    private Map<UUID, CaracalOp> requests = new TreeMap<UUID, CaracalOp>();
+    private Map<UUID, CaracalResponse> responses = new TreeMap<UUID, CaracalResponse>();
     
     public synchronized void request(CaracalOp op) {
         requests.put(op.id, op);
@@ -47,8 +48,8 @@ public class ValidationStore {
     }
     
     public synchronized void validate() {
-        for (Entry<Long, CaracalOp> e : requests.entrySet()) {
-            Long id = e.getKey();
+        for (Entry<UUID, CaracalOp> e : requests.entrySet()) {
+            UUID id = e.getKey();
             CaracalOp req = e.getValue();
             CaracalResponse resp = responses.get(id);
             Assert.assertNotNull("Request " + id + " did not get a response!", resp);
@@ -59,8 +60,8 @@ public class ValidationStore {
     public synchronized void print() {
         StringBuilder sb = new StringBuilder();
         sb.append("##### Validation Store ##### \n");
-        for (Entry<Long, CaracalOp> e : requests.entrySet()) {
-            Long id = e.getKey();
+        for (Entry<UUID, CaracalOp> e : requests.entrySet()) {
+            UUID id = e.getKey();
             CaracalOp req = e.getValue();
             CaracalResponse resp = responses.get(id);
             sb.append(req);

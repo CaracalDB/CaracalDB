@@ -20,12 +20,11 @@
  */
 package se.sics.datamodel;
 
-import se.sics.datamodel.msg.DMNetworkMessage;
-import se.sics.datamodel.msg.DMMessage;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
@@ -37,6 +36,8 @@ import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.RangeQuery;
+import se.sics.datamodel.msg.DMMessage;
+import se.sics.datamodel.msg.DMNetworkMessage;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Positive;
@@ -55,13 +56,13 @@ public class ServerInterface extends ComponentDefinition {
     Positive<Network> network = requires(Network.class);
     Positive<DataModelPort> dataModel = requires(DataModelPort.class);
 
-    private final Map<Long, Address> pendingRequests; //<reqId, src>
-    private final Set<Long> pendingCaracalRequests;
+    private final Map<UUID, Address> pendingRequests; //<reqId, src>
+    private final Set<UUID> pendingCaracalRequests;
     private final Address self;
 
     public ServerInterface(ServerInterfaceInit init) {
-        this.pendingRequests = new HashMap<Long, Address>();
-        this.pendingCaracalRequests = new HashSet<Long>();
+        this.pendingRequests = new HashMap<UUID, Address>();
+        this.pendingCaracalRequests = new HashSet<UUID>();
         this.self = init.self;
 
         subscribe(networkRequestHandler, network);

@@ -21,6 +21,7 @@
 package se.sics.datamodel.msg;
 
 import java.util.Objects;
+import java.util.UUID;
 import se.sics.kompics.Event;
 
 /**
@@ -30,19 +31,19 @@ public class DMMessage {
 
     public static class Req extends Event {
 
-        public final long id;
+        public final UUID id;
 
-        public Req(long id) {
+        public Req(UUID id) {
             this.id = id;
         }
     }
 
     public static class Resp extends Event {
 
-        public final long id;
+        public final UUID id;
         public final ResponseCode respCode;
 
-        public Resp(long id, ResponseCode respCode) {
+        public Resp(UUID id, ResponseCode respCode) {
             this.id = id;
             this.respCode = respCode;
         }

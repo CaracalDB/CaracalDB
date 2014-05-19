@@ -28,6 +28,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.javatuples.Pair;
 import org.javatuples.Triplet;
 import org.junit.Assert;
@@ -58,6 +59,9 @@ import se.sics.kompics.network.netty.serialization.Serializers;
 
 @RunWith(JUnit4.class)
 public class SerializerTest {
+    
+    private static final UUID oneId = new UUID(0, 1);
+    
     @Test
     public void testResponseCode() throws DMMsgSerializer.DMException {
         ByteBuf buf;
@@ -88,7 +92,7 @@ public class SerializerTest {
         GetAllTypes.Req req, desReq;
         
         buf = Unpooled.buffer();
-        req = new GetAllTypes.Req(1, new ByteId(new byte[]{1,1}));
+        req = new GetAllTypes.Req(oneId, new ByteId(new byte[]{1,1}));
         DMMsgSerializer.serialize(GetAllTypes.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(GetAllTypes.Req.class, buf);
         Assert.assertEquals(req, desReq);
@@ -103,7 +107,7 @@ public class SerializerTest {
         
         buf = Unpooled.buffer();
         types = new TreeMap<>();
-        resp = new GetAllTypes.Resp(1, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), types);
+        resp = new GetAllTypes.Resp(oneId, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), types);
         DMMsgSerializer.serialize(GetAllTypes.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(GetAllTypes.Resp.class, buf);
         Assert.assertEquals(resp, desResp);
@@ -112,7 +116,7 @@ public class SerializerTest {
         buf = Unpooled.buffer();
         types = new TreeMap<>();
         types.put("type1", new ByteId(new byte[]{1,2}));
-        resp = new GetAllTypes.Resp(1, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), types);
+        resp = new GetAllTypes.Resp(oneId, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), types);
         DMMsgSerializer.serialize(GetAllTypes.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(GetAllTypes.Resp.class, buf);
         Assert.assertEquals(resp, desResp);
@@ -125,7 +129,7 @@ public class SerializerTest {
         GetType.Req req, desReq;
         
         buf = Unpooled.buffer();
-        req = new GetType.Req(1, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})));
+        req = new GetType.Req(oneId, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})));
         DMMsgSerializer.serialize(GetType.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(GetType.Req.class, buf);
         Assert.assertEquals(req, desReq);
@@ -138,7 +142,7 @@ public class SerializerTest {
         GetType.Resp resp, desResp;
         
         buf = Unpooled.buffer();
-        resp = new GetType.Resp(1, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), new byte[]{1,1});
+        resp = new GetType.Resp(oneId, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), new byte[]{1,1});
         DMMsgSerializer.serialize(GetType.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(GetType.Resp.class, buf);
         Assert.assertEquals(resp, desResp);
@@ -151,7 +155,7 @@ public class SerializerTest {
         PutType.Req req, desReq;
         
         buf = Unpooled.buffer();
-        req = new PutType.Req(1, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), new byte[]{1,1});
+        req = new PutType.Req(oneId, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), new byte[]{1,1});
         DMMsgSerializer.serialize(PutType.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(PutType.Req.class, buf);
         Assert.assertEquals(req, desReq);
@@ -164,7 +168,7 @@ public class SerializerTest {
         PutType.Resp resp, desResp;
         
         buf = Unpooled.buffer();
-        resp = new PutType.Resp(1, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})));
+        resp = new PutType.Resp(oneId, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})));
         DMMsgSerializer.serialize(PutType.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(PutType.Resp.class, buf);
         Assert.assertEquals(resp, desResp);
@@ -177,7 +181,7 @@ public class SerializerTest {
         GetObj.Req req, desReq;
         
         buf = Unpooled.buffer();
-        req = new GetObj.Req(1, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})));
+        req = new GetObj.Req(oneId, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})));
         DMMsgSerializer.serialize(GetObj.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(GetObj.Req.class, buf);
         Assert.assertEquals(req, desReq);
@@ -190,7 +194,7 @@ public class SerializerTest {
         GetObj.Resp resp, desResp;
         
         buf = Unpooled.buffer();
-        resp = new GetObj.Resp(1, DMMessage.ResponseCode.SUCCESS, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})), new byte[]{1,1});
+        resp = new GetObj.Resp(oneId, DMMessage.ResponseCode.SUCCESS, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})), new byte[]{1,1});
         DMMsgSerializer.serialize(GetObj.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(GetObj.Resp.class, buf);
         Assert.assertEquals(resp, desResp);
@@ -205,7 +209,7 @@ public class SerializerTest {
         
         buf = Unpooled.buffer();
         indexes = new TreeMap<>();
-        req = new PutObj.Req(1, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})), new byte[]{1,1}, indexes);
+        req = new PutObj.Req(oneId, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})), new byte[]{1,1}, indexes);
         DMMsgSerializer.serialize(PutObj.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(PutObj.Req.class, buf);
         Assert.assertEquals(req, desReq);
@@ -218,7 +222,7 @@ public class SerializerTest {
         indexes.put(new ByteId(new byte[]{1,2}), (Long)l);
         indexes.put(new ByteId(new byte[]{1,3}), (Boolean)true);
         indexes.put(new ByteId(new byte[]{1,4}), "something");
-        req = new PutObj.Req(1, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})), new byte[]{1,1}, indexes);
+        req = new PutObj.Req(oneId, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})), new byte[]{1,1}, indexes);
         DMMsgSerializer.serialize(PutObj.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(PutObj.Req.class, buf);
         Assert.assertEquals(req, desReq);
@@ -231,7 +235,7 @@ public class SerializerTest {
         PutObj.Resp resp, desResp;
         
         buf = Unpooled.buffer();
-        resp = new PutObj.Resp(1, DMMessage.ResponseCode.SUCCESS, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})));
+        resp = new PutObj.Resp(oneId, DMMessage.ResponseCode.SUCCESS, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})));
         DMMsgSerializer.serialize(PutObj.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(PutObj.Resp.class, buf);
         Assert.assertEquals(resp, desResp);
@@ -246,7 +250,7 @@ public class SerializerTest {
         
         buf = Unpooled.buffer();
         queryType = new FieldIs(1);
-        req = new QueryObj.Req(1, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), new ByteId(new byte[]{1,3}), queryType, Limit.noLimit());
+        req = new QueryObj.Req(oneId, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), new ByteId(new byte[]{1,3}), queryType, Limit.noLimit());
         DMMsgSerializer.serialize(QueryObj.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(QueryObj.Req.class, buf);
         Assert.assertEquals(req, desReq);
@@ -254,7 +258,7 @@ public class SerializerTest {
         
         buf = Unpooled.buffer();
         queryType = new FieldScan(1, 3);
-        req = new QueryObj.Req(1, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), new ByteId(new byte[]{1,3}), queryType, Limit.noLimit());
+        req = new QueryObj.Req(oneId, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), new ByteId(new byte[]{1,3}), queryType, Limit.noLimit());
         DMMsgSerializer.serialize(QueryObj.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(QueryObj.Req.class, buf);
         Assert.assertEquals(req, desReq);
@@ -269,7 +273,7 @@ public class SerializerTest {
         
         buf = Unpooled.buffer();
         objs = new TreeMap<>();
-        resp = new QueryObj.Resp(1, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), objs);
+        resp = new QueryObj.Resp(oneId, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), objs);
         DMMsgSerializer.serialize(QueryObj.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(QueryObj.Resp.class, buf);
         Assert.assertEquals(resp, desResp);
@@ -278,7 +282,7 @@ public class SerializerTest {
         buf = Unpooled.buffer();
         objs = new TreeMap<>();
         objs.put(new ByteId(new byte[]{1,1}), ByteBuffer.wrap(new byte[]{1,1}));
-        resp = new QueryObj.Resp(1, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), objs);
+        resp = new QueryObj.Resp(oneId, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), objs);
         DMMsgSerializer.serialize(QueryObj.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(QueryObj.Resp.class, buf);
         Assert.assertEquals(resp, desResp);
@@ -295,7 +299,7 @@ public class SerializerTest {
         DMNetworkMessage.Resp resp, desResp;
         
         buf = Unpooled.buffer();
-        req = new DMNetworkMessage.Req(self, self, new GetAllTypes.Req(1, new ByteId(new byte[]{1,1})));
+        req = new DMNetworkMessage.Req(self, self, new GetAllTypes.Req(oneId, new ByteId(new byte[]{1,1})));
         Serializers.toBinary(req, buf);
         desReq = (DMNetworkMessage.Req)Serializers.fromBinary(buf, Optional.absent());
         Assert.assertEquals(req, desReq);
@@ -303,7 +307,7 @@ public class SerializerTest {
         
         buf = Unpooled.buffer();
         Map<String, ByteId> typesMap = new TreeMap<>();
-        resp = new DMNetworkMessage.Resp(self, self, new GetAllTypes.Resp(1, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), typesMap));
+        resp = new DMNetworkMessage.Resp(self, self, new GetAllTypes.Resp(oneId, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), typesMap));
         Serializers.toBinary(resp, buf);
         desResp = (DMNetworkMessage.Resp)Serializers.fromBinary(buf, Optional.absent());
         Assert.assertEquals(resp, desResp);

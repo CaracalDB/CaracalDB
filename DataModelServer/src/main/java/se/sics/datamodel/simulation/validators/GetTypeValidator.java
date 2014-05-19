@@ -21,6 +21,7 @@
 package se.sics.datamodel.simulation.validators;
 
 import java.util.Arrays;
+import java.util.UUID;
 import org.junit.Assert;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetType;
@@ -30,11 +31,11 @@ import se.sics.datamodel.msg.GetType;
  */
 
 public class GetTypeValidator implements RespValidator {
-    private final long id;
+    private final UUID id;
     private final DMMessage.ResponseCode respCode;
     private final byte[] typeInfo;
 
-    public GetTypeValidator(long id, DMMessage.ResponseCode respCode, byte[] typeInfo) {
+    public GetTypeValidator(UUID id, DMMessage.ResponseCode respCode, byte[] typeInfo) {
         this.id = id;
         this.respCode = respCode;
         this.typeInfo = typeInfo;

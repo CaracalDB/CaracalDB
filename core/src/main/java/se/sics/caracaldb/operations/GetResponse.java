@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.operations;
 
+import java.util.UUID;
 import se.sics.caracaldb.Key;
 
 /**
@@ -30,11 +31,11 @@ public final class GetResponse extends CaracalResponse {
     public final Key key;
     public final byte[] data;
 
-    public GetResponse(long id, Key key, byte[] data) {
+    public GetResponse(UUID id, Key key, byte[] data) {
         this(id, key, data, ResponseCode.SUCCESS);
     }
     
-    public GetResponse(long id, Key key, byte[] data, ResponseCode code) {
+    public GetResponse(UUID id, Key key, byte[] data, ResponseCode code) {
         super(id, code);
         this.key = key;
         this.data = data;

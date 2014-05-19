@@ -23,6 +23,7 @@ package se.sics.caracaldb.operations;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
@@ -52,7 +53,7 @@ public class RangeQuery {
             this.execType = Type.SEQUENTIAL;
         }
 
-        public Request(long id, KeyRange range, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
+        public Request(UUID id, KeyRange range, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
             super(id);
             this.initRange = range;
             this.subRange = range;
@@ -61,7 +62,7 @@ public class RangeQuery {
             this.execType = execType;
         }
 
-        Request(long id, KeyRange subRange, KeyRange initRange, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
+        Request(UUID id, KeyRange subRange, KeyRange initRange, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
             super(id);
             this.initRange = initRange;
             this.subRange = subRange;
@@ -109,7 +110,7 @@ public class RangeQuery {
             this.readLimit = event.readLimit;
         }
 
-        public Response(long id, KeyRange subRange, KeyRange initRange, SortedMap<Key, byte[]> data, boolean readLimit) {
+        public Response(UUID id, KeyRange subRange, KeyRange initRange, SortedMap<Key, byte[]> data, boolean readLimit) {
             super(id, ResponseCode.SUCCESS);
             this.subRange = subRange;
             this.initRange = initRange;
@@ -125,7 +126,7 @@ public class RangeQuery {
             this.readLimit = false;
         }
         
-        Response(long id, ResponseCode code, KeyRange subRange, KeyRange initRange, SortedMap<Key, byte[]> data, boolean readLimit) {
+        Response(UUID id, ResponseCode code, KeyRange subRange, KeyRange initRange, SortedMap<Key, byte[]> data, boolean readLimit) {
             super(id, code);
             this.subRange = subRange;
             this.initRange = initRange;
@@ -196,7 +197,7 @@ public class RangeQuery {
             if (done) {
                 return;
             }
-            if (resp.id != req.id) {
+            if (!resp.id.equals(req.id)) {
                 return;
             }
             KeyRange respRange = resp.subRange;

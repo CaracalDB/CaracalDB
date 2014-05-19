@@ -21,13 +21,15 @@
 package se.sics.datamodel.operations;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.javatuples.Pair;
+import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.util.ByteId;
-import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -37,7 +39,7 @@ public class DMMultiGetObj extends DMParallelOp {
 
     private final ResultBuilder resultBuilder;
 
-    public DMMultiGetObj(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, Set<ByteId> objIds) {
+    public DMMultiGetObj(UUID id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, Set<ByteId> objIds) {
         super(id, operationsMaster);
         this.resultBuilder = new ResultBuilder(typeId, objIds);
     }
@@ -48,12 +50,13 @@ public class DMMultiGetObj extends DMParallelOp {
         LOG.debug("Operation {}  - started", toString());
 
         TimestampIdFactory tidFactory = TimestampIdFactory.get();
+        List<UUID> ids = tidFactory.newIds(resultBuilder.objs.keySet().size()).asList();
         int i = 0;
         for (ByteId objId : resultBuilder.objs.keySet()) {
-            i++;
-            DMOperation pendingOp = new DMGetObjOp(tidFactory.newId() + i, this, resultBuilder.typeId.add(objId));
+            DMOperation pendingOp = new DMGetObjOp(ids.get(i), this, resultBuilder.typeId.add(objId));
             pendingOps.put(pendingOp.id, pendingOp);
             pendingOp.start();
+            i++;
         }
 
         if (pendingOps.isEmpty()) {
@@ -62,7 +65,7 @@ public class DMMultiGetObj extends DMParallelOp {
     }
 
     @Override
-    public final void childFinished(long opId, DMOperation.Result result) {
+    public final void childFinished(UUID opId, DMOperation.Result result) {
         if (done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
@@ -137,7 +140,7 @@ public class DMMultiGetObj extends DMParallelOp {
         }
 
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
     }

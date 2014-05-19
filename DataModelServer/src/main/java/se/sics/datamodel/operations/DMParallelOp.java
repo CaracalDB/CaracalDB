@@ -23,6 +23,7 @@ package se.sics.datamodel.operations;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.kompics.Event;
@@ -33,14 +34,14 @@ import se.sics.kompics.Event;
 public abstract class DMParallelOp extends DMOperation implements DMOperationsManager {
     protected final DMOperationsManager operationsManager;
 
-    protected Map<Long, DMOperation> pendingOps; //<opId, op>
-    protected Map<Long, Long> pendingReqs; //<reqId, opId>
+    protected Map<UUID, DMOperation> pendingOps; //<opId, op>
+    protected Map<UUID, UUID> pendingReqs; //<reqId, opId>
 
-    DMParallelOp(long id, DMOperationsManager operationsManager) {
+    DMParallelOp(UUID id, DMOperationsManager operationsManager) {
         super(id);
         this.operationsManager = operationsManager;
-        this.pendingOps = new HashMap<Long, DMOperation>();
-        this.pendingReqs = new HashMap<Long, Long>();
+        this.pendingOps = new HashMap<UUID, DMOperation>();
+        this.pendingReqs = new HashMap<UUID, UUID>();
     }
 
     //*****DMOperation*****
@@ -56,7 +57,7 @@ public abstract class DMParallelOp extends DMOperation implements DMOperationsMa
             operationsManager.droppedMessage(resp);
             return;
         }
-        Long opId = pendingReqs.get(resp.id);
+        UUID opId = pendingReqs.get(resp.id);
         if (opId == null) {
             operationsManager.droppedMessage(resp);
             return;
@@ -71,7 +72,7 @@ public abstract class DMParallelOp extends DMOperation implements DMOperationsMa
 
     //*****DMOperationsMaster****
     @Override
-    public void send(long opId, long reqId, CaracalOp req) {
+    public void send(UUID opId, UUID reqId, CaracalOp req) {
         pendingReqs.put(reqId, opId);
         operationsManager.send(id, reqId, req);
     }
@@ -82,12 +83,12 @@ public abstract class DMParallelOp extends DMOperation implements DMOperationsMa
     }
     
     //***** *****
-    protected final void cleanChildOp(long opId) {
+    protected final void cleanChildOp(UUID opId) {
         pendingOps.remove(opId);
-        Iterator<Map.Entry<Long, Long>> it = pendingReqs.entrySet().iterator();
+        Iterator<Map.Entry<UUID, UUID>> it = pendingReqs.entrySet().iterator();
         while(it.hasNext()) {
-            Map.Entry<Long, Long> e = it.next();
-            if(e.getValue() == opId) {
+            Map.Entry<UUID, UUID> e = it.next();
+            if(e.getValue().equals(opId)) {
                 it.remove();
             }
         }

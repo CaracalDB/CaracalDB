@@ -22,6 +22,7 @@ package se.sics.caracaldb.paxos;
 
 import com.google.common.primitives.Ints;
 import java.io.Serializable;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.View;
@@ -137,7 +138,7 @@ public class PaxosManager extends ComponentDefinition {
 
     public static class PaxosOp extends Value implements Serializable {
 
-        public PaxosOp(long id) {
+        public PaxosOp(UUID id) {
             super(id);
         }
 
@@ -145,7 +146,7 @@ public class PaxosManager extends ComponentDefinition {
         public int compareTo(Value o) {
             if (o instanceof PaxosOp) {
                 PaxosOp pop = (PaxosOp) o;
-                return Ints.checkedCast(id - pop.id);
+                return this.id.compareTo(pop.id);
             }
             return super.baseCompareTo(o);
         }

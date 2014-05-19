@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.client.gson.msg;
 
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.store.Limit;
 import se.sics.datamodel.FieldType;
@@ -45,11 +46,11 @@ public class CQueryObj {
         this.indexVal = indexVal;
     }
 
-    public GetType.Req getTypeReq(long id) {
+    public GetType.Req getTypeReq(UUID id) {
         return new GetType.Req(id, typeId);
     }
 
-    public QueryObj.Req getQueryReq(long id, TypeInfo typeInfo) {
+    public QueryObj.Req getQueryReq(UUID id, TypeInfo typeInfo) {
         FieldType indexedField = typeInfo.get(indexId).type;
         QueryType oIndexVal = indexVal.getQueryType(indexedField);
         return new QueryObj.Req(id, typeId, indexId, oIndexVal, Limit.noLimit());

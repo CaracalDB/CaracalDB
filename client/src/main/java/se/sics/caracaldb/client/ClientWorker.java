@@ -23,6 +23,7 @@ package se.sics.caracaldb.client;
 import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +64,7 @@ public class ClientWorker extends ComponentDefinition {
     private final Address bootstrapServer;
     private final SortedSet<Address> knownNodes = new TreeSet<>();
     private final int sampleSize;
-    private Long currentRequestId = -1l;
+    private UUID currentRequestId = new UUID(-1, -1);
     private RangeQuery.SeqCollector col;
     private boolean connectionEstablished = false;
 
@@ -144,7 +145,7 @@ public class ClientWorker extends ComponentDefinition {
             LOG.debug("Handling Message {}", event);
             if (event.op instanceof CaracalResponse) {
                 CaracalResponse resp = (CaracalResponse) event.op;
-                if (resp.id != currentRequestId) {
+                if (!resp.id.equals(currentRequestId)) {
                     LOG.debug("Ignoring {} as it has already been received.", resp);
                     return;
                 }
@@ -194,7 +195,7 @@ public class ClientWorker extends ComponentDefinition {
     }
 
     private void enqueue(CaracalResponse resp) {
-        currentRequestId = -1l;
+        currentRequestId = new UUID(-1, -1);
         trigger(resp, client);
         if (responseQ != null && !responseQ.offer(resp)) {
             LOG.warn("Could not insert {} into responseQ. It's overflowing. Clean up this mess!");

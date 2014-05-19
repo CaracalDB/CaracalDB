@@ -22,6 +22,7 @@ package se.sics.caracaldb.replication.linearisable;
 
 import com.google.common.base.Optional;
 import io.netty.buffer.ByteBuf;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.KeyRange;
@@ -33,6 +34,7 @@ import se.sics.caracaldb.replication.linearisable.ExecutionEngine.SyncedUp;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
 
 /**
@@ -58,7 +60,7 @@ public class XnginSerializer implements Serializer {
             SMROp op = (SMROp) o;
             byte[] flags = BitBuffer.create(OP).finalise();
             buf.writeBytes(flags);
-            buf.writeLong(op.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(op.id, buf);
             Serializers.toBinary(op.op, buf);
             return;
         }
@@ -66,14 +68,14 @@ public class XnginSerializer implements Serializer {
             SyncedUp op = (SyncedUp) o;
             byte[] flags = BitBuffer.create(SYNCED).finalise();
             buf.writeBytes(flags);
-            buf.writeLong(op.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(op.id, buf);
             return;
         }
         if (o instanceof Scan) {
             Scan op = (Scan) o;
             byte[] flags = BitBuffer.create(SCAN).finalise();
             buf.writeBytes(flags);
-            buf.writeLong(op.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(op.id, buf);
             CustomSerialisers.serialiseKeyRange(op.range, buf);
             return;
         }
@@ -86,16 +88,16 @@ public class XnginSerializer implements Serializer {
         buf.readBytes(flagsB);
         boolean[] flags = BitBuffer.extract(8, flagsB);
         if (matches(flags, OP)) {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             CaracalOp op = (CaracalOp) Serializers.fromBinary(buf, Optional.absent());
             return new SMROp(id, op);
         }
         if (matches(flags, SYNCED)) {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             return new SyncedUp(id);
         }
         if (matches(flags, SCAN)) {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             KeyRange range = CustomSerialisers.deserialiseKeyRange(buf);
             return new Scan(id, range);
         }

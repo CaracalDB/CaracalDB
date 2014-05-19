@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.javatuples.Pair;
 import org.javatuples.Triplet;
 import se.sics.caracaldb.store.Limit.LimitTracker;
@@ -36,6 +37,7 @@ import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.FieldIs;
 import se.sics.datamodel.util.FieldScan;
 import se.sics.kompics.network.netty.serialization.Serializers;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -100,14 +102,14 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(GetAllTypes.Req req, ByteBuf buf) {
-            buf.writeLong(req.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(req.id, buf);
             buf.writeInt(req.dbId.getId().length);
             buf.writeBytes(req.dbId.getId());
         }
 
         @Override
         public GetAllTypes.Req deserialize(ByteBuf buf) {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             int dbIdLength = buf.readInt();
             byte[] dbIdByte = new byte[dbIdLength];
             buf.readBytes(dbIdByte);
@@ -121,7 +123,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(GetAllTypes.Resp resp, ByteBuf buf) throws DMException {
-            buf.writeLong(resp.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(resp.id, buf);
             DMMsgSerializer.serialize(ByteId.class, resp.dbId, buf);
             DMMsgSerializer.serialize(DMMessage.ResponseCode.class, resp.respCode, buf);
             serializeTypes(resp.types, buf);
@@ -129,7 +131,7 @@ public class DMMsgSerializer {
 
         @Override
         public GetAllTypes.Resp deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             DMMessage.ResponseCode respCode = DMMsgSerializer.deserialize(DMMessage.ResponseCode.class, buf);
             Map<String, ByteId> types = deserializeTypes(buf);
@@ -175,14 +177,14 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(GetType.Req req, ByteBuf buf) throws DMException {
-            buf.writeLong(req.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(req.id, buf);
             DMMsgSerializer.serialize(ByteId.class, req.typeId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, req.typeId.getValue1(), buf);
         }
 
         @Override
         public GetType.Req deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
             return new GetType.Req(id, Pair.with(dbId, typeId));
@@ -193,7 +195,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(GetType.Resp resp, ByteBuf buf) throws DMException {
-            buf.writeLong(resp.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(resp.id, buf);
             DMMsgSerializer.serialize(DMMessage.ResponseCode.class, resp.respCode, buf);
             DMMsgSerializer.serialize(ByteId.class, resp.typeId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, resp.typeId.getValue1(), buf);
@@ -207,7 +209,7 @@ public class DMMsgSerializer {
 
         @Override
         public GetType.Resp deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             DMMessage.ResponseCode respCode = DMMsgSerializer.deserialize(DMMessage.ResponseCode.class, buf);
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
@@ -227,7 +229,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(PutType.Req req, ByteBuf buf) throws DMException {
-            buf.writeLong(req.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(req.id, buf);
             DMMsgSerializer.serialize(ByteId.class, req.typeId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, req.typeId.getValue1(), buf);
             buf.writeInt(req.typeInfo.length);
@@ -236,7 +238,7 @@ public class DMMsgSerializer {
 
         @Override
         public PutType.Req deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
             int typeInfoLength = buf.readInt();
@@ -250,7 +252,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(PutType.Resp resp, ByteBuf buf) throws DMException {
-            buf.writeLong(resp.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(resp.id, buf);
             DMMsgSerializer.serialize(DMMessage.ResponseCode.class, resp.respCode, buf);
             DMMsgSerializer.serialize(ByteId.class, resp.typeId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, resp.typeId.getValue1(), buf);
@@ -258,7 +260,7 @@ public class DMMsgSerializer {
 
         @Override
         public PutType.Resp deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             DMMessage.ResponseCode respCode = DMMsgSerializer.deserialize(DMMessage.ResponseCode.class, buf);
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
@@ -269,7 +271,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(GetObj.Req req, ByteBuf buf) throws DMException {
-            buf.writeLong(req.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(req.id, buf);
             DMMsgSerializer.serialize(ByteId.class, req.objId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, req.objId.getValue1(), buf);
             DMMsgSerializer.serialize(ByteId.class, req.objId.getValue2(), buf);
@@ -277,7 +279,7 @@ public class DMMsgSerializer {
 
         @Override
         public GetObj.Req deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId objId = DMMsgSerializer.deserialize(ByteId.class, buf);
@@ -290,7 +292,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(GetObj.Resp resp, ByteBuf buf) throws DMException {
-            buf.writeLong(resp.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(resp.id, buf);
             DMMsgSerializer.serialize(DMMessage.ResponseCode.class, resp.respCode, buf);
             DMMsgSerializer.serialize(ByteId.class, resp.objId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, resp.objId.getValue1(), buf);
@@ -301,7 +303,7 @@ public class DMMsgSerializer {
 
         @Override
         public GetObj.Resp deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             DMMessage.ResponseCode respCode = DMMsgSerializer.deserialize(DMMessage.ResponseCode.class, buf);
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
@@ -317,7 +319,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(PutObj.Req req, ByteBuf buf) throws DMException {
-            buf.writeLong(req.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(req.id, buf);
             DMMsgSerializer.serialize(ByteId.class, req.objId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, req.objId.getValue1(), buf);
             DMMsgSerializer.serialize(ByteId.class, req.objId.getValue2(), buf);
@@ -328,7 +330,7 @@ public class DMMsgSerializer {
 
         @Override
         public PutObj.Req deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId objId = DMMsgSerializer.deserialize(ByteId.class, buf);
@@ -363,7 +365,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(PutObj.Resp resp, ByteBuf buf) throws DMException {
-            buf.writeLong(resp.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(resp.id, buf);
             DMMsgSerializer.serialize(DMMessage.ResponseCode.class, resp.respCode, buf);
             DMMsgSerializer.serialize(ByteId.class, resp.objId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, resp.objId.getValue1(), buf);
@@ -372,7 +374,7 @@ public class DMMsgSerializer {
 
         @Override
         public PutObj.Resp deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             DMMessage.ResponseCode respCode = DMMsgSerializer.deserialize(DMMessage.ResponseCode.class, buf);
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
@@ -385,7 +387,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(QueryObj.Req req, ByteBuf buf) throws DMException {
-            buf.writeLong(req.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(req.id, buf);
             DMMsgSerializer.serialize(ByteId.class, req.typeId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, req.typeId.getValue1(), buf);
             DMMsgSerializer.serialize(ByteId.class, req.indexId, buf);
@@ -408,7 +410,7 @@ public class DMMsgSerializer {
 
         @Override
         public QueryObj.Req deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId indexId = DMMsgSerializer.deserialize(ByteId.class, buf);
@@ -438,7 +440,7 @@ public class DMMsgSerializer {
 
         @Override
         public void serialize(QueryObj.Resp resp, ByteBuf buf) throws DMException {
-            buf.writeLong(resp.id);
+            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(resp.id, buf);
             DMMsgSerializer.serialize(DMMessage.ResponseCode.class, resp.respCode, buf);
             DMMsgSerializer.serialize(ByteId.class, resp.typeId.getValue0(), buf);
             DMMsgSerializer.serialize(ByteId.class, resp.typeId.getValue1(), buf);
@@ -447,7 +449,7 @@ public class DMMsgSerializer {
 
         @Override
         public QueryObj.Resp deserialize(ByteBuf buf) throws DMException {
-            long id = buf.readLong();
+            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             DMMessage.ResponseCode respCode = DMMsgSerializer.deserialize(DMMessage.ResponseCode.class, buf);
             ByteId dbId = DMMsgSerializer.deserialize(ByteId.class, buf);
             ByteId typeId = DMMsgSerializer.deserialize(ByteId.class, buf);

@@ -24,6 +24,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -53,7 +54,7 @@ public class SerializationTest {
         
         // PUT
         // REQ
-        PutRequest pr = new PutRequest(1234l, k, data);
+        PutRequest pr = new PutRequest(UUID.randomUUID(), k, data);
         CaracalMsg msg = new CaracalMsg(source, dest, pr);
         opS.toBinary(msg, buf);
         //TODO finish

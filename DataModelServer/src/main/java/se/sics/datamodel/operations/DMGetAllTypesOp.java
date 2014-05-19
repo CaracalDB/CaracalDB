@@ -20,14 +20,15 @@
  */
 package se.sics.datamodel.operations;
 
-import se.sics.datamodel.operations.primitives.DMCRQOp;
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetAllTypes;
+import se.sics.datamodel.operations.primitives.DMCRQOp;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
 
@@ -38,7 +39,7 @@ public class DMGetAllTypesOp extends DMSequentialOp {
 
     private final ByteId dbId;
 
-    public DMGetAllTypesOp(long id, DMOperationsManager operationsManager, ByteId dbId) {
+    public DMGetAllTypesOp(UUID id, DMOperationsManager operationsManager, ByteId dbId) {
         super(id, operationsManager);
         this.dbId = dbId;
     }
@@ -59,7 +60,7 @@ public class DMGetAllTypesOp extends DMSequentialOp {
     }
 
     @Override
-    public final void childFinished(long opId, DMOperation.Result result) {
+    public final void childFinished(UUID opId, DMOperation.Result result) {
         if (done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
@@ -114,7 +115,7 @@ public class DMGetAllTypesOp extends DMSequentialOp {
         }
 
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             return new GetAllTypes.Resp(msgId, responseCode, dbId, types);
         }
     }

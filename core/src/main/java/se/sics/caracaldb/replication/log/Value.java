@@ -22,6 +22,7 @@ package se.sics.caracaldb.replication.log;
 
 import com.google.common.collect.ComparisonChain;
 import java.io.Serializable;
+import java.util.UUID;
 
 /**
  *
@@ -29,9 +30,9 @@ import java.io.Serializable;
  */
 public abstract class Value implements Comparable<Value>, Serializable {
     
-    public final long id;
+    public final UUID id;
     
-    public Value(long id) {
+    public Value(UUID id) {
         this.id = id;
     }
 

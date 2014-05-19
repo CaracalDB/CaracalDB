@@ -22,14 +22,15 @@ package se.sics.datamodel.operations;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 import org.javatuples.Triplet;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.PutObj;
 import se.sics.datamodel.operations.primitives.DMPutOp;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
-import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -40,7 +41,7 @@ public class DMPutObjOp extends DMParallelOp {
     private final byte[] value;
     private final Map<ByteId, Object> indexValues;
 
-    public DMPutObjOp(long id, DMOperationsManager operationsMaster, Triplet<ByteId, ByteId, ByteId> objId, byte[] value, Map<ByteId, Object> indexValues) {
+    public DMPutObjOp(UUID id, DMOperationsManager operationsMaster, Triplet<ByteId, ByteId, ByteId> objId, byte[] value, Map<ByteId, Object> indexValues) {
         super(id, operationsMaster);
         this.objId = objId;
         this.value = value;
@@ -82,7 +83,7 @@ public class DMPutObjOp extends DMParallelOp {
     }
 
     @Override
-    public void childFinished(long opId, DMOperation.Result result) {
+    public void childFinished(UUID opId, DMOperation.Result result) {
         if (done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
@@ -126,7 +127,7 @@ public class DMPutObjOp extends DMParallelOp {
         }
 
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             return new PutObj.Resp(msgId, responseCode, objId);
         }
     }

@@ -23,14 +23,15 @@ package se.sics.datamodel.client;
 import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.global.Sample;
-import se.sics.datamodel.msg.DMMessage;
-import se.sics.datamodel.msg.DMNetworkMessage;
 import se.sics.caracaldb.global.SampleRequest;
 import se.sics.caracaldb.operations.RangeQuery;
+import se.sics.datamodel.msg.DMMessage;
+import se.sics.datamodel.msg.DMNetworkMessage;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
@@ -57,7 +58,7 @@ public class ClientWorker extends ComponentDefinition {
     private final Address bootstrapServer;
     private final SortedSet<Address> knownNodes = new TreeSet<Address>();
     private final int sampleSize;
-    private Long currentRequestId = -1l;
+    private UUID currentRequestId =new UUID(-1, -1);
     private RangeQuery.SeqCollector col;
 
     public ClientWorker(ClientWorkerInit init) {
@@ -132,7 +133,7 @@ public class ClientWorker extends ComponentDefinition {
     }
 
     private void dmEnqueue(DMMessage.Resp resp) {
-        currentRequestId = -1l;
+        currentRequestId = new UUID(-1, -1);
         if (dataModelQ != null && !dataModelQ.offer(resp)) {
             LOG.warn("Could not insert {} into responseQ. It's overflowing. Clean up this mess!");
         }

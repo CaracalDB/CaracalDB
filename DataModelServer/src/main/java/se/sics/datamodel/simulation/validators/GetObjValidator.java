@@ -21,6 +21,7 @@
 package se.sics.datamodel.simulation.validators;
 
 import java.util.Arrays;
+import java.util.UUID;
 import org.junit.Assert;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetObj;
@@ -30,11 +31,11 @@ import se.sics.datamodel.msg.GetObj;
  */
 
 public class GetObjValidator implements RespValidator {
-    private final long id;
+    private final UUID id;
     private final DMMessage.ResponseCode respCode;
     private final byte[] objValue;
 
-    public GetObjValidator(long id, DMMessage.ResponseCode respCode, byte[] objValue) {
+    public GetObjValidator(UUID id, DMMessage.ResponseCode respCode, byte[] objValue) {
         this.id = id;
         this.respCode = respCode;
         this.objValue = objValue;

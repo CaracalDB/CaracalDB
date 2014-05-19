@@ -21,14 +21,15 @@
 package se.sics.datamodel.operations;
 
 import java.io.IOException;
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetType;
 import se.sics.datamodel.operations.primitives.DMGetOp;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
-import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -37,7 +38,7 @@ public class DMGetTypeOp extends DMSequentialOp {
 
     private final Pair<ByteId,ByteId> typeId;
 
-    public DMGetTypeOp(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId) {
+    public DMGetTypeOp(UUID id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId) {
         super(id, operationsMaster);
         this.typeId = typeId;
     }
@@ -106,7 +107,7 @@ public class DMGetTypeOp extends DMSequentialOp {
 //    }
 
     @Override 
-    public void childFinished(long opId, DMOperation.Result result) {
+    public void childFinished(UUID opId, DMOperation.Result result) {
         if(done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
@@ -151,7 +152,7 @@ public class DMGetTypeOp extends DMSequentialOp {
         }
 
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             return new GetType.Resp(msgId, responseCode, typeId, typeInfo);
         }
     }

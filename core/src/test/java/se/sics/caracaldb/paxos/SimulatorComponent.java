@@ -68,7 +68,7 @@ public class SimulatorComponent extends ComponentDefinition {
     private TreeMap<Integer, Address> group = new TreeMap<Integer, Address>();
     private InetAddress localIP;
     private DecisionStore store;
-    private long opId = 0;
+    private UUID opId = new UUID(0, 0);
 
     public SimulatorComponent() {
         try {
@@ -134,7 +134,7 @@ public class SimulatorComponent extends ComponentDefinition {
             PaxosManager.PaxosOp op = new PaxosManager.PaxosOp(opId);
             trigger(new Propose(op), c.getNegative(PaxosManagerPort.class));
             store.proposed(adr, op);
-            opId++;
+            opId = new UUID(0, opId.getLeastSignificantBits()+1);
         }
     };
     Handler<Commands.Join> joinHandler = new Handler<Commands.Join>() {
@@ -149,7 +149,7 @@ public class SimulatorComponent extends ComponentDefinition {
             //ImmutableSet<Address> emptyGroup = ImmutableSet.of();
             View v = new View(ImmutableSortedSet.copyOf(group.values()), epoch + 1);
             bootNode(adr, null);
-            trigger(new Propose(new Reconfigure(UUID.randomUUID().getLeastSignificantBits(), v, group.size() / 2 + 1)), oldC.getNegative(PaxosManagerPort.class));
+            trigger(new Propose(new Reconfigure(UUID.randomUUID(), v, group.size() / 2 + 1)), oldC.getNegative(PaxosManagerPort.class));
 
         }
     };

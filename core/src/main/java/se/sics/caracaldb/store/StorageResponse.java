@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.store;
 
+import java.util.UUID;
 import se.sics.kompics.Response;
 
 /**
@@ -28,7 +29,7 @@ import se.sics.kompics.Response;
  */
 public abstract class StorageResponse extends Response {
     
-    private long id;
+    private final UUID id;
     public final Diff diff;
     
     public StorageResponse(StorageRequest req, Diff diff) {
@@ -38,11 +39,11 @@ public abstract class StorageResponse extends Response {
     }
     
     /**
-     * Set optional id to match up requests
+     * Get optional id to match up requests
      * 
-     * @param val 
+     * @return id 
      */
-    public long getId() {
+    public UUID getId() {
         return id;
     }
 }

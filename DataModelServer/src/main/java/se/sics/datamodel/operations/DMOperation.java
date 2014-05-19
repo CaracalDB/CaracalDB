@@ -20,11 +20,12 @@
  */
 package se.sics.datamodel.operations;
 
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.datamodel.DataModel;
 import se.sics.datamodel.msg.DMMessage;
-import se.sics.caracaldb.operations.CaracalResponse;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -33,10 +34,10 @@ public abstract class DMOperation {
 
     protected static final Logger LOG = LoggerFactory.getLogger(DataModel.class);
 
-    public final long id;
+    public final UUID id;
     protected boolean done;
 
-    public DMOperation(long id) {
+    public DMOperation(UUID id) {
         this.id = id;
         this.done = false;
     }
@@ -62,6 +63,6 @@ public abstract class DMOperation {
             this.responseCode = responseCode;
         }
         
-        public abstract DMMessage.Resp getMsg(long msgId);
+        public abstract DMMessage.Resp getMsg(UUID msgId);
     }
 }

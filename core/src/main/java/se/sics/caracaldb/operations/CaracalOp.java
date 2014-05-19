@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.operations;
 
+import java.util.UUID;
 import se.sics.kompics.KompicsEvent;
 
 
@@ -29,9 +30,9 @@ import se.sics.kompics.KompicsEvent;
  */
 public abstract class CaracalOp implements KompicsEvent {
 
-    public final long id;
+    public final UUID id;
 
-    public CaracalOp(long id) {
+    public CaracalOp(UUID id) {
         this.id = id;
     }
     

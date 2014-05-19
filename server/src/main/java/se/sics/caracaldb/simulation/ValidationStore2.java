@@ -131,7 +131,8 @@ public class ValidationStore2 {
 
         @Override
         public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
-            if (resp.id != req.id) {
+            LOG.trace("Got response {}", resp);
+            if (!resp.id.equals(req.id)) {
                 LOG.debug("was not expecting resp {}", resp);
                 return false;
             } else if (resp instanceof GetResponse) {
@@ -162,7 +163,8 @@ public class ValidationStore2 {
 
         @Override
         public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
-            if (resp.id != req.id) {
+            LOG.trace("Got response {}", resp);
+            if (!resp.id.equals(req.id)) {
                 LOG.debug("was not expecting resp {}", resp);
                 return false;
             } else if (resp instanceof PutResponse) {
@@ -194,7 +196,8 @@ public class ValidationStore2 {
 
         @Override
         public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
-            if (resp.id != req.id) {
+            LOG.trace("Got response {}", resp);
+            if (!resp.id.equals(req.id)) {
                 LOG.debug("was not expecting resp {}", resp);
                 return false;
             } else if (resp instanceof RangeQuery.Response) {

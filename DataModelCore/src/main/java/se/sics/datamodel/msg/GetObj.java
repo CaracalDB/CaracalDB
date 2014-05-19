@@ -22,6 +22,7 @@ package se.sics.datamodel.msg;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.UUID;
 import org.javatuples.Triplet;
 import se.sics.datamodel.util.ByteId;
 
@@ -34,7 +35,7 @@ public class GetObj {
 
         public final Triplet<ByteId, ByteId, ByteId> objId; //revert once support for serializing Tuples
         
-        public Req(long id, Triplet<ByteId, ByteId, ByteId> objId) {
+        public Req(UUID id, Triplet<ByteId, ByteId, ByteId> objId) {
             super(id);
             this.objId = objId;
         }
@@ -47,7 +48,7 @@ public class GetObj {
         @Override
         public int hashCode() {
             int hash = 3;
-            hash = 79 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 79 * hash + Objects.hashCode(this.id);
             hash = 79 * hash + Objects.hashCode(this.objId);
             return hash;
         }
@@ -61,7 +62,7 @@ public class GetObj {
                 return false;
             }
             final Req other = (Req) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (!Objects.equals(this.objId, other.objId)) {
@@ -76,7 +77,7 @@ public class GetObj {
         
         public final byte[] value;
 
-        public Resp(long id, DMMessage.ResponseCode opResult, Triplet<ByteId, ByteId, ByteId> objId, byte[] value) {
+        public Resp(UUID id, DMMessage.ResponseCode opResult, Triplet<ByteId, ByteId, ByteId> objId, byte[] value) {
             super(id, opResult);
             this.objId = objId;
             this.value = value;
@@ -90,7 +91,7 @@ public class GetObj {
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 53 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 53 * hash + Objects.hashCode(this.id);
             hash = 53 * hash + Objects.hashCode(this.respCode);
             hash = 53 * hash + Objects.hashCode(this.objId);
             hash = 53 * hash + Arrays.hashCode(this.value);
@@ -106,7 +107,7 @@ public class GetObj {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id, other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {

@@ -20,7 +20,7 @@
  */
 package se.sics.caracaldb.operations;
 
-import se.sics.kompics.address.Address;
+import java.util.UUID;
 
 /**
  *
@@ -30,7 +30,7 @@ public class CaracalResponse extends CaracalOp {
 
     public final ResponseCode code;
 
-    public CaracalResponse(long id, ResponseCode code) {
+    public CaracalResponse(UUID id, ResponseCode code) {
         super(id);
         this.code = code;
     }

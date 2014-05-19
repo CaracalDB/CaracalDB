@@ -21,6 +21,7 @@
 package se.sics.caracaldb.replication.log;
 
 import com.google.common.collect.ComparisonChain;
+import java.util.UUID;
 import se.sics.caracaldb.View;
 
 /**
@@ -32,7 +33,7 @@ public class Reconfigure extends Value {
     public final View view;
     public final int quorum;
 
-    public Reconfigure(long id, View v, int quorum) {
+    public Reconfigure(UUID id, View v, int quorum) {
         super(id);
         this.view = v;
         this.quorum = quorum;

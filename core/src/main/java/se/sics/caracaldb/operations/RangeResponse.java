@@ -21,6 +21,7 @@
 package se.sics.caracaldb.operations;
 
 import java.util.TreeMap;
+import java.util.UUID;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 
@@ -35,7 +36,7 @@ public class RangeResponse extends CaracalResponse {
     public final KeyRange initRange;
     public final KeyRange coveredRange;
 
-    public RangeResponse(long id, KeyRange initRange, ResponseCode code, KeyRange coveredRange, TreeMap<Key, byte[]> results) {
+    public RangeResponse(UUID id, KeyRange initRange, ResponseCode code, KeyRange coveredRange, TreeMap<Key, byte[]> results) {
         super(id, code);
         this.initRange = initRange;
         this.coveredRange = coveredRange;

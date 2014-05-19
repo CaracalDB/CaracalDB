@@ -20,10 +20,14 @@
  */
 package se.sics.caracaldb.utils;
 
+import com.google.common.collect.ImmutableSortedSet;
+import java.util.UUID;
+
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public interface IdFactory {
-    public long newId();
+    public UUID newId();
+    public ImmutableSortedSet<UUID> newIds(int n);
 }

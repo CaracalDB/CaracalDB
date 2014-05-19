@@ -23,6 +23,7 @@ package se.sics.caracaldb.simulation;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
@@ -92,6 +93,7 @@ public class Experiment2 extends ComponentDefinition {
 
         @Override
         public void handle(CaracalMsg resp) {
+            LOG.trace("Got response {}", resp);
             try {
                 idle = validator.validateAndContinue((CaracalResponse)resp.op);
             } catch (ValidationStore2.ValidatorException ex) {
@@ -123,7 +125,7 @@ public class Experiment2 extends ComponentDefinition {
         if (op instanceof PutCmd) {
             idle = false;
             
-            long id = TimestampIdFactory.get().newId();
+            UUID id = TimestampIdFactory.get().newId();
             Key k = randomKey(8);
             Key val = randomKey(32);
             PutRequest put = new PutRequest(id, k, val.getArray());
@@ -133,7 +135,7 @@ public class Experiment2 extends ComponentDefinition {
             trigger(put, expExecutor);
         } else if (op instanceof RQCmd) {
             idle = false;
-            long id = TimestampIdFactory.get().newId();
+            UUID id = TimestampIdFactory.get().newId();
             Key key1 = randomKey(8);
             Key key2 = randomKey(8);
             KeyRange range;

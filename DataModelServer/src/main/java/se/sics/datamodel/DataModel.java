@@ -23,10 +23,14 @@ package se.sics.datamodel;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 import org.javatuples.Pair;
 import org.javatuples.Triplet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.operations.CaracalOp;
+import se.sics.caracaldb.operations.CaracalResponse;
+import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.datamodel.msg.GetAllTypes;
 import se.sics.datamodel.msg.GetObj;
 import se.sics.datamodel.msg.GetType;
@@ -41,9 +45,6 @@ import se.sics.datamodel.operations.DMOperationsManager;
 import se.sics.datamodel.operations.DMPutObjOp;
 import se.sics.datamodel.operations.DMPutTypeOp;
 import se.sics.datamodel.operations.DMQueryObjOp;
-import se.sics.caracaldb.operations.CaracalOp;
-import se.sics.caracaldb.operations.CaracalResponse;
-import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
@@ -57,16 +58,16 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
     Negative<DataModelPort> dataModel = provides(DataModelPort.class);
 
-    private Map<Long, DMOperation> pendingOps; //<opId, op>
-    private Map<Long, Long> pendingReqs; //<reqId, opId>
+    private Map<UUID, DMOperation> pendingOps; //<opId, op>
+    private Map<UUID, UUID> pendingReqs; //<reqId, opId>
     private TimestampIdFactory tidFactory;
     private DMOperationsManager operationsManager;
 
     public DataModel(DataModelInit init) {
         tidFactory = TimestampIdFactory.get();
         operationsManager = this;
-        pendingOps = new HashMap<Long, DMOperation>();
-        pendingReqs = new HashMap<Long, Long>();
+        pendingOps = new HashMap<UUID, DMOperation>();
+        pendingReqs = new HashMap<UUID, UUID>();
 
 //        subscribe(requestHandler, dataModel);
         subscribe(getAllTypesHandler, dataModel);
@@ -149,7 +150,7 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
         @Override
         public void handle(CaracalResponse event) {
-            Long opId = pendingReqs.remove(event.id);
+            UUID opId = pendingReqs.remove(event.id);
             if(opId == null) {
                 LOG.warn("opId null - investigate");
                 return;
@@ -162,14 +163,14 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
 
     //*****DMOperationsManager*****
     @Override
-    public void send(long opId, long reqId, CaracalOp req) {
+    public void send(UUID opId, UUID reqId, CaracalOp req) {
         LOG.debug("sending " + req.toString());
         pendingReqs.put(reqId, opId);
         trigger(req, dataModel);
     }
 
     @Override
-    public void childFinished(long opId, DMOperation.Result opResult) {
+    public void childFinished(UUID opId, DMOperation.Result opResult) {
         trigger(opResult.getMsg(opId), dataModel);
         cleanOp(opId);
     }
@@ -179,12 +180,12 @@ public class DataModel extends ComponentDefinition implements DMOperationsManage
         LOG.warn("Dropping message {}", resp);
     }
 
-    private void cleanOp(long opId) {
+    private void cleanOp(UUID opId) {
         pendingOps.remove(opId);
-        Iterator<Map.Entry<Long, Long>> it = pendingReqs.entrySet().iterator();
+        Iterator<Map.Entry<UUID, UUID>> it = pendingReqs.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry<Long, Long> e = it.next();
-            if (e.getValue() == opId) {
+            Map.Entry<UUID, UUID> e = it.next();
+            if (e.getValue().equals(opId)) {
                 it.remove();
             }
         }

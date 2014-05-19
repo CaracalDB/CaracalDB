@@ -24,6 +24,7 @@ import com.google.common.base.Optional;
 import io.netty.buffer.ByteBuf;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
@@ -108,7 +109,7 @@ public class OperationSerializer implements Serializer {
     }
 
     private void toBinaryOp(CaracalOp caracalOp, ByteBuf buf, BitBuffer flags) {
-        buf.writeLong(caracalOp.id);
+        SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(caracalOp.id, buf);
         if (caracalOp instanceof GetRequest) {
             flags.write(REQ);
             flags.write(GET);
@@ -197,7 +198,7 @@ public class OperationSerializer implements Serializer {
     }
 
     private CaracalOp fromBinaryOp(ByteBuf buf, boolean[] flags) {
-        long id = buf.readLong();
+        UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         boolean direction = flags[1];
         if (direction == REQ) {
             return fromBinaryReq(buf, flags, id);
@@ -208,7 +209,7 @@ public class OperationSerializer implements Serializer {
         return null; // shouldn't get here
     }
 
-    private CaracalOp fromBinaryReq(ByteBuf buf, boolean[] flags, long id) {
+    private CaracalOp fromBinaryReq(ByteBuf buf, boolean[] flags, UUID id) {
         if (matches(flags, GET)) {
             Key key = CustomSerialisers.deserialiseKey(buf);
             return new GetRequest(id, key);
@@ -232,7 +233,7 @@ public class OperationSerializer implements Serializer {
         return null;
     }
 
-    private CaracalOp fromBinaryResp(ByteBuf buf, boolean[] flags, long id) {
+    private CaracalOp fromBinaryResp(ByteBuf buf, boolean[] flags, UUID id) {
         ResponseCode code = ResponseCode.byId(buf.readByte());
         if (matches(flags, GET)) {
             Key key = CustomSerialisers.deserialiseKey(buf);

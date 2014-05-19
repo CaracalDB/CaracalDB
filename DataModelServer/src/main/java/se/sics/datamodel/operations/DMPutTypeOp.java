@@ -20,15 +20,16 @@
  */
 package se.sics.datamodel.operations;
 
-import se.sics.datamodel.operations.primitives.DMPutOp;
 import java.io.IOException;
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.PutType;
+import se.sics.datamodel.operations.primitives.DMPutOp;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
-import se.sics.caracaldb.utils.TimestampIdFactory;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -38,7 +39,7 @@ public class DMPutTypeOp extends DMSequentialOp {
     private final Pair<ByteId, ByteId> typeId;
     private final byte[] typeInfo;
 
-    public DMPutTypeOp(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
+    public DMPutTypeOp(UUID id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
         super(id, operationsMaster);
         this.typeId = typeId;
         this.typeInfo = typeInfo;
@@ -102,7 +103,7 @@ public class DMPutTypeOp extends DMSequentialOp {
 //        fail(DMMessage.ResponseCode.FAILURE);
 //    }
     @Override
-    public void childFinished(long opId, DMOperation.Result result) {
+    public void childFinished(UUID opId, DMOperation.Result result) {
         if (done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
@@ -145,7 +146,7 @@ public class DMPutTypeOp extends DMSequentialOp {
         }
 
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             return new PutType.Resp(msgId, responseCode, typeId);
         }
     }

@@ -22,6 +22,7 @@ package se.sics.datamodel.msg;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.datamodel.util.ByteId;
 
@@ -34,7 +35,7 @@ public class GetType {
 
         public final Pair<ByteId,ByteId> typeId; //<dbId, typeId>//fix later to serialize Tuples
 
-        public Req(long id, Pair<ByteId, ByteId> typeId) {
+        public Req(UUID id, Pair<ByteId, ByteId> typeId) {
             super(id);
             this.typeId = typeId;
         }
@@ -47,7 +48,7 @@ public class GetType {
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 97 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 97 * hash + Objects.hashCode(this.id);
             hash = 97 * hash + Objects.hashCode(this.typeId);
             return hash;
         }
@@ -61,7 +62,7 @@ public class GetType {
                 return false;
             }
             final Req other = (Req) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id,other.id)) {
                 return false;
             }
             if (!Objects.equals(this.typeId, other.typeId)) {
@@ -75,7 +76,7 @@ public class GetType {
         public final Pair<ByteId, ByteId> typeId;
         public final byte[] typeInfo;
 
-        public Resp(long id, DMMessage.ResponseCode opResult, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
+        public Resp(UUID id, DMMessage.ResponseCode opResult, Pair<ByteId, ByteId> typeId, byte[] typeInfo) {
             super(id, opResult);
             this.typeId = typeId;
             this.typeInfo = typeInfo;
@@ -89,7 +90,7 @@ public class GetType {
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 19 * hash + (int) (this.id ^ (this.id >>> 32));
+            hash = 19 * hash + Objects.hashCode(this.id);
             hash = 19 * hash + Objects.hashCode(this.respCode);
             hash = 19 * hash + Objects.hashCode(this.typeId);
             hash = 19 * hash + Arrays.hashCode(this.typeInfo);
@@ -105,7 +106,7 @@ public class GetType {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (this.id != other.id) {
+            if (!Objects.equals(this.id,other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {

@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.operations;
 
+import java.util.UUID;
 import se.sics.caracaldb.Key;
 
 /**
@@ -29,7 +30,7 @@ import se.sics.caracaldb.Key;
 public final class GetRequest extends CaracalOp {
     public final Key key;
 
-    public GetRequest(long id, Key key) {
+    public GetRequest(UUID id, Key key) {
         super(id);
         this.key = key;
     }

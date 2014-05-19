@@ -20,14 +20,15 @@
  */
 package se.sics.datamodel.operations.primitives;
 
+import java.util.UUID;
 import se.sics.caracaldb.Key;
-import se.sics.datamodel.msg.DMMessage;
-import se.sics.datamodel.operations.DMOperation;
-import se.sics.datamodel.operations.DMOperationsManager;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.PutResponse;
 import se.sics.caracaldb.operations.ResponseCode;
+import se.sics.datamodel.msg.DMMessage;
+import se.sics.datamodel.operations.DMOperation;
+import se.sics.datamodel.operations.DMOperationsManager;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -37,7 +38,7 @@ public class DMPutOp extends DMOperation {
     private final DMOperationsManager operationsManager;
     private final PutRequest req;
 
-    public DMPutOp(long id, DMOperationsManager operationsManager, Key key, byte[] value) {
+    public DMPutOp(UUID id, DMOperationsManager operationsManager, Key key, byte[] value) {
         super(id);
         this.operationsManager = operationsManager;
         this.req = new PutRequest(id, key, value);
@@ -98,7 +99,7 @@ public class DMPutOp extends DMOperation {
         }
 
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
     }

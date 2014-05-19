@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.simulation.validators;
 
+import java.util.UUID;
 import org.junit.Assert;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.PutObj;
@@ -30,10 +31,10 @@ import se.sics.datamodel.msg.PutObj;
 
 
 public class PutObjValidator implements RespValidator {
-    private final long id;
+    private final UUID id;
     private final DMMessage.ResponseCode respCode;
     
-    public PutObjValidator(long id, DMMessage.ResponseCode respCode) {
+    public PutObjValidator(UUID id, DMMessage.ResponseCode respCode) {
         this.id = id;
         this.respCode = respCode;
     }

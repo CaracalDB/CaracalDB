@@ -28,6 +28,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -137,7 +138,7 @@ public class SerializationTest {
         buf.clear();
         
         // INSTALL
-        Reconfigure reconf = new Reconfigure(1, v, 3);
+        Reconfigure reconf = new Reconfigure(new UUID(0, 1), v, 3);
         Install install = new Install(source, dest, 1, reconf, 10, ImmutableSortedMap.of(1l, Noop.val, 2l, Noop.val));
         paxosS.toBinary(install, buf);
         Install install2 = (Install) paxosS.fromBinary(buf, Optional.absent());

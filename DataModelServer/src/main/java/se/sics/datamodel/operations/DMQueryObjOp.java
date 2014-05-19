@@ -25,17 +25,18 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit.LimitTracker;
+import se.sics.caracaldb.utils.TimestampIdFactory;
+import se.sics.datamodel.QueryType;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.QueryObj;
 import se.sics.datamodel.operations.primitives.DMCRQOp;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
-import se.sics.caracaldb.utils.TimestampIdFactory;
-import se.sics.datamodel.QueryType;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -46,7 +47,7 @@ public class DMQueryObjOp extends DMSequentialOp {
     private final QueryType indexVal;
     private final LimitTracker limit;
     
-    public DMQueryObjOp(long id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType indexValue, LimitTracker limit) {
+    public DMQueryObjOp(UUID id, DMOperationsManager operationsMaster, Pair<ByteId, ByteId> typeId, ByteId indexId, QueryType indexValue, LimitTracker limit) {
         super(id, operationsMaster);
         this.typeId = typeId;
         this.indexId = indexId;
@@ -71,7 +72,7 @@ public class DMQueryObjOp extends DMSequentialOp {
     }
     
     @Override
-    public void childFinished(long opId, DMOperation.Result result) {
+    public void childFinished(UUID opId, DMOperation.Result result) {
         if(done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
@@ -146,7 +147,7 @@ public class DMQueryObjOp extends DMSequentialOp {
         }
         
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             return new QueryObj.Resp(msgId, responseCode, typeId, objs);
         }
     }

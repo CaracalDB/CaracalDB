@@ -20,9 +20,10 @@
  */
 package se.sics.datamodel.operations;
 
-import static se.sics.datamodel.operations.DMOperation.LOG;
+import java.util.UUID;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
+import static se.sics.datamodel.operations.DMOperation.LOG;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -32,7 +33,7 @@ public abstract class DMSequentialOp extends DMOperation implements DMOperations
     protected final DMOperationsManager operationsManager;
     protected DMOperation pendingOp;
 
-    protected DMSequentialOp(long id, DMOperationsManager operationsManager) {
+    protected DMSequentialOp(UUID id, DMOperationsManager operationsManager) {
         super(id);
         this.operationsManager = operationsManager;
         this.done = false;
@@ -56,7 +57,7 @@ public abstract class DMSequentialOp extends DMOperation implements DMOperations
 
     //*****DMOperationManager*****
     @Override
-    public final void send(long opId, long reqId, CaracalOp req) {
+    public final void send(UUID opId, UUID reqId, CaracalOp req) {
         operationsManager.send(id, reqId, req);
     }
 

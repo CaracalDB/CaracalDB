@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.operations;
 
+import java.util.UUID;
 import se.sics.caracaldb.operations.CaracalOp;
 
 /**
@@ -27,9 +28,9 @@ import se.sics.caracaldb.operations.CaracalOp;
  */
 public interface DMOperationsManager {
 
-    public void send(long opId, long reqId, CaracalOp req);
+    public void send(UUID opId, UUID reqId, CaracalOp req);
 
-    public void childFinished(long opId, DMOperation.Result result);
+    public void childFinished(UUID opId, DMOperation.Result result);
 
     public void droppedMessage(CaracalOp msg);
 }

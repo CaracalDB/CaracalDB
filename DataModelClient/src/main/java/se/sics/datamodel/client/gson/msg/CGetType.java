@@ -20,6 +20,7 @@
  */
 package se.sics.datamodel.client.gson.msg;
 
+import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.datamodel.msg.GetType;
 import se.sics.datamodel.util.ByteId;
@@ -36,7 +37,7 @@ public class CGetType {
         this.typeId = typeId;
     }
     
-    public GetType.Req getReq(long reqId) {
+    public GetType.Req getReq(UUID reqId) {
         return new GetType.Req(reqId, typeId);
     }
 }

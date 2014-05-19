@@ -20,12 +20,13 @@
  */
 package se.sics.datamodel.operations;
 
-import se.sics.datamodel.operations.primitives.DMGetOp;
 import java.io.IOException;
+import java.util.UUID;
 import org.javatuples.Triplet;
 import se.sics.caracaldb.Key;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.GetObj;
+import se.sics.datamodel.operations.primitives.DMGetOp;
 import se.sics.datamodel.util.ByteId;
 import se.sics.datamodel.util.DMKeyFactory;
 
@@ -36,7 +37,7 @@ public class DMGetObjOp extends DMSequentialOp {
 
     private final Triplet<ByteId, ByteId, ByteId> objId;
 
-    public DMGetObjOp(long id, DMOperationsManager operationsMaster, Triplet<ByteId, ByteId, ByteId> objId) {
+    public DMGetObjOp(UUID id, DMOperationsManager operationsMaster, Triplet<ByteId, ByteId, ByteId> objId) {
         super(id, operationsMaster);
         this.objId = objId;
     }
@@ -58,7 +59,7 @@ public class DMGetObjOp extends DMSequentialOp {
     }
 
     @Override
-    public void childFinished(long opId, DMOperation.Result result) {
+    public void childFinished(UUID opId, DMOperation.Result result) {
         if(done) {
             LOG.warn("Operation {} - logical error", toString());
             return;
@@ -103,7 +104,7 @@ public class DMGetObjOp extends DMSequentialOp {
         }
 
         @Override
-        public DMMessage.Resp getMsg(long msgId) {
+        public DMMessage.Resp getMsg(UUID msgId) {
             return new GetObj.Resp(msgId, responseCode, objId, value);
         }
     }

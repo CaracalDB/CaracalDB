@@ -22,6 +22,7 @@ package se.sics.datamodel.simulation.validators;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.Assert;
 import se.sics.datamodel.msg.DMMessage;
 import se.sics.datamodel.msg.QueryObj;
@@ -32,11 +33,11 @@ import se.sics.datamodel.util.ByteId;
  */
 
 public class QueryObjValidator implements RespValidator {
-    private final long id;
+    private final UUID id;
     private final DMMessage.ResponseCode respCode;
     private final Map<ByteId, ByteBuffer> objs;
     
-    public QueryObjValidator(long id, DMMessage.ResponseCode respCode, Map<ByteId, ByteBuffer> objs) {
+    public QueryObjValidator(UUID id, DMMessage.ResponseCode respCode, Map<ByteId, ByteBuffer> objs) {
         this.id = id;
         this.respCode = respCode;
         this.objs = objs;
