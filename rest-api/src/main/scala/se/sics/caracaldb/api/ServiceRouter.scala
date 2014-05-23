@@ -50,8 +50,8 @@ trait ServiceRouter extends HttpService with CORSDirectives {
   val conf = Main.system.settings.config;
   val numWorkers = conf.getInt("caracal.api.workers");
   val numDMWorkers = conf.getInt("datamodel.workers");
-  val workers = actorRefFactory.actorOf(Props[CaracalWorker].withRouter(SmallestMailboxRouter(numWorkers)), "caracal-workers");
-  val dmWorkers = actorRefFactory.actorOf(Props[DataModelWorker].withRouter(SmallestMailboxRouter(numDMWorkers)), "datamodel-workers");
+  val workers = actorRefFactory.actorOf(Props[CaracalWorker].withRouter(SmallestMailboxPool(numWorkers)), "caracal-workers");
+  val dmWorkers = actorRefFactory.actorOf(Props[DataModelWorker].withRouter(SmallestMailboxPool(numDMWorkers)), "datamodel-workers");
 
   import ExecutionDirectives._
   def debugHandler(implicit log: LoggingContext) = ExceptionHandler {
