@@ -27,7 +27,9 @@ import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.store.RangeAction;
 import se.sics.caracaldb.store.RangeResp;
 import se.sics.caracaldb.store.TransformationFilter;
 
@@ -43,6 +45,7 @@ public class RangeQuery {
         public final Type execType;
         public final Limit.LimitTracker limitTracker;
         public final TransformationFilter transFilter;
+        public final RangeAction action;
 
         public Request(Request req, KeyRange newRange) {
             super(req.id);
@@ -50,24 +53,27 @@ public class RangeQuery {
             this.subRange = newRange;
             this.limitTracker = req.limitTracker;
             this.transFilter = req.transFilter;
+            this.action = req.action;
             this.execType = Type.SEQUENTIAL;
         }
 
-        public Request(UUID id, KeyRange range, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
+        public Request(UUID id, KeyRange range, Limit.LimitTracker limitTracker, TransformationFilter transFilter, RangeAction action, Type execType) {
             super(id);
             this.initRange = range;
             this.subRange = range;
             this.limitTracker = limitTracker;
             this.transFilter = transFilter;
+            this.action = action;
             this.execType = execType;
         }
 
-        Request(UUID id, KeyRange subRange, KeyRange initRange, Limit.LimitTracker limitTracker, TransformationFilter transFilter, Type execType) {
+        Request(UUID id, KeyRange subRange, KeyRange initRange, Limit.LimitTracker limitTracker, TransformationFilter transFilter, RangeAction action, Type execType) {
             super(id);
             this.initRange = initRange;
             this.subRange = subRange;
             this.limitTracker = limitTracker;
             this.transFilter = transFilter;
+            this.action = action;
             this.execType = execType;
         }
 
@@ -82,11 +88,17 @@ public class RangeQuery {
                 PutRequest put = (PutRequest) op;
                 return subRange.contains(put.key);
             }
+            if (op instanceof RangeQuery.Request) {
+                RangeQuery.Request rqr = (RangeQuery.Request) op;
+                if (!(rqr.action instanceof ActionFactory.Noop)) {
+                    return KeyRange.overlap(subRange, rqr.subRange);
+                }
+            }
             return false;
         }
 
         public Request subRange(KeyRange newSubRange) {
-            return new Request(id, newSubRange, initRange, limitTracker, transFilter, execType);
+            return new Request(id, newSubRange, initRange, limitTracker, transFilter, action, execType);
         }
     }
 

@@ -20,7 +20,6 @@
  */
 package se.sics.caracaldb.replication.linearisable;
 
-import com.google.common.primitives.Ints;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -434,7 +433,7 @@ public class ExecutionEngine extends ComponentDefinition {
                 @Override
                 public void initiate(RangeQuery.Request op, long pos) {
                     List<CaracalOp> prefix = opLog.getApplicableForOp(pos, op, lastSnapshotId);
-                    ReplayRangeReq replayReq = new ReplayRangeReq(op.subRange, op.limitTracker, op.transFilter, prefix);
+                    ReplayRangeReq replayReq = new ReplayRangeReq(op.subRange, op.limitTracker, op.transFilter, op.action, prefix);
                     replayReq.setId(op.id);
                     trigger(replayReq, store);
                 }
@@ -522,7 +521,7 @@ public class ExecutionEngine extends ComponentDefinition {
             active.put(RangeQuery.Request.class, new Action<RangeQuery.Request>() {
                 @Override
                 public void initiate(RangeQuery.Request op, long pos) {
-                    RangeReq request = new RangeReq(op.subRange, op.limitTracker, op.transFilter);
+                    RangeReq request = new RangeReq(op.subRange, op.limitTracker, op.transFilter, op.action);
                     request.setId(op.id);
                     trigger(request, store);
                 }

@@ -220,7 +220,7 @@ public class DBTest {
         assertEquals(15, ByteBuffer.wrap(getResp.value).getInt());
 
         KeyRange range1 = KeyRange.closed(keys[0]).closed(keys[19]);
-        RangeReq r1 = new RangeReq(range1, null, null);
+        RangeReq r1 = new RangeReq(range1, null, null, null);
         RangeResp rr1 = (RangeResp) r1.execute(db);
         assertEquals(20, rr1.result.size());
         for (int i = 0; i < 20; i++) {
@@ -229,7 +229,7 @@ public class DBTest {
         assertEquals(15, ByteBuffer.wrap(rr1.result.get(keys[5])).getInt());
 
         KeyRange range2 = KeyRange.closed(keys[1]).open(keys[18]);
-        RangeReq r2 = new RangeReq(range2, null, null);
+        RangeReq r2 = new RangeReq(range2, null, null, null);
         RangeResp rr2 = (RangeResp) r2.execute(db);
         assertEquals(17, rr2.result.size());
         for (int i = 1; i < 18; i++) {

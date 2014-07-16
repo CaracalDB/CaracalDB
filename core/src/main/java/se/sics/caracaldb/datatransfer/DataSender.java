@@ -31,6 +31,7 @@ import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.flow.ClearToSend;
 import se.sics.caracaldb.flow.DataMessage;
 import se.sics.caracaldb.flow.RequestToSend;
+import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
@@ -163,11 +164,11 @@ public class DataSender extends DataTransferComponent {
 
     private void requestData(int quota) {
         if (lastKey == null) {
-            trigger(new RangeReq(range, Limit.toBytes(quota), TFFactory.tombstoneFilter()), store);
+            trigger(new RangeReq(range, Limit.toBytes(quota), TFFactory.tombstoneFilter(), ActionFactory.noop()), store);
             return;
         }
 
         KeyRange subRange = KeyRange.open(lastKey).endFrom(range);
-        trigger(new RangeReq(subRange, Limit.toBytes(quota), TFFactory.tombstoneFilter()), store);
+        trigger(new RangeReq(subRange, Limit.toBytes(quota), TFFactory.tombstoneFilter(), ActionFactory.noop()), store);
     }
 }

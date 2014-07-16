@@ -29,7 +29,6 @@ import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.store.Limit.LimitTracker;
-import se.sics.kompics.Response;
 
 /**
  *
@@ -41,8 +40,9 @@ public class RangeReq extends StorageRequest {
     public final KeyRange range;
     private final TransformationFilter transFilter;
     private final LimitTracker limit;
+    private final RangeAction action;
 
-    public RangeReq(KeyRange range, LimitTracker limit, TransformationFilter transFilter) {
+    public RangeReq(KeyRange range, LimitTracker limit, TransformationFilter transFilter, RangeAction action) {
         this.range = range;
         if (limit != null) {
             this.limit = limit;
@@ -54,6 +54,11 @@ public class RangeReq extends StorageRequest {
         } else {
             this.transFilter = TFFactory.noTF();
         }
+        if (action != null) {
+            this.action = action;
+        } else {
+            this.action = ActionFactory.noop();
+        }
     }
 
     @Override
@@ -62,6 +67,7 @@ public class RangeReq extends StorageRequest {
 
         Closer closer = Closer.create();
         try {
+            action.prepare(store);
             byte[] begin = range.begin.getArray();
             for (StoreIterator it = closer.register(store.iterator(begin)); it.hasNext(); it.next()) {
                 byte[] key = it.peekKey();
@@ -70,6 +76,7 @@ public class RangeReq extends StorageRequest {
                     if (res.getValue0()) {
                         if (limit.read(res.getValue1())) {
                             results.put(new Key(key), res.getValue1());
+                            action.process(key, res.getValue1());
                             if (!limit.canRead()) {
                                 break;
                             }
@@ -84,7 +91,9 @@ public class RangeReq extends StorageRequest {
                     }
                 }
             }
+            action.commit();
         } catch (Throwable e) {
+            action.abort();
             closer.rethrow(e);
         } finally {
             closer.close();

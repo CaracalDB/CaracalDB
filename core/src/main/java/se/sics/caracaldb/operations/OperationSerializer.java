@@ -31,6 +31,7 @@ import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.store.RangeAction;
 import se.sics.caracaldb.store.TransformationFilter;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
@@ -135,6 +136,7 @@ public class OperationSerializer implements Serializer {
             //TODO serialize type once there is more than one
             Serializers.toBinary(op.limitTracker, buf);
             Serializers.toBinary(op.transFilter, buf);
+            Serializers.toBinary(op.action, buf);
             return;
         }
         if (caracalOp instanceof GetResponse) {
@@ -227,7 +229,8 @@ public class OperationSerializer implements Serializer {
             //TODO deserialize type once there is more than one
             Limit.LimitTracker tracker = (Limit.LimitTracker) Serializers.fromBinary(buf, Optional.absent());
             TransformationFilter filter = (TransformationFilter) Serializers.fromBinary(buf, Optional.absent());
-            return new RangeQuery.Request(id, subRange, initRange, tracker, filter, RangeQuery.Type.SEQUENTIAL);
+            RangeAction action = (RangeAction) Serializers.fromBinary(buf, Optional.absent());
+            return new RangeQuery.Request(id, subRange, initRange, tracker, filter, action, RangeQuery.Type.SEQUENTIAL);
         }
         LOG.warn("Got unkown request operation type with flags: {}", flags);
         return null;

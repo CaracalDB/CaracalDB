@@ -63,101 +63,82 @@ public class BootstrapServer extends ComponentDefinition {
     // instance
     private Address self;
     private Configuration config;
-    private Set<Address> fresh = new HashSet<Address>();
-    private Set<Address> active = new HashSet<Address>();
+    private Set<Address> fresh = new HashSet<>();
+    private Set<Address> active = new HashSet<>();
     private State state;
     private ImmutableSet<Address> bootSet;
     private ImmutableSet<Address> waitSet;
     private Set<Address> readySet;
     private LookupTable lut;
     private byte[] lutData;
-    
+
     private UUID timeoutId;
 
     public BootstrapServer(BootstrapSInit init) {
-
-        final Handler<Start> startHandler = new Handler<Start>() {
-            @Override
-            public void handle(Start event) {
-                
-                log.info("Starting up bootstrap server on {}, waiting for {} nodes", 
-                        self, config.getInt("caracal.bootThreshold"));
-
-                long keepAliveTimeout = config.getMilliseconds("caracal.network.keepAlivePeriod") * 2;
-                SchedulePeriodicTimeout spt =
-                        new SchedulePeriodicTimeout(keepAliveTimeout, keepAliveTimeout);
-                spt.setTimeoutEvent(new ClearTimeout(spt));
-                trigger(spt, timer);
-                active.add(self);
-            }
-        };
-        subscribe(startHandler, control);
-
-        final Handler<BootstrapRequest> requestHandler = new Handler<BootstrapRequest>() {
-            @Override
-            public void handle(BootstrapRequest event) {
-                if (state != State.DONE) {
-                    fresh.add(event.getSource());
-                    if (!active.contains(event.getSource())) {
-                        log.debug("Got BootstrapRequest from {}", event.getSource());
-                    }
-                }
-                if (state == State.SEEDING) {
-                    trigger(new BootstrapResponse(self, event.getSource(), lutData), net);
-                }
-            }
-        };
-        subscribe(requestHandler, net);
-
-        final Handler<Ready> readyHandler = new Handler<Ready>() {
-            @Override
-            public void handle(Ready event) {
-                fresh.add(event.getSource());
-                if (state == State.SEEDING) {
-                    readySet.add(event.getSource());
-                }
-            }
-        };
-        subscribe(readyHandler, net);
-
-        final Handler<ClearTimeout> timeoutHandler = new Handler<ClearTimeout>() {
-            @Override
-            public void handle(ClearTimeout event) {
-                if (timeoutId == null) {
-                    timeoutId = event.getTimeoutId();
-                }
-                
-                if (state == State.COLLECTING) {
-                    active.clear();
-                    active.addAll(fresh);
-                    fresh.clear();
-                    active.add(self);
-                    log.debug("Cleaning up. {} hosts in the active set.", active.size());
-                    if (active.size() >= config.getInt("caracal.bootThreshold")) {
-                        bootUp();
-                    }
-                } else if (state == State.SEEDING) {
-                    active.clear();
-                    active.addAll(fresh);
-                    fresh.clear();
-                    active.add(self);
-                    // wait for all hosts that the LUT was generated with
-                    // except for those that failed and didn't come back
-                    SetView<Address> activeBoot = Sets.intersection(bootSet, active);
-                    waitSet = activeBoot.immutableCopy();
-                    readySet.retainAll(active);
-                    if (Sets.difference(waitSet, readySet).isEmpty()) {
-                        startUp();
-                    }
-                }
-            }
-        };
-        subscribe(timeoutHandler, timer);
-
         // INIT
         self = init.self;
         config = init.config;
         state = State.COLLECTING;
+    }
+
+    {
+        handle(control, Start.class, e -> {
+            log.info("Starting up bootstrap server on {}, waiting for {} nodes",
+                    self, config.getInt("caracal.bootThreshold"));
+
+            long keepAliveTimeout = config.getMilliseconds("caracal.network.keepAlivePeriod") * 2;
+            SchedulePeriodicTimeout spt
+                    = new SchedulePeriodicTimeout(keepAliveTimeout, keepAliveTimeout);
+            spt.setTimeoutEvent(new ClearTimeout(spt));
+            trigger(spt, timer);
+            active.add(self);
+        });
+        handle(net, BootstrapRequest.class, e -> {
+            if (state != State.DONE) {
+                fresh.add(e.getSource());
+                if (!active.contains(e.getSource())) {
+                    log.debug("Got BootstrapRequest from {}", e.getSource());
+                }
+            }
+            if (state == State.SEEDING) {
+                trigger(new BootstrapResponse(self, e.getSource(), lutData), net);
+            }
+        });
+        handle(net, Ready.class, e -> {
+            fresh.add(e.getSource());
+            if (state == State.SEEDING) {
+                readySet.add(e.getSource());
+            }
+        });
+        handle(timer, ClearTimeout.class, e -> {
+            if (timeoutId == null) {
+                timeoutId = e.getTimeoutId();
+            }
+
+            if (state == State.COLLECTING) {
+                active.clear();
+                active.addAll(fresh);
+                fresh.clear();
+                active.add(self);
+                log.debug("Cleaning up. {} hosts in the active set.", active.size());
+                if (active.size() >= config.getInt("caracal.bootThreshold")) {
+                    bootUp();
+                }
+            } else if (state == State.SEEDING) {
+                active.clear();
+                active.addAll(fresh);
+                fresh.clear();
+                active.add(self);
+                    // wait for all hosts that the LUT was generated with
+                // except for those that failed and didn't come back
+                SetView<Address> activeBoot = Sets.intersection(bootSet, active);
+                waitSet = activeBoot.immutableCopy();
+                readySet.retainAll(active);
+                if (Sets.difference(waitSet, readySet).isEmpty()) {
+                    startUp();
+                }
+            }
+        });
     }
 
     private void bootUp() {
@@ -190,7 +171,7 @@ public class BootstrapServer extends ComponentDefinition {
         log.info("Everyone of consequence is ready. Booting Up.");
         for (Address adr : active) {
             if (!adr.equals(self)) {
-                
+
                 trigger(new BootUp(self, adr), net);
             }
         }

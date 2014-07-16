@@ -85,6 +85,14 @@ public class Console {
                         handleConfigCmd(sline[1]);
                     }
                     break;
+                case "help":
+                    out.println("Interface currently disconnected use 'connect' to establish server connection.\n\n");
+                    out.println("Available commands: \n\n");
+                    out.println("connect {bootstrapaddress}:{port} {clientaddress}:{port}       connects to a server");
+                    out.println("config show|list|get <key>|set <key> <value>                   edits or queries the current configuration");
+                    out.println("help                                                           shows this help");
+                    out.println("exit|quit                                                      closes to shell");
+                    break;
                 case "exit":
                 case "quit":
                     out.println("Exiting...");
@@ -167,7 +175,7 @@ public class Console {
                     if (cmdline.length == 2) {
                         String[] kvline = cmdline[1].split(" ", 2);
                         if (kvline.length != 2) {
-                            out.println("Usage: set <key> <value>");
+                            out.println("Usage: put <key> <value>");
                             continue;
                         }
                         Key k = Key.fromHex(correctFormat(kvline[0]));
@@ -176,15 +184,23 @@ public class Console {
                         ResponseCode resp = worker.put(k, value);
                         out.println("Result: " + resp.name());
                     } else {
-                        out.println("Usage: set <key> <value>");
+                        out.println("Usage: put <key> <value>");
                     }
+                    break;
+               case "help":
+                    out.println("Interface currently connected to " + bootstrapAddr + ":" + bootstrapPort + ".\n\n");
+                    out.println("Available commands: \n\n");
+                    out.println("get <key>              gets the current <value> for <key>");
+                    out.println("put <key> <value>      sets <key> to <value>");
+                    out.println("help                   shows this help");
+                    out.println("exit|quit              closes to shell");
                     break;
                 case "exit":
                 case "quit":
                     out.println("Exiting...");
                     System.exit(0);
                 default:
-                    out.println("Unkown command: " + cmd);
+                    out.println("Unkown command: " + cmd + " (use 'help' to see available commands)");
             }
         }
     }

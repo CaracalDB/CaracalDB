@@ -22,7 +22,6 @@ package se.sics.caracaldb.replication.linearisable;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.SortedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,12 +30,13 @@ import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.persistence.Persistence;
+import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.store.RangeAction;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
 import se.sics.caracaldb.store.StorageResponse;
 import se.sics.caracaldb.store.TransformationFilter;
-import se.sics.kompics.Response;
 
 /**
  *
@@ -47,8 +47,12 @@ public class ReplayRangeReq extends RangeReq {
     private static final Logger LOG = LoggerFactory.getLogger(ReplayRangeReq.class);
     private final List<CaracalOp> ops;
 
-    public ReplayRangeReq(KeyRange range, Limit.LimitTracker limit, TransformationFilter transFilter, List<CaracalOp> ops) {
-        super(range, limit, transFilter);
+    public ReplayRangeReq(KeyRange range, Limit.LimitTracker limit, TransformationFilter transFilter, RangeAction action, List<CaracalOp> ops) {
+        super(range, limit, transFilter, action);
+        if (action != ActionFactory.noop()) {
+            // FIXME fix this!!!
+            LOG.error("FIXME: Replaying RangeReq with Actions can have unintended effects!");
+        }
         this.ops = ops;
     }
 

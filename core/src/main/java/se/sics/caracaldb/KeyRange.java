@@ -76,6 +76,19 @@ public class KeyRange {
     public static KRBuilder startFrom(KeyRange kr) {
         return new KRBuilder(kr.beginBound, kr.begin);
     }
+    
+    public static boolean overlap(KeyRange a, KeyRange b) {
+        if (a.equals(EMPTY) || b.equals(EMPTY)) {
+            return false;
+        }
+        if (a.contains(b.begin) || a.contains(b.end)) {
+            return true;
+        }
+        if (b.contains(a.begin) || b.contains(a.end)) {
+            return true;
+        }
+        return false;
+    }
 
     public KeyRange intersect(KeyRange that) {
         if (this.equals(EMPTY) || that.equals(EMPTY)) {
@@ -115,6 +128,10 @@ public class KeyRange {
                 return EMPTY;
             }
         }
+    }
+    
+    public boolean overlapsWith(KeyRange that) {
+        return KeyRange.overlap(this, that);
     }
 
     public boolean isKey() {

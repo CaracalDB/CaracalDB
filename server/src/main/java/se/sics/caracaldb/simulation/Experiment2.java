@@ -37,6 +37,7 @@ import se.sics.caracaldb.simulation.command.OpCmd;
 import se.sics.caracaldb.simulation.command.PutCmd;
 import se.sics.caracaldb.simulation.command.RQCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;
+import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.TFFactory;
 import se.sics.caracaldb.utils.TimestampIdFactory;
@@ -144,7 +145,7 @@ public class Experiment2 extends ComponentDefinition {
             } else {
                 range = KeyRange.closed(key2).closed(key1);
             }
-            RangeQuery.Request rq = new RangeQuery.Request(id, range, Limit.noLimit(), TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
+            RangeQuery.Request rq = new RangeQuery.Request(id, range, Limit.noLimit(), TFFactory.noTF(), ActionFactory.noop(), RangeQuery.Type.SEQUENTIAL);
             
             LOG.debug("performing {}", rq);
             validator = resultValidator.startOp(rq);

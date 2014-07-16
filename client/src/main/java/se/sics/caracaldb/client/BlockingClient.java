@@ -38,6 +38,7 @@ import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.operations.RangeResponse;
 import se.sics.caracaldb.operations.ResponseCode;
+import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.Limit.LimitTracker;
 import se.sics.caracaldb.store.TFFactory;
@@ -110,7 +111,7 @@ public class BlockingClient {
     public RangeResponse rangeRequest(KeyRange range, LimitTracker limit) {
         LOG.debug("RangeRequest for {}", range);
         UUID id = TimestampIdFactory.get().newId();
-        RangeQuery.Request req = new RangeQuery.Request(id, range, limit, TFFactory.noTF(), RangeQuery.Type.SEQUENTIAL);
+        RangeQuery.Request req = new RangeQuery.Request(id, range, limit, TFFactory.noTF(), ActionFactory.noop(), RangeQuery.Type.SEQUENTIAL);
         worker.triggerOnSelf(req);
         try {
             CaracalResponse resp = responseQueue.poll(TIMEOUT, TIMEUNIT);

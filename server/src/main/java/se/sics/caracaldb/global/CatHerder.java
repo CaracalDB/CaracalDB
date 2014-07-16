@@ -48,6 +48,7 @@ import se.sics.caracaldb.paxos.Paxos;
 import se.sics.caracaldb.paxos.PaxosInit;
 import se.sics.caracaldb.replication.log.Decide;
 import se.sics.caracaldb.replication.log.ReplicatedLog;
+import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
@@ -339,7 +340,7 @@ public class CatHerder extends ComponentDefinition {
         @Override
         public void handle(CheckHeartbeats event) {
             if (rr == null) {
-                rr = new RangeReq(KeyRange.prefix(heartBeatKey), Limit.noLimit(), TFFactory.noTF());
+                rr = new RangeReq(KeyRange.prefix(heartBeatKey), Limit.noLimit(), TFFactory.noTF(), ActionFactory.delete());
             }
             /*
              * I suppose one can argue whether or not it's correct to do this
@@ -442,7 +443,7 @@ public class CatHerder extends ComponentDefinition {
     }
 
     private void checkMasterGroup() {
-        masterGroup = new TreeSet<Address>();
+        masterGroup = new TreeSet<>();
         Address[] mGroup = lut.getHosts(0);
         masterGroup.addAll(Arrays.asList(mGroup));
     }
