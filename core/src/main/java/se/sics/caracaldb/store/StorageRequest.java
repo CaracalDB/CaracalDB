@@ -32,6 +32,7 @@ import se.sics.kompics.Request;
 public abstract class StorageRequest extends Request {
 
     private UUID id;
+    private int versionId;
 
     /**
      * Custom interface for local storage queries.

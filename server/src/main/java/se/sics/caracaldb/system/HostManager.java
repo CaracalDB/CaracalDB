@@ -64,7 +64,7 @@ import se.sics.kompics.timer.Timer;
  */
 public class HostManager extends ComponentDefinition {
 
-    private static final Logger log = LoggerFactory.getLogger(HostManager.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HostManager.class);
     private HostSharedComponents sharedComponents;
     public final Configuration config;
     private Positive<Network> net;
@@ -132,6 +132,7 @@ public class HostManager extends ComponentDefinition {
         bootPort = requires(Bootstrap.class);
 
         store = create(PersistentStore.class, new PersistentStoreInit(config.getDB()));
+        LOG.info("{}: Created store: {}", netSelf, config.getDB());
 
 
         sharedComponents = new HostSharedComponents();
@@ -167,7 +168,7 @@ public class HostManager extends ComponentDefinition {
         @Override
         public void handle(StartVNode event) {
             Address nodeAddr = netSelf.newVirtual(event.nodeId);
-            log.info("Starting new VNode: " + nodeAddr);
+            LOG.info("Starting new VNode: " + nodeAddr);
 
             VirtualSharedComponents vsc = new VirtualSharedComponents(event.nodeId);
 
@@ -214,7 +215,7 @@ public class HostManager extends ComponentDefinition {
                 disconnect(bootstrapClient.getNegative(Timer.class), sharedComponents.getTimer());
                 unsubscribe(this, bootPort);
 
-                log.debug("{} is bootstrapped", netSelf);
+                LOG.debug("{} is bootstrapped", netSelf);
 
                 startCatHerder(event);
             }
@@ -246,7 +247,7 @@ public class HostManager extends ComponentDefinition {
                 disconnect(bootstrapServer.getNegative(Timer.class), sharedComponents.getTimer());
                 unsubscribe(this, bootPort);
 
-                log.debug("{} is bootstrapped", netSelf);
+                LOG.debug("{} is bootstrapped", netSelf);
 
                 startCatHerder(event);
             }
@@ -268,7 +269,7 @@ public class HostManager extends ComponentDefinition {
         
         trigger(Start.event, catHerder.control());
 
-        log.debug("{} starting CatHerder", netSelf);
+        LOG.debug("{} starting CatHerder", netSelf);
 
 //        StringBuilder sb = new StringBuilder();
 //        event.lut.printFormat(sb);

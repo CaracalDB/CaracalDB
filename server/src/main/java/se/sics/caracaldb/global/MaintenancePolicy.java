@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,40 +18,33 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.store;
 
-import se.sics.caracaldb.Key;
-import se.sics.caracaldb.persistence.Persistence;
+package se.sics.caracaldb.global;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import se.sics.caracaldb.system.Stats;
+import se.sics.kompics.address.Address;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author lkroll
  */
-public class Put extends StorageRequest {
-    
-    public final Key key;
-    public final byte[] value;
-    
-    public Put(Key k, byte[] v) {
-        key = k;
-        value = v;
-    }
-
-    @Override
-    public StorageResponse execute(Persistence store) {
-        byte[] oldValue = store.get(key.getArray());
-        store.put(key.getArray(), value);
-        Diff diff = null;
-        if (oldValue == null) {
-            diff = new Diff(value.length+key.getKeySize(), 1);
-        } else {
-            diff = new Diff(value.length - oldValue.length, 0);
-        }
-        return new PutResp(this, diff);
-    }
-    
-    @Override
-    public String toString() {
-        return "PutReq("+key+", "+value+")";
-    }
+public interface MaintenancePolicy {
+    /**
+     * Initialise the policy.
+     * @param lut Reference to the LookupTable to work with. READ ONLY!
+     */
+    public void init(LookupTable lut);
+    /**
+     * Calculate and return the updates to improve the state of the system.
+     * 
+     * Return null if no update is to be performed.
+     * 
+     * @param joins Nodes that want to join
+     * @param fails Nodes that failed
+     * @param stats Current system statistics from all alive nodes
+     * @return 
+     */
+    public LUTUpdate rebalance(ImmutableSet<Address> joins, ImmutableSet<Address> fails, ImmutableMap<Address, Stats.Report> stats);
 }

@@ -27,14 +27,12 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.ComponentDefinition;
-import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
@@ -129,7 +127,7 @@ public class BootstrapServer extends ComponentDefinition {
                 active.addAll(fresh);
                 fresh.clear();
                 active.add(self);
-                    // wait for all hosts that the LUT was generated with
+                // wait for all hosts that the LUT was generated with
                 // except for those that failed and didn't come back
                 SetView<Address> activeBoot = Sets.intersection(bootSet, active);
                 waitSet = activeBoot.immutableCopy();
@@ -150,12 +148,7 @@ public class BootstrapServer extends ComponentDefinition {
         StringBuilder sb = new StringBuilder();
         lut.printFormat(sb);
         System.out.println(sb.toString());
-        try {
-            lutData = lut.serialise();
-        } catch (IOException ex) {
-            log.error("Fatal boot error: Could not generate LookupTable. Shutting down.", ex);
-            System.exit(1);
-        }
+        lutData = lut.serialise();
 
         for (Address adr : bootSet) {
             if (!adr.equals(self)) {

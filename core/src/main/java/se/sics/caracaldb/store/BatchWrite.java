@@ -32,11 +32,13 @@ import se.sics.kompics.Response;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class BatchWrite extends StorageRequest {
-    
+
     private final SortedMap<Key, byte[]> data;
-    
-    public BatchWrite(SortedMap<Key, byte[]> data) {
+    private final int snapshotId;
+
+    public BatchWrite(SortedMap<Key, byte[]> data, int snapshotId) {
         this.data = data;
+        this.snapshotId = snapshotId;
     }
 
     @Override
@@ -45,15 +47,15 @@ public class BatchWrite extends StorageRequest {
         try {
             wb = store.createBatch();
             for (Entry<Key, byte[]> e : data.entrySet()) {
-                wb.put(e.getKey().getArray(), e.getValue());
+                wb.put(e.getKey().getArray(), e.getValue(), snapshotId);
             }
             store.writeBatch(wb);
         } finally {
             wb.close();
         }
-        return null; 
+        return null;
         //TODO BatchWrites don't generate a diff (would be very inefficient)
         // If you use BatchWrites make sure to run a size scan afterwards (for example after syncing up nodes)
     }
-    
+
 }

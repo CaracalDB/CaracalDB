@@ -23,6 +23,7 @@ package se.sics.caracaldb;
 
 import se.sics.caracaldb.flow.FlowMessageSerializer;
 import se.sics.caracaldb.global.LookupSerializer;
+import se.sics.caracaldb.operations.ConditionSerializer;
 import se.sics.caracaldb.operations.OperationSerializer;
 import se.sics.caracaldb.paxos.PaxosSerializer;
 import se.sics.caracaldb.replication.log.ValueSerializer;
@@ -41,6 +42,7 @@ public class CoreSerializer<S extends Serializer> {
     public static final CoreSerializer<SystemSerializer> SYSTEM = new CoreSerializer<>(103, new SystemSerializer());
     public static final CoreSerializer<OperationSerializer> OP = new CoreSerializer<>(104, new OperationSerializer());
     public static final CoreSerializer<LookupSerializer> LOOKUP = new CoreSerializer<>(105, new LookupSerializer());
+    public static final CoreSerializer<ConditionSerializer> COND = new CoreSerializer<>(106, new ConditionSerializer());
     
     public final int id;
     public final S instance;

@@ -52,8 +52,9 @@ public class ActionFactory {
         }
 
         @Override
-        public void process(byte[] key, byte[] value) {
+        public long process(byte[] key, byte[] value) {
             // ignore
+            return -1;
         }
 
         @Override
@@ -80,8 +81,9 @@ public class ActionFactory {
         }
 
         @Override
-        public void process(byte[] key, byte[] value) {
+        public long process(byte[] key, byte[] value) {
             batch.delete(key);
+            return 0;
         }
 
         @Override
@@ -112,7 +114,7 @@ public class ActionFactory {
         }
 
         @Override
-        public void process(byte[] key, byte[] value) {
+        public long process(byte[] key, byte[] value) {
             batch.put(key, value);
             curBatchSize++;
             if (curBatchSize >= MAX_BATCH_SIZE) {
@@ -120,6 +122,7 @@ public class ActionFactory {
                 batch.close();
                 batch = store.createBatch();
             }
+            return value.length;
         }
 
         @Override

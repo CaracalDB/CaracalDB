@@ -21,6 +21,7 @@
 package se.sics.caracaldb.global;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.UnsignedBytes;
@@ -35,6 +36,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Random;
@@ -43,7 +45,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.Key.KeyBuilder;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.kompics.address.Address;
@@ -108,9 +109,18 @@ public class LookupTable {
             return null;
         }
 
-        Integer rgVersion = replicationSetVersions.get(rgId);
+        //Integer rgVersion = replicationSetVersions.get(rgId);
         Address[] group = getVirtualHosts(rgId, rg.getValue0());
         return group;
+    }
+
+    public Integer[] getResponsibleIds(Key k) {
+        Pair<Key, Integer> rg = virtualHostsGetResponsible(k);
+        Integer rgId = rg.getValue1();
+        if (rgId == null) {
+            return null;
+        }
+        return replicationSets.get(rgId);
     }
 
     /**
@@ -283,6 +293,16 @@ public class LookupTable {
         return nodeSet;
     }
 
+    public Set<Key> getVirtualNodesFor(Integer replicationSetId) {
+        HashSet<Key> nodeSet = new HashSet<Key>();
+        for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
+            if (!virtualHostGroups[i].isEmpty()) {
+                nodeSet.addAll(virtualHostGroups[i].getVirtualNodesIn(replicationSetId));
+            }
+        }
+        return nodeSet;
+    }
+
     /**
      * Builds a readable format of the LUT.
      * <p>
@@ -358,7 +378,7 @@ public class LookupTable {
         sb.append('\n');
     }
 
-    public byte[] serialise() throws IOException {
+    public byte[] serialise() {
         ByteBuf buf = Unpooled.buffer();
 
         buf.writeLong(versionId);
@@ -431,7 +451,7 @@ public class LookupTable {
         return INSTANCE;
     }
 
-    private static void serialiseReplicationSet(Integer version, Integer[] group, ByteBuf buf) throws IOException {
+    private static void serialiseReplicationSet(Integer version, Integer[] group, ByteBuf buf) {
         buf.writeInt(version);
         byte groupSize = UnsignedBytes.checkedCast(group.length);
         buf.writeByte(groupSize);
@@ -440,7 +460,7 @@ public class LookupTable {
         }
     }
 
-    private static Pair<Integer, Integer[]> deserialiseReplicationGroup(ByteBuf buf) throws IOException {
+    private static Pair<Integer, Integer[]> deserialiseReplicationGroup(ByteBuf buf) {
         int version = buf.readInt();
         int groupSize = UnsignedBytes.toInt(buf.readByte());
         Integer[] group = new Integer[groupSize];
@@ -598,6 +618,22 @@ public class LookupTable {
         }
     }
 
+    Map<Address, Integer> getIdsForAddresses(ImmutableSet<Address> addresses) {
+        TreeSet<Address> remaining = new TreeSet<>(addresses);
+        TreeMap<Address, Integer> m = new TreeMap<>();
+        int index = 0;
+        for (Address addr : hosts) {
+            if (remaining.isEmpty()) {
+                return m;
+            }
+            if (remaining.remove(addr)) {
+                m.put(addr, index);
+            }
+            index++;
+        }
+        return m;
+    }
+
     private static List<Integer> naturals(int upTo) {
         ArrayList<Integer> nats = new ArrayList<Integer>(upTo);
         for (int i = 0; i < upTo; i++) {
@@ -614,5 +650,42 @@ public class LookupTable {
     public static class BrokenLut extends Throwable {
 
         public static final BrokenLut exception = new BrokenLut();
+    }
+
+    public static int positionInSet(Integer[] set, Integer id) {
+        int index = 0;
+        for (int i : set) {
+            if (i == id) {
+                return index;
+            }
+            index++;
+        }
+        return -1;
+    }
+
+    public void findGroupOrAddNew(Key k, Integer[] newRepGroup, ArrayList<LUTUpdate.Action> rebalanceActions) {
+        int index = 0;
+        int lastNullIndex = -1;
+        int curKeyVersion = replicationSetVersions.get(virtualHostsGet(k));
+        for (Integer[] repGroup : replicationSets) {
+            if (repGroup == null) {
+                lastNullIndex = index;
+            } else if (Arrays.equals(repGroup, newRepGroup)) {
+                Integer repGroupVersion = Math.max(curKeyVersion, replicationSetVersions.get(index));
+                rebalanceActions.add(new LUTUpdate.PutReplicationSet(index, repGroupVersion + 1, newRepGroup));
+                rebalanceActions.add(new LUTUpdate.PutReplicationGroup(k, index));
+                return;
+            }
+            index++;
+        }
+        if (lastNullIndex >= 0) {
+            Integer repGroupVersion = Math.max(curKeyVersion, replicationSetVersions.get(lastNullIndex));
+            rebalanceActions.add(new LUTUpdate.PutReplicationSet(lastNullIndex, repGroupVersion + 1, newRepGroup));
+            rebalanceActions.add(new LUTUpdate.PutReplicationGroup(k, lastNullIndex));
+        } else {
+            Integer repGroupVersion = Math.max(curKeyVersion, replicationSetVersions.get(lastNullIndex));
+            rebalanceActions.add(new LUTUpdate.PutReplicationSet(index, repGroupVersion + 1, newRepGroup));
+            rebalanceActions.add(new LUTUpdate.PutReplicationGroup(k, index));
+        }
     }
 }

@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.flow;
 
+import se.sics.caracaldb.utils.ByteArrayRef;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.math.IntMath;
 import java.math.RoundingMode;
@@ -133,14 +134,14 @@ public class FlowManager extends ComponentDefinition {
             int fullChunks = numberOfChunks - 1;
             Address dst = requestedFlows.get(e.flowId).getDestination();
             for (int i = 0; i < fullChunks; i++) {
-                BufferPointer p = new BufferPointer(i * CHUNK_SIZE, CHUNK_SIZE, data);
+                ByteArrayRef p = new ByteArrayRef(i * CHUNK_SIZE, CHUNK_SIZE, data);
                 Chunk c = new Chunk(self, dst, protocol, e.flowId, e.clearId, i, data.length, p, false);
                 MessageNotify.Req req = MessageNotify.create(c);
                 pendingChunks.put(req.getMsgId(), c);
                 trigger(req, net);
             }
             int remainder = data.length - fullChunks * CHUNK_SIZE;
-            BufferPointer p = new BufferPointer(fullChunks * CHUNK_SIZE, remainder, data);
+            ByteArrayRef p = new ByteArrayRef(fullChunks * CHUNK_SIZE, remainder, data);
             Chunk c = new Chunk(self, dst, protocol, e.flowId, e.clearId, fullChunks, data.length, p, e.isfinal);
             MessageNotify.Req req = MessageNotify.create(c);
             pendingChunks.put(req.getMsgId(), c);
@@ -320,10 +321,10 @@ public class FlowManager extends ComponentDefinition {
         public final int clearId;
         public final int chunkNo; // number of this chunk
         public final int bytes; // overall bytes on this clearId
-        public final BufferPointer data;
+        public final ByteArrayRef data;
         public final boolean isFinal;
         
-        public Chunk(Address src, Address dst, Transport protocol, UUID flowId, int clearId, int chunkNo, int bytes, BufferPointer data, boolean isFinal) {
+        public Chunk(Address src, Address dst, Transport protocol, UUID flowId, int clearId, int chunkNo, int bytes, ByteArrayRef data, boolean isFinal) {
             super(src, dst, protocol, flowId);
             this.clearId = clearId;
             this.chunkNo = chunkNo;
@@ -353,16 +354,4 @@ public class FlowManager extends ComponentDefinition {
         }
     }
     
-    public static class BufferPointer {
-        
-        public final int begin;
-        public final int length;
-        public final byte[] buffer;
-        
-        public BufferPointer(int begin, int length, byte[] buffer) {
-            this.begin = begin;
-            this.length = length;
-            this.buffer = buffer;
-        }
-    }
 }

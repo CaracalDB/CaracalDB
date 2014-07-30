@@ -34,6 +34,11 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.global.DefaultPolicy;
+import se.sics.caracaldb.global.MaintenancePolicy;
 import se.sics.caracaldb.persistence.Database;
 import se.sics.caracaldb.persistence.disk.LevelDBJNI;
 import se.sics.caracaldb.persistence.memory.InMemoryDB;
@@ -44,6 +49,8 @@ import se.sics.kompics.address.Address;
  * @author Lars Kroll <lkr@lars-kroll.com>
  */
 public class Configuration {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Configuration.class);
 
     public static enum SystemPhase {
 
@@ -132,6 +139,28 @@ public class Configuration {
         return db;
     }
 
+    public MaintenancePolicy getMaintenancePolicy() {
+        String policy = config.getString("caracal.maintenancePolicy");
+        if (policy.equals("default")) {
+            return new DefaultPolicy();
+        }
+        ClassLoader cl = ClassLoader.getSystemClassLoader();
+        try {
+            Class pc = cl.loadClass(policy);
+            if (MaintenancePolicy.class.isAssignableFrom(pc)) {
+                Class<? extends MaintenancePolicy> mpc = pc;
+                MaintenancePolicy mp = mpc.newInstance();
+                return mp;
+            } else {
+                LOG.warn("Class '{}' does not implement se.sics.caracaldb.global.MaintenancePolicy! Loading default policy instead.", policy);
+                return new DefaultPolicy();
+            }
+        } catch (Exception ex) {
+            LOG.warn("Could not find MaintenancePolicy '{}'! Loading default policy instead. Exception was: {}", policy, ex);
+            return new DefaultPolicy();
+        }
+    }
+
     /*
      * Conf Proxy Methods
      */
@@ -184,11 +213,11 @@ public class Configuration {
     }
 
     public Long getMilliseconds(String path) {
-        return config.getMilliseconds(path);
+        return config.getDuration(path, TimeUnit.MILLISECONDS);
     }
 
     public Long getNanoseconds(String path) {
-        return config.getNanoseconds(path);
+        return config.getDuration(path, TimeUnit.NANOSECONDS);
     }
 
     public ConfigList getList(String path) {
@@ -232,11 +261,11 @@ public class Configuration {
     }
 
     public List<Long> getMillisecondsList(String path) {
-        return config.getMillisecondsList(path);
+        return config.getDurationList(path, TimeUnit.MILLISECONDS);
     }
 
     public List<Long> getNanosecondsList(String path) {
-        return config.getNanosecondsList(path);
+        return config.getDurationList(path, TimeUnit.NANOSECONDS);
     }
 
     private Configuration copy() {
@@ -276,7 +305,6 @@ public class Configuration {
             }
             Address bootstrapServer = new Address(bootIp, bootPort, null);
 
-
             c.config = config;
 
             c.bootstrapServer = bootstrapServer;
@@ -306,6 +334,29 @@ public class Configuration {
         public static Builder modify(Configuration conf) {
             Builder b = new Builder(conf.copy());
             b.setDB(conf.db);
+            return b;
+        }
+
+        public static Builder modifyWithOtherDB(Configuration conf, String pathSuffix) {
+            Builder b = new Builder(conf.copy());
+            Config config = b.conf.config;
+            //persistence layer config
+            String dbType = config.getString("caracal.database.type");
+            String dbPath = config.getString("caracal.database.path") + pathSuffix;
+            int dbCache = config.getInt("caracal.database.cache");
+            if (dbType.equals("memory")) {
+                b.setDB(new InMemoryDB());
+            } else if (dbType.equals("leveldb")) {
+                try {
+                    b.setDB(new LevelDBJNI(dbPath, dbCache));
+                } catch (IOException e) {
+                    //TODO Alex RuntimeException?
+                    throw new RuntimeException(e);
+                }
+            } else {
+                //TODO Alex RuntimeException?
+                throw new RuntimeException("wrong database type");
+            }
             return b;
         }
 

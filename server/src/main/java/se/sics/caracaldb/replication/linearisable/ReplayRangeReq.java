@@ -72,6 +72,7 @@ public class ReplayRangeReq extends RangeReq {
                 LOG.warn("Op {} is not a PUT. Forgot to add a new operation?", op, this);
             }
         }
-        return new RangeResp(this, result, resp.readLimit);
+        // TODO fix this class
+        return new RangeResp(this, result, resp.readLimit, null);
     }
 }

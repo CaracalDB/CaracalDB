@@ -46,6 +46,11 @@ public class InMemoryDB implements Database {
     }
 
     @Override
+    public String toString() {
+        return "InMemoryDb(" + store.size() + " keys)";
+    }
+
+    @Override
     public void put(byte[] key, byte[] value) {
         store.put(key, value);
     }

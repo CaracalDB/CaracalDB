@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb;
 
+import se.sics.caracaldb.bootstrap.BootstrapSerializer;
 import se.sics.caracaldb.global.MaintenanceSerializer;
 import se.sics.caracaldb.replication.linearisable.XnginSerializer;
 import se.sics.caracaldb.vhostfd.FDSerializer;
@@ -34,7 +35,7 @@ public class ServerSerializer<S extends Serializer> {
     public static final ServerSerializer<FDSerializer> FD = new ServerSerializer(200, new FDSerializer());
     public static final ServerSerializer<MaintenanceSerializer> GLOBAL = new ServerSerializer(201, new MaintenanceSerializer());
     public static final ServerSerializer<XnginSerializer> XNGIN = new ServerSerializer(202, new XnginSerializer());
-    
+    public static final ServerSerializer<BootstrapSerializer> BOOT = new ServerSerializer(203, new BootstrapSerializer());
     
     public final int id;
     public final S instance;

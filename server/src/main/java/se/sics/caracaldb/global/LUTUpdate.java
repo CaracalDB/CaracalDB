@@ -23,14 +23,17 @@ package se.sics.caracaldb.global;
 import com.google.common.base.Optional;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
-import com.google.common.io.Closer;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.View;
+import se.sics.caracaldb.replication.linearisable.ViewChange;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers;
@@ -44,8 +47,10 @@ public class LUTUpdate implements Maintenance {
     public static final Logger LOG = LoggerFactory.getLogger(LUTUpdate.class);
 
     private final long previousVersion;
-    private final long version;
+    public final long version;
     private final Action[] diff;
+
+    private ByteBuf serializationCache = null;
 
     public LUTUpdate(long previousVersion, long version, Action[] diff) {
         this.previousVersion = previousVersion;
@@ -53,10 +58,10 @@ public class LUTUpdate implements Maintenance {
         this.diff = diff;
     }
 
-    public void apply(LookupTable lut) {
+    public void apply(LookupTable lut, Callbacks call) {
         lut.versionId = version;
         for (Action a : diff) {
-            a.apply(lut);
+            a.apply(lut, call);
         }
     }
 
@@ -67,27 +72,44 @@ public class LUTUpdate implements Maintenance {
     public long dependsOn() {
         return previousVersion;
     }
+    
+    ImmutableSet<Address> joiners() {
+        ImmutableSet.Builder<Address> joiners = ImmutableSet.builder();
+        for (Action a : diff) {
+            if (a instanceof PutHost) {
+                PutHost ph = (PutHost) a;
+                if (ph.addr != null) {
+                    joiners.add(ph.addr);
+                }
+            }
+        }
+        return joiners.build();
+    }
 
     public byte[] serialise() {
-        ByteBuf buf = Unpooled.buffer();
+        if (serializationCache == null) {
+            ByteBuf buf = Unpooled.buffer();
+            serialise(buf);
+            buf.release();
+        }
 
-        serialise(buf);
-
-        byte[] data = new byte[buf.readableBytes()];
-        buf.readBytes(data);
-        buf.release();
-
+        byte[] data = new byte[serializationCache.readableBytes()];
+        serializationCache.getBytes(0, data);
         return data;
     }
 
     public void serialise(ByteBuf buf) {
-        buf.writeLong(previousVersion);
-        buf.writeLong(version);
+        if (serializationCache == null) {
+            serializationCache = Unpooled.buffer();
+            serializationCache.writeLong(previousVersion);
+            serializationCache.writeLong(version);
 
-        buf.writeInt(diff.length);
-        for (Action a : diff) {
-            a.serialise(buf);
+            serializationCache.writeInt(diff.length);
+            for (Action a : diff) {
+                a.serialise(serializationCache);
+            }
         }
+        buf.writeBytes(serializationCache, 0, serializationCache.readableBytes());
     }
 
     public static LUTUpdate deserialise(byte[] bytes) throws InstantiationException, IllegalAccessException {
@@ -130,7 +152,7 @@ public class LUTUpdate implements Maintenance {
             return TYPES.inverse().get(this.getClass());
         }
 
-        public abstract void apply(LookupTable lut);
+        public abstract void apply(LookupTable lut, Callbacks call);
 
         public abstract void serialise(ByteBuf buf);
 
@@ -160,10 +182,10 @@ public class LUTUpdate implements Maintenance {
         }
 
         @Override
-        public void apply(LookupTable lut) {
+        public void apply(LookupTable lut, Callbacks call) {
             ArrayList<Address> hosts = lut.hosts();
             while (id >= hosts.size()) {
-                hosts.add(null); // just increase the size until it fits (will probably be filled by later ops
+                hosts.add(null); // just increase the size until it fits (will probably be filled by later ops)
             }
             hosts.set(id, addr);
         }
@@ -200,7 +222,8 @@ public class LUTUpdate implements Maintenance {
         }
 
         @Override
-        public void apply(LookupTable lut) {
+        public void apply(LookupTable lut, Callbacks call) {
+            int posOld = LookupTable.positionInSet(lut.replicationSets().get(id), call.getAddressId());
             ArrayList<Integer> rsvs = lut.replicationSetVersions();
             ArrayList<Integer[]> rss = lut.replicationSets();
             if (rsvs.size() != rss.size()) {
@@ -221,6 +244,26 @@ public class LUTUpdate implements Maintenance {
             }
             rss.set(id, hosts);
             rsvs.set(id, version);
+            int posNew = LookupTable.positionInSet(hosts, call.getAddressId());
+            if ((posNew >= 0) && (posOld < 0)) { // new in the set
+                Set<Key> vNodes = lut.getVirtualNodesFor(id);
+                for (Key k : vNodes) {
+                    call.startVNode(k);
+                }
+            }
+            if ((posNew < 0) && (posOld >= 0)) { // removed from set
+                Set<Key> vNodes = lut.getVirtualNodesFor(id);
+                for (Key k : vNodes) {
+                    call.killVNode(k);
+                }
+            }
+            if ((posNew >= 0) && (posOld >= 0)) { // no change for me, but set membership changed
+                Set<Key> vNodes = lut.getVirtualNodesFor(id);
+                for (Key k : vNodes) {
+                    View v = new View(ImmutableSortedSet.copyOf(lut.getHosts(id)), version);
+                    call.reconf(k, new ViewChange(v, v.members.size() / 2 + 1));
+                }
+            }
         }
 
         @Override
@@ -262,8 +305,22 @@ public class LUTUpdate implements Maintenance {
         }
 
         @Override
-        public void apply(LookupTable lut) {
+        public void apply(LookupTable lut, Callbacks call) {
+            Integer[] oldHosts = lut.getResponsibleIds(key);
+            int posOld = LookupTable.positionInSet(oldHosts, call.getAddressId());
             lut.virtualHostsPut(key, replicationSet);
+            Integer[] newHosts = lut.replicationSets().get(replicationSet);
+            int posNew = LookupTable.positionInSet(newHosts, call.getAddressId());
+            if ((posNew >= 0) && (posOld < 0)) { // new in the set                
+                call.startVNode(key);
+            }
+            if ((posNew < 0) && (posOld >= 0)) { // removed from set                
+                call.killVNode(key);
+            }
+            if ((posNew >= 0) && (posOld >= 0)) { // no change for me, but set membership changed
+                View v = new View(ImmutableSortedSet.copyOf(lut.getResponsibles(key)), lut.replicationSetVersions().get(replicationSet));
+                call.reconf(key, new ViewChange(v, v.members.size() / 2 + 1));
+            }
         }
 
         @Override
@@ -278,5 +335,18 @@ public class LUTUpdate implements Maintenance {
             key = CustomSerialisers.deserialiseKey(buf);
             replicationSet = buf.readInt();
         }
+    }
+
+    public static interface Callbacks {
+
+        public Address getAddress();
+
+        public Integer getAddressId();
+
+        public void killVNode(Key k);
+
+        public void startVNode(Key k);
+
+        public void reconf(Key key, ViewChange change);
     }
 }

@@ -124,7 +124,7 @@ public class LookupGroup {
         return nodeSet;
     }
 
-    public byte[] serialise() throws IOException {
+    public byte[] serialise() {
 
         ByteBuf buf = Unpooled.buffer();
 
@@ -144,7 +144,7 @@ public class LookupGroup {
         return data;
     }
 
-    public static LookupGroup deserialise(byte[] bytes) throws IOException {
+    public static LookupGroup deserialise(byte[] bytes) {
 
         ByteBuf buf = Unpooled.wrappedBuffer(bytes);
         byte prefix = buf.readByte();

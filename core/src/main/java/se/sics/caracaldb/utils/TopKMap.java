@@ -119,9 +119,25 @@ public class TopKMap<K extends Comparable, V> {
     }
 
     public List<Entry<K, V>> entryList() {
-        ArrayList<Entry<K, V>> newlist = new ArrayList<Entry<K, V>>();
+        ArrayList<Entry<K, V>> newlist = new ArrayList<Entry<K, V>>(list.size());
         for (Pair<K, V> p : list) {
             newlist.add(new AbstractMap.SimpleImmutableEntry<K, V>(p.getValue0(), p.getValue1()));
+        }
+        return newlist;
+    }
+    
+    public List<V> values() {
+        ArrayList<V> newlist = new ArrayList<>(list.size());
+        for (Pair<K, V> p : list) {
+            newlist.add(p.getValue1());
+        }
+        return newlist;
+    }
+    
+    public List<K> keys() {
+        ArrayList<K> newlist = new ArrayList<>(list.size());
+        for (Pair<K, V> p : list) {
+            newlist.add(p.getValue0());
         }
         return newlist;
     }

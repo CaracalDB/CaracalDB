@@ -57,6 +57,11 @@ public class KeyRange {
         this.endBound = endBound;
     }
 
+    /**
+     * Create a KeyRange that only includes key
+     * @param key
+     * @return 
+     */
     public static KeyRange key(Key key) {
         return new KeyRange(CLOSED, key, key, CLOSED);
     }

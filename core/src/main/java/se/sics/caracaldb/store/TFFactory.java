@@ -56,4 +56,22 @@ public class TFFactory {
         }
 
     }
+    
+    public static class Append implements TransformationFilter, Serializable {
+        
+        public final byte[] newData;
+        
+        public Append(byte[] newData) {
+            this.newData = newData;
+        }
+
+        @Override
+        public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
+            byte[] newValue = new byte[serializedValue.length+newData.length];
+            System.arraycopy(serializedValue, 0, newValue, 0, serializedValue.length);
+            System.arraycopy(newData, 0, newValue, serializedValue.length, newData.length);
+            return Pair.with(true, newValue);
+        }
+        
+    }
 }

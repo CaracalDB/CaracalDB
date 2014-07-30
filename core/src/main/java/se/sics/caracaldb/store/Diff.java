@@ -20,13 +20,13 @@
  */
 package se.sics.caracaldb.store;
 
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
 
 /**
  *
  * @author sario
  */
-public class Diff extends Event {
+public class Diff implements KompicsEvent {
 
     public final boolean reset;
     public final long size;

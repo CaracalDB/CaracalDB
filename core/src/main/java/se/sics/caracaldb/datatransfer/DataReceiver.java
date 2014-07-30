@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.flow.DataMessage;
+import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.store.BatchWrite;
 import se.sics.caracaldb.store.StorageRequest;
@@ -40,17 +41,17 @@ import se.sics.kompics.address.Address;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class DataReceiver extends DataTransferComponent {
-
+    
     private static final Logger LOG = LoggerFactory.getLogger(DataReceiver.class);
     private final Address self;
     private final Address source;
-    private final boolean force;
-
+    private final int versionId;
+    
     public DataReceiver(DataReceiverInit init) {
         super(init.event.id);
         self = init.event.getDestination();
         source = init.event.getSource();
-        force = init.force;
+        versionId = (int) init.event.metadata.get("versionId");
 
         // subscriptions
         subscribe(startHandler, control);
@@ -76,36 +77,36 @@ public class DataReceiver extends DataTransferComponent {
             SortedMap<Key, byte[]> data = null;
             try {
                 data = deserialise(event.data);
-                if (force) {
-                    trigger(new BatchWrite(data), store);
-                } else {
-                    trigger(new PutIfNotExists(data), store);
-                }
+                    trigger(new BatchWrite(data, versionId), store);
             } catch (IOException ex) {
                 LOG.error("Could not deserialise data. Ignoring message!", ex);
             }
         }
     };
-
-    public static class PutIfNotExists extends StorageRequest {
-
+    
+    public static class PutBlob extends StorageRequest {
+        
+        private final int snapshotId;
         private final SortedMap<Key, byte[]> data;
-
-        public PutIfNotExists(SortedMap<Key, byte[]> data) {
+        
+        public PutBlob(SortedMap<Key, byte[]> data, int snapshotId) {
+            this.snapshotId = snapshotId;
             this.data = data;
         }
-
+        
         @Override
         public StorageResponse execute(Persistence store) {
-            for (Entry<Key, byte[]> e : data.entrySet()) {
-                Key k = e.getKey();
-                byte[] val = e.getValue();
-                byte[] oldVal = store.get(e.getKey().getArray());
-                if (oldVal == null) {
-                    store.put(k.getArray(), val);
+            Batch b = store.createBatch();
+            try {
+                for (Entry<Key, byte[]> e : data.entrySet()) {
+                    Key k = e.getKey();
+                    byte[] val = e.getValue();
+                    b.put(k.getArray(), val, snapshotId);
                 }
+                store.writeBatch(b);
+            } finally {
+                b.close();
             }
-
             return null;
         }
     }

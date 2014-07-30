@@ -20,8 +20,10 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.primitives.Longs;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,22 +34,29 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.logging.Level;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
+import se.sics.caracaldb.bootstrap.BootUp;
+import se.sics.caracaldb.bootstrap.BootstrapRequest;
+import se.sics.caracaldb.bootstrap.BootstrapResponse;
+import se.sics.caracaldb.bootstrap.Ready;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.operations.CaracalMsg;
+import se.sics.caracaldb.operations.MultiOpRequest;
+import se.sics.caracaldb.operations.MultiOpResponse;
+import se.sics.caracaldb.operations.OpUtil;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.RangeQuery;
-import se.sics.caracaldb.paxos.Paxos;
-import se.sics.caracaldb.paxos.PaxosInit;
-import se.sics.caracaldb.replication.log.Decide;
-import se.sics.caracaldb.replication.log.ReplicatedLog;
+import se.sics.caracaldb.operations.ResponseCode;
+import se.sics.caracaldb.replication.linearisable.ViewChange;
 import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.RangeReq;
@@ -58,9 +67,9 @@ import se.sics.caracaldb.system.Configuration;
 import se.sics.caracaldb.system.StartVNode;
 import se.sics.caracaldb.system.Stats;
 import se.sics.caracaldb.system.Stats.Report;
+import se.sics.caracaldb.system.StopVNode;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.caracaldb.utils.TimestampIdFactory;
-import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
@@ -97,15 +106,20 @@ public class CatHerder extends ComponentDefinition {
     private Configuration config;
     private LookupTable lut;
     private Address self;
+    private Integer selfId;
     private Key heartBeatKey;
     private Set<Address> masterGroup = null;
     private UUID sendHeartbeatId = null;
     private UUID checkHeartbeatsId = null;
     private HashMap<Address, NodeStats> nodeStats = new HashMap<Address, NodeStats>();
+    private TreeMap<Long, LUTUpdate> stalledUpdates = new TreeMap<Long, LUTUpdate>();
+    private TreeMap<UUID, RangeQuery.SeqCollector> collectors = new TreeMap<>();
     // master
-    private HashSet<Address> outstandingFailures = new HashSet<Address>();
-    private Component paxos;
-    private Positive<ReplicatedLog> rlog = requires(ReplicatedLog.class);
+    private HashSet<Address> outstandingJoins = new HashSet<Address>();
+    private TreeMap<UUID, LUTUpdate> pendingUpdates = new TreeMap<>();
+    //private Component paxos;
+    //private Positive<ReplicatedLog> rlog = requires(ReplicatedLog.class);
+    private final MaintenancePolicy policy;
 
     public CatHerder(CatHerderInit init) {
         config = init.conf;
@@ -113,7 +127,10 @@ public class CatHerder extends ComponentDefinition {
         heartbeatTimeout = 2 * heartbeatInterval;
         lut = init.bootEvent.lut;
         self = init.self;
+        selfId = lut.getIdsForAddresses(ImmutableSet.of(self)).get(self);
         heartBeatKey = LookupTable.RESERVED_HEARTBEATS.append(CustomSerialisers.serialiseAddress(self)).get();
+
+        policy = init.conf.getMaintenancePolicy();
 
         checkMasterGroup();
         if (checkMaster()) {
@@ -131,6 +148,9 @@ public class CatHerder extends ComponentDefinition {
         subscribe(sampleHandler, net);
         subscribe(statsHandler, maintenance);
         subscribe(sendHeartbeatHandler, timer);
+        subscribe(maintenanceHandler, net);
+        subscribe(rangeResponseHandler, net);
+        subscribe(bootstrapHandler, net);
     }
     Handler<Start> startHandler = new Handler<Start>() {
 
@@ -146,11 +166,7 @@ public class CatHerder extends ComponentDefinition {
             spt.setTimeoutEvent(shb);
             trigger(spt, timer);
             if (checkMaster()) {
-                SchedulePeriodicTimeout sptC = new SchedulePeriodicTimeout(heartbeatTimeout, heartbeatTimeout);
-                CheckHeartbeats chs = new CheckHeartbeats(sptC);
-                checkHeartbeatsId = chs.getTimeoutId();
-                sptC.setTimeoutEvent(chs);
-                trigger(sptC, timer);
+                scheduleMasterTimeout();
             }
             /*
              * VNodes
@@ -294,7 +310,7 @@ public class CatHerder extends ComponentDefinition {
                 Address dest = findDest(pr.key);
                 CaracalMsg msg = new CaracalMsg(self, dest, pr);
                 trigger(msg, net);
-                LOG.debug("Sending Heartbeat: {}", r);
+                LOG.debug("Sending Heartbeat: \n   {}\n   {}", r, pr);
             } catch (IOException ex) {
                 LOG.error("Could not serialise Report. If this persists the node will be declared as dead due to lacking heartbeats.", ex);
             } catch (NoResponsibleForKeyException ex) {
@@ -330,18 +346,256 @@ public class CatHerder extends ComponentDefinition {
             trigger(event.reply(ImmutableSet.copyOf(sample)), net);
         }
     };
+    Handler<MaintenanceMsg> maintenanceHandler = new Handler<MaintenanceMsg>() {
+
+        @Override
+        public void handle(MaintenanceMsg event) {
+            if (event.op instanceof LUTUpdate) {
+                LUTUpdate update = (LUTUpdate) event.op;
+                if (!update.applicable(lut)) {
+                    stalledUpdates.put(update.version, update);
+                    askForUpdatesTo(update.version);
+                    return;
+                }
+                boolean masterBefore = checkMaster();
+                CatHerderCallbacks chc = new CatHerderCallbacks();
+                update.apply(lut, chc);
+                chc.commit();
+                checkMasterGroup();
+                if (checkMaster() && !masterBefore) {
+                    connectMasterHandlers();
+                    scheduleMasterTimeout();
+                }
+                if (masterBefore && !checkMaster()) {
+                    LOG.error("{}: Just got demoted from master status. This is not supposed to happen! Failing hard...", self);
+                    System.exit(1); // this might mean that the system is unstable, better to fail fast than risk further inconsistency
+                }
+                if (event.src.equals(self)) { // a tiny bit of master code
+                    bootstrapJoiners(update);
+                }
+            }
+        }
+    };
+    Handler<CaracalMsg> rangeResponseHandler = new Handler<CaracalMsg>() {
+
+        @Override
+        public void handle(CaracalMsg event) {
+            if (event.op instanceof RangeQuery.Response) {
+                RangeQuery.Response op = (RangeQuery.Response) event.op;
+                RangeQuery.SeqCollector col = collectors.get(op.id);
+                if ((col == null) || op.code != ResponseCode.SUCCESS) {
+                    return; // nothing we can do without a collector
+                }
+                col.processResponse(op);
+                if (col.isDone()) {
+                    collectors.remove(op.id);
+                    try {
+                        boolean masterBefore = checkMaster();
+                        for (Entry<Key, byte[]> e : col.getResult().getValue1().entrySet()) {
+                            LUTUpdate update = LUTUpdate.deserialise(e.getValue());
+                            if (!update.applicable(lut)) {
+                                stalledUpdates.put(update.version, update);
+                                askForUpdatesTo(update.version);
+                                return;
+                            }
+                            CatHerderCallbacks chc = new CatHerderCallbacks();
+                            update.apply(lut, chc);
+                            chc.commit();
+                            stalledUpdates.remove(update.version);
+                        }
+                        checkMasterGroup();
+                        if (checkMaster() && !masterBefore) {
+                            connectMasterHandlers();
+                            scheduleMasterTimeout();
+                        }
+                        if (masterBefore && !checkMaster()) {
+                            LOG.error("{}: Just got demoted from master status. This is not supposed to happen! Failing hard...", self);
+                            System.exit(1); // this might mean that the system is unstable, better to fail fast than risk further inconsistency
+                        }
+                    } catch (Exception ex) {
+                        LOG.error("{}: Error during LUTUpdate deserialisation: \n {}", self, ex);
+                    }
+                }
+            }
+        }
+
+    };
+    Handler<BootstrapRequest> bootstrapHandler = new Handler<BootstrapRequest>() {
+
+        @Override
+        public void handle(BootstrapRequest event) {
+            if (event.origin.equals(event.src)) { // hasn't been forwarded to masters, yet
+                for (Address addr : masterGroup) {
+                    trigger(event.forward(self, addr), net);
+                }
+            } else { // master code
+                if (!checkMaster()) {
+                    LOG.warn("{}: Got a BoostrapRequest forwarded although it's not master: {}", self, event);
+                    return;
+                }
+                // TODO check if there needs to be some check about existance of nodes in the LUT here
+                outstandingJoins.add(event.origin);
+            }
+        }
+    };
+
+    class CatHerderCallbacks implements LUTUpdate.Callbacks {
+
+        private final TreeMap<Key, HostAction> actions = new TreeMap<Key, HostAction>();
+
+        @Override
+        public Address getAddress() {
+            return self;
+        }
+
+        @Override
+        public Integer getAddressId() {
+            return selfId;
+        }
+
+        @Override
+        public void killVNode(Key k) {
+            HostAction cur = actions.get(k);
+            if (cur == null) {
+                actions.put(k, this.new Kill());
+                return;
+            }
+            if (cur instanceof CatHerderCallbacks.Kill) {
+                return; // no reason to double kill
+            }
+            if (cur instanceof CatHerderCallbacks.Start) {
+                actions.remove(k); // one start and one kill cancel each other out
+                return;
+            }
+            if (cur instanceof CatHerderCallbacks.Reconf) {
+                LOG.error("{}: Got a kill action at {} where there's currently a reconf. Not sure what to do -.-", self, k);
+                actions.remove(k); // better do nothing than do weird things
+                return;
+            }
+        }
+
+        @Override
+        public void startVNode(Key k) {
+            HostAction cur = actions.get(k);
+            if (cur == null) {
+                actions.put(k, this.new Start());
+                return;
+            }
+            if (cur instanceof CatHerderCallbacks.Kill) {
+                actions.remove(k); // one start and one kill cancel each other out
+                return;
+            }
+            if (cur instanceof CatHerderCallbacks.Start) {
+                return; // no reason to double start
+            }
+            if (cur instanceof CatHerderCallbacks.Reconf) {
+                LOG.error("{}: Got a start action at {} where there's currently a reconf. Not sure what to do -.-", self, k);
+                actions.remove(k); // better do nothing than do weird things
+                return;
+            }
+        }
+
+        @Override
+        public void reconf(Key k, ViewChange change) {
+            HostAction cur = actions.get(k);
+            if (cur == null) {
+                actions.put(k, this.new Reconf(change));
+                return;
+            }
+            if (cur instanceof CatHerderCallbacks.Kill) {
+                LOG.error("{}: Got a reconf action at {} where there's currently a kill. Not sure what to do -.-", self, k);
+                actions.remove(k); // better do nothing than do weird things
+                return;
+            }
+            if (cur instanceof CatHerderCallbacks.Start) {
+                LOG.error("{}: Got a reconf action at {} where there's currently a start. Not sure what to do -.-", self, k);
+                actions.remove(k); // better do nothing than do weird things
+                return;
+            }
+            if (cur instanceof CatHerderCallbacks.Reconf) {
+                CatHerderCallbacks.Reconf re = (CatHerderCallbacks.Reconf) cur;
+                if (re.change.equals(change)) {
+                    return; // it's fine
+                }
+                LOG.error("{}: Got a different reconf action at {} where there's currently a reconf. Not sure what to do -.-", self, k);
+                actions.remove(k); // better do nothing than do weird things
+                return;
+            }
+        }
+
+        public void commit() {
+            for (Entry<Key, HostAction> e : actions.entrySet()) {
+                e.getValue().execute(e.getKey());
+            }
+        }
+
+        class Kill extends HostAction {
+
+            @Override
+            public void execute(Key k) {
+                StopVNode msg = new StopVNode(self, self.newVirtual(k.getArray()));
+                trigger(msg, net);
+            }
+
+        }
+
+        class Start extends HostAction {
+
+            @Override
+            public void execute(Key k) {
+                StartVNode msg = new StartVNode(self, self, k.getArray());
+                trigger(msg, net);
+            }
+
+        }
+
+        class Reconf extends HostAction {
+
+            public final ViewChange change;
+
+            public Reconf(ViewChange change) {
+                this.change = change;
+            }
+
+            @Override
+            public void execute(Key k) {
+                Reconfiguration r = new Reconfiguration(change);
+                MaintenanceMsg msg = new MaintenanceMsg(self, self.newVirtual(k.getArray()), r);
+                trigger(msg, net);
+            }
+        }
+
+    }
+
+    static abstract class HostAction {
+
+        public abstract void execute(Key k);
+    }
+
+    private void askForUpdatesTo(long version) {
+        try {
+            Key startKey = LookupTable.RESERVED_LUTUPDATES.append(new Key(Longs.toByteArray(lut.versionId))).get();
+            Key endKey = LookupTable.RESERVED_LUTUPDATES.append(new Key(Longs.toByteArray(version))).get();
+            KeyRange range = KeyRange.open(startKey).open(endKey);
+            UUID id = TimestampIdFactory.get().newId();
+            RangeQuery.Request r = new RangeQuery.Request(id, range, null, null, null, RangeQuery.Type.SEQUENTIAL);
+            Address dest = findDest(startKey);
+            CaracalMsg msg = new CaracalMsg(self, dest, r);
+            trigger(msg, net);
+            collectors.put(id, new RangeQuery.SeqCollector(r));
+        } catch (NoResponsibleForKeyException ex) {
+            LOG.warn("{}: Apparently noone is responsible for the reserved range -.-", self);
+        }
+    }
+
     /*
      * MASTER ONLY
      */
     Handler<CheckHeartbeats> checkHBHandler = new Handler<CheckHeartbeats>() {
 
-        private RangeReq rr = null;
-
         @Override
         public void handle(CheckHeartbeats event) {
-            if (rr == null) {
-                rr = new RangeReq(KeyRange.prefix(heartBeatKey), Limit.noLimit(), TFFactory.noTF(), ActionFactory.delete());
-            }
+            RangeReq rr = new RangeReq(KeyRange.prefix(LookupTable.RESERVED_HEARTBEATS), Limit.noLimit(), TFFactory.noTF(), ActionFactory.delete());
             /*
              * I suppose one can argue whether or not it's correct to do this
              * directly on the storage, bypassing the replication. But consider
@@ -355,39 +609,76 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(RangeResp event) {
-            HashMap<Address, Report> stats = new HashMap<Address, Report>();
+            LOG.info("{}({}): Got range response with {} items!", self, checkMaster(), event.result.size());
+            ImmutableMap.Builder<Address, Report> statsB = ImmutableMap.builder();
             for (Entry<Key, byte[]> e : event.result.entrySet()) {
                 Key k = e.getKey();
                 try {
                     Report r = Report.deserialise(e.getValue());
-                    stats.put(r.atHost, r);
+                    statsB.put(r.atHost, r);
                 } catch (IOException ex) {
                     LOG.error("Could not deserialise Statistics Report for key " + k, ex);
                 }
             }
-            HashSet<Address> fails = new HashSet<Address>();
+            ImmutableMap<Address, Report> stats = statsB.build();
+            ImmutableSet.Builder<Address> failsB = ImmutableSet.builder();
             for (Iterator<Address> it = lut.hostIterator(); it.hasNext();) {
                 Address host = it.next();
                 if ((host != null) && !stats.containsKey(host)) {
-                    fails.add(host);
+                    failsB.add(host);
                     LOG.info("{}: It appears that host {} has failed.", self, host);
                 }
             }
-            // Can already be deallocated while failures are being handled
-            // Somtimes I wish I could just tell the JVM GC what to do -.-
-            stats.clear();
-            stats = null;
-            for (Address adr : fails) {
-                //TODO something
+            ImmutableSet<Address> fails = failsB.build();
+            if (fails.size() > (lut.hosts().size() / 2)) {
+                LOG.warn("{}: More than 50% of all system nodes seem to have failed at the same time. \n"
+                        + "Under the assumption that this is a partition Caracal will not rebalance, but wait for the partition to be resolved.", self);
+                return;
             }
-            //TODO clear range for next time
+            LUTUpdate update = policy.rebalance(fails, ImmutableSet.copyOf(outstandingJoins), stats);
+            if (update == null) {
+                return; // nothing to do
+            }
+            try {
+                Key updateKey = LookupTable.RESERVED_LUTUPDATES.append(new Key(Longs.toByteArray(update.version))).get();
+                UUID id = TimestampIdFactory.get().newId();
+                MultiOpRequest op = OpUtil.putIfAbsent(id, updateKey, update.serialise());
+                Address dest = findDest(updateKey);
+                CaracalMsg msg = new CaracalMsg(self, dest, op);
+                trigger(msg, net);
+                pendingUpdates.put(id, update);
+            } catch (NoResponsibleForKeyException ex) {
+                LOG.error("{}: Apparently no-one is responsible for the reserved range oO: {}", self, ex);
+            }
+            outstandingJoins.clear(); // clear occasionally to keep only active nodes in there
         }
     };
-    Handler<Decide> decideHandler = new Handler<Decide>() {
+    Handler<CaracalMsg> multiOpHandler = new Handler<CaracalMsg>() {
 
         @Override
-        public void handle(Decide event) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        public void handle(CaracalMsg event) {
+            if (event.op instanceof MultiOpResponse) {
+                MultiOpResponse mor = (MultiOpResponse) event.op;
+                LUTUpdate update = pendingUpdates.remove(mor.id);
+                if (update == null) {
+                    LOG.info("{}: Can't find pending update with id {}", self, mor.id);
+                    return;
+                }
+                if (mor.code == ResponseCode.SUCCESS && mor.success == true) {
+                    broadcast(update);
+                }
+                return;
+            }
+            //LOG.info("{}: Got CaracalMsg {}, but am only expecting MultiOpResponse", self, event);
+        }
+
+    };
+    Handler<Ready> readyHandler = new Handler<Ready>() {
+
+        @Override
+        public void handle(Ready event) {
+            BootUp bu = new BootUp(self, event.getOrigin());
+            trigger(bu, net); // no need to wait for anyone
         }
     };
 
@@ -408,22 +699,49 @@ public class CatHerder extends ComponentDefinition {
         return dest;
     }
 
-    private void announceFailure(Address failedHost) {
+    private void broadcast(Maintenance op) {
+        for (Address addr : lut.hosts()) {
+            MaintenanceMsg msg = new MaintenanceMsg(self, addr, op);
+            trigger(msg, net);
+        }
+    }
 
+    private void bootstrapJoiners(LUTUpdate update) {
+        ImmutableSet<Address> joiners = update.joiners();
+        if (joiners.isEmpty()) {
+            return;
+        }
+        byte[] lutS = lut.serialise();
+        for (Address addr : joiners) {
+            BootstrapResponse br = new BootstrapResponse(self, addr, lutS);
+            trigger(br, net);
+            outstandingJoins.remove(addr);
+        }
     }
 
     private void connectMasterHandlers() {
         View v = new View(ImmutableSortedSet.copyOf(masterGroup), 0);
-        paxos = create(Paxos.class,
-                new PaxosInit(v, (int) Math.ceil(LookupTable.INIT_REP_FACTOR / 2.0),
-                        config.getMilliseconds("caracal.network.keepAlivePeriod"), self));
-        connect(rlog.getPair(), paxos.getPositive(ReplicatedLog.class));
-        connect(paxos.getNegative(Network.class), net);
-        connect(paxos.getNegative(EventualFailureDetector.class), fd);
-
-        subscribe(decideHandler, rlog);
+//        paxos = create(Paxos.class,
+//                new PaxosInit(v, (int) Math.ceil(LookupTable.INIT_REP_FACTOR / 2.0),
+//                        config.getMilliseconds("caracal.network.keepAlivePeriod"), self));
+//        connect(rlog.getPair(), paxos.getPositive(ReplicatedLog.class));
+//        connect(paxos.getNegative(Network.class), net);
+//        connect(paxos.getNegative(EventualFailureDetector.class), fd);
+//
+//        subscribe(decideHandler, rlog);
         subscribe(checkHBHandler, timer);
-        //subscribe(rangeHandler, store); //TODO uncomment when fixed
+        subscribe(rangeHandler, store);
+        subscribe(multiOpHandler, net);
+        subscribe(readyHandler, net);
+    }
+
+    private void scheduleMasterTimeout() {
+        SchedulePeriodicTimeout sptC = new SchedulePeriodicTimeout(heartbeatTimeout, heartbeatTimeout);
+        LOG.info("{}: Scheduling Heartbeats: {}ms < {}ms", self, heartbeatInterval, heartbeatTimeout);
+        CheckHeartbeats chs = new CheckHeartbeats(sptC);
+        checkHeartbeatsId = chs.getTimeoutId();
+        sptC.setTimeoutEvent(chs);
+        trigger(sptC, timer);
     }
 
     private void connectSlaveHandlers() {

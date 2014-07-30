@@ -21,20 +21,14 @@
 package se.sics.caracaldb.system;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.Ordering;
-import com.google.common.util.concurrent.AtomicDouble;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
@@ -49,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.global.NodeStats;
 import se.sics.caracaldb.utils.CustomSerialisers;
+import se.sics.caracaldb.utils.ExtremeKMap;
 import se.sics.caracaldb.utils.TopKMap;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers;
@@ -94,12 +89,8 @@ public class Stats {
             LOG.error("Sigar Cpu Error: ", se);
             return null;
         }
-
-        TopKMap<Long, Address> topKSize = new TopKMap<Long, Address>(K);
-        Comparator<Long> revcomp = Ordering.natural().reverse();
-        TopKMap<Long, Address> bottomKSize = new TopKMap<Long, Address>(K, revcomp);
-        TopKMap<Long, Address> topKOps = new TopKMap<Long, Address>(K);
-        TopKMap<Long, Address> bottomKOps = new TopKMap<Long, Address>(K, revcomp);
+        ExtremeKMap<Long, Address> xKSize = new ExtremeKMap<>(K);
+        ExtremeKMap<Long, Address> xKOps = new ExtremeKMap<>(K);
         long totalStoreSize = 0;
         long totalNumKeys = 0;
         long totalOpS = 0;
@@ -110,10 +101,8 @@ public class Stats {
             totalStoreSize += stats.storeSize;
             totalNumKeys += stats.storeNumberOfKeys;
             totalOpS += stats.ops;
-            topKSize.put(stats.storeSize, addr);
-            bottomKSize.put(stats.storeSize, addr);
-            topKOps.put(stats.ops, addr);
-            bottomKOps.put(stats.ops, addr);
+            xKSize.put(stats.storeSize, addr);
+            xKOps.put(stats.ops, addr);
         }
 
         double memUsage = mem.getUsedPercent();
@@ -130,9 +119,10 @@ public class Stats {
             mbean.averageOpS.set(0);
         }
 
-        return new Report(atHost, memUsage, previousCpuUsage,
-                mapToList(topKSize), mapToList(bottomKSize),
-                mapToList(topKOps), mapToList(bottomKOps));
+        return new Report(atHost, memUsage, previousCpuUsage, numVN,
+                Math.floorDiv(totalOpS, numVN),Math.floorDiv(totalStoreSize, numVN),
+                mapToList(xKSize.top()), mapToList(xKSize.bottom()),
+                mapToList(xKOps.top()), mapToList(xKOps.bottom()));
     }
 
     private static List<Key> mapToList(TopKMap<?, Address> map) {
@@ -149,15 +139,23 @@ public class Stats {
         public final Address atHost;
         public final double memoryUsage;
         public final double cpuUsage;
+        public final int numberOfVNodes;
+        public final long averageOpS;
+        public final long averageSize;
         public final List<Key> topKSize;
         public final List<Key> bottomKSize;
         public final List<Key> topKOps;
         public final List<Key> bottomKOps;
 
-        public Report(Address atHost, double memoryUsage, double cpuUsage, List<Key> topKSize, List<Key> bottomKSize, List<Key> topKOps, List<Key> bottomKOps) {
+        public Report(Address atHost, double memoryUsage, double cpuUsage, 
+                int numberOfVNodes, long averageOpS, long averageSize,
+                List<Key> topKSize, List<Key> bottomKSize, List<Key> topKOps, List<Key> bottomKOps) {
             this.atHost = atHost;
             this.memoryUsage = memoryUsage;
             this.cpuUsage = cpuUsage;
+            this.numberOfVNodes = numberOfVNodes;
+            this.averageOpS = averageOpS;
+            this.averageSize = averageSize;
             this.topKSize = topKSize;
             this.bottomKSize = bottomKSize;
             this.topKOps = topKOps;
@@ -207,6 +205,9 @@ public class Stats {
             SpecialSerializers.AddressSerializer.INSTANCE.toBinary(atHost, buf);
             buf.writeDouble(memoryUsage);
             buf.writeDouble(cpuUsage);
+            buf.writeInt(numberOfVNodes);
+            buf.writeLong(averageOpS);
+            buf.writeLong(averageSize);
 
             buf.writeInt(topKSize.size()); // They better all be the same size -.-
 
@@ -230,6 +231,9 @@ public class Stats {
             Address atHost = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             double memoryUsage = buf.readDouble();
             double cpuUsage = buf.readDouble();
+            int numberOfVNodes = buf.readInt();
+            long averageOpS = buf.readLong();
+            long averageSize = buf.readLong();
 
             int k = buf.readInt();
 
@@ -245,7 +249,7 @@ public class Stats {
                 bottomKSize.add(CustomSerialisers.deserialiseKey(buf));
             }
 
-            return new Report(atHost, memoryUsage, cpuUsage, topKSize, bottomKSize, topKOps, bottomKOps);
+            return new Report(atHost, memoryUsage, cpuUsage, numberOfVNodes, averageOpS, averageSize, topKSize, bottomKSize, topKOps, bottomKOps);
         }
     }
 }

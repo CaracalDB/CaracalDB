@@ -21,7 +21,8 @@
 package se.sics.caracaldb.persistence;
 
 import java.io.Closeable;
-import java.util.Map.Entry;
+import java.util.SortedMap;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>
@@ -40,7 +41,7 @@ public interface StoreIterator extends Closeable {
      * moves the iterator to the next item. Use peek to inspect key/value of this item
      */
     public void next();
-    public Entry<byte[], byte[]> peekNext();
     public byte[] peekKey();
-    public byte[] peekValue();
+    public ByteArrayRef peekValue();
+    public SortedMap<Integer, ByteArrayRef> peekAllValues();
 }

@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.ComponentDefinition;
-import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;

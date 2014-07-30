@@ -33,8 +33,8 @@ public class RangeResp extends StorageResponse {
     public final SortedMap<Key, byte[]> result;
     public final boolean readLimit;
     
-    public RangeResp(RangeReq req, SortedMap<Key, byte[]> result, boolean readAll) {
-        super(req, null);
+    public RangeResp(RangeReq req, SortedMap<Key, byte[]> result, boolean readAll, Diff diff) {
+        super(req, diff);
         this.req = req;
         this.result = result;
         this.readLimit = readAll;

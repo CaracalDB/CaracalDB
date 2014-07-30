@@ -155,7 +155,7 @@ public class SimulatorComponent extends ComponentDefinition {
     };
 
     private void bootBootstrapNode() {
-        Configuration myConf = Configuration.Factory.modify(baseConfig)
+        Configuration myConf = Configuration.Factory.modifyWithOtherDB(baseConfig, "bootStrap/")
                 .setIp(baseConfig.getBootstrapServer().getIp())
                 .setPort(baseConfig.getBootstrapServer().getPort())
                 .finalise();
@@ -173,7 +173,7 @@ public class SimulatorComponent extends ComponentDefinition {
     }
 
     private void bootNode(int port) {
-        Configuration myConf = Configuration.Factory.modify(baseConfig)
+        Configuration myConf = Configuration.Factory.modifyWithOtherDB(baseConfig, String.valueOf(port)+"/")
                 .setIp(baseConfig.getBootstrapServer().getIp())
                 .setPort(port)
                 .finalise();

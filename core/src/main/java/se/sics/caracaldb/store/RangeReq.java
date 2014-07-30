@@ -64,6 +64,10 @@ public class RangeReq extends StorageRequest {
     @Override
     public StorageResponse execute(Persistence store) throws IOException {
         TreeMap<Key, byte[]> results = new TreeMap<Key, byte[]>();
+        
+        long lengthDiff = 0;
+        long keyNumDiff = 0;
+        Diff diff = null;
 
         Closer closer = Closer.create();
         try {
@@ -71,12 +75,19 @@ public class RangeReq extends StorageRequest {
             byte[] begin = range.begin.getArray();
             for (StoreIterator it = closer.register(store.iterator(begin)); it.hasNext(); it.next()) {
                 byte[] key = it.peekKey();
+                byte[] oldVal = it.peekValue();
                 if (range.contains(key)) {
-                    Pair<Boolean, byte[]> res = transFilter.execute(it.peekValue());
+                    Pair<Boolean, byte[]> res = transFilter.execute(oldVal);
                     if (res.getValue0()) {
                         if (limit.read(res.getValue1())) {
                             results.put(new Key(key), res.getValue1());
-                            action.process(key, res.getValue1());
+                            long newSize = action.process(key, res.getValue1());
+                            if (newSize == 0) {
+                                lengthDiff -= oldVal.length;
+                                keyNumDiff--;
+                            } else if (newSize > 0) {
+                                lengthDiff -= oldVal.length - newSize;
+                            }
                             if (!limit.canRead()) {
                                 break;
                             }
@@ -92,12 +103,13 @@ public class RangeReq extends StorageRequest {
                 }
             }
             action.commit();
+            diff = new Diff(lengthDiff, keyNumDiff);
         } catch (Throwable e) {
             action.abort();
             closer.rethrow(e);
         } finally {
             closer.close();
         }
-        return new RangeResp(this, results, !limit.canRead());
+        return new RangeResp(this, results, !limit.canRead(), diff);
     }
 }

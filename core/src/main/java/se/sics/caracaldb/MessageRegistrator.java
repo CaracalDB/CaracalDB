@@ -23,6 +23,7 @@ package se.sics.caracaldb;
 import se.sics.caracaldb.global.ForwardMessage;
 import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.CaracalOp;
+import se.sics.caracaldb.store.MultiOp;
 import se.sics.caracaldb.system.StartVNode;
 import se.sics.caracaldb.system.StopVNode;
 import se.sics.kompics.network.netty.serialization.Serializers;
@@ -39,6 +40,7 @@ public class MessageRegistrator {
         Serializers.register(CoreSerializer.SYSTEM.instance, "systemS");
         Serializers.register(StartVNode.class, "systemS");
         Serializers.register(StopVNode.class, "systemS");
+        //
         Serializers.register(CoreSerializer.OP.instance, "opS");
         Serializers.register(CaracalMsg.class, "opS");
         Serializers.register(CaracalOp.class, "opS");
@@ -46,5 +48,8 @@ public class MessageRegistrator {
         Serializers.register(CoreSerializer.LOOKUP.instance, "lookupS");
         Serializers.register(ForwardMessage.class, "lookupS");
         Serializers.register(se.sics.caracaldb.global.Message.class, "lookupS");
+        //
+        Serializers.register(CoreSerializer.COND.instance, "condS");
+        Serializers.register(MultiOp.FunctionalCondition.class, "condS");
     }
 }

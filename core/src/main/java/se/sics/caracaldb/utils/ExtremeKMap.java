@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,40 +18,44 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.store;
 
-import se.sics.caracaldb.Key;
-import se.sics.caracaldb.persistence.Persistence;
+package se.sics.caracaldb.utils;
+
+import com.google.common.collect.Ordering;
+import java.util.Comparator;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author lkroll
  */
-public class Put extends StorageRequest {
+public class ExtremeKMap<K extends Comparable, V> {
+    public final int k;
     
-    public final Key key;
-    public final byte[] value;
+    private final TopKMap<K, V> tops;
+    private final TopKMap<K, V> bottoms;
     
-    public Put(Key k, byte[] v) {
-        key = k;
-        value = v;
+    public ExtremeKMap(int k) {
+        this(k, Ordering.natural().reverse());
     }
-
-    @Override
-    public StorageResponse execute(Persistence store) {
-        byte[] oldValue = store.get(key.getArray());
-        store.put(key.getArray(), value);
-        Diff diff = null;
-        if (oldValue == null) {
-            diff = new Diff(value.length+key.getKeySize(), 1);
-        } else {
-            diff = new Diff(value.length - oldValue.length, 0);
-        }
-        return new PutResp(this, diff);
+    public ExtremeKMap(int k, Comparator<K> inverseComparator) {
+        this(k, Ordering.natural(), inverseComparator);
+    }
+    public ExtremeKMap(int k, Comparator<K> comparator, Comparator<K> inverseComparator) {
+        this.k = k;
+        tops = new TopKMap(k, comparator);
+        bottoms = new TopKMap(k, inverseComparator);
     }
     
-    @Override
-    public String toString() {
-        return "PutReq("+key+", "+value+")";
+    public TopKMap<K, V> top() {
+        return tops;
+    }
+    
+    public TopKMap<K, V> bottom() {
+        return bottoms;
+    }
+    
+    public void put(K key, V value) {
+        tops.put(key, value);
+        bottoms.put(key, value);
     }
 }

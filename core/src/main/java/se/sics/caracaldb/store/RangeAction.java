@@ -30,7 +30,18 @@ import se.sics.caracaldb.persistence.Persistence;
  */
 public interface RangeAction extends Serializable {
     public void prepare(Persistence store);
-    public void process(byte[] key, byte[] value);
+    /**
+     * Processes key and value.
+     * 
+     * return new entry length of key:
+     * -1 if no change
+     * 0 if deleted
+     * x > 0 if changed to x
+     * @param key
+     * @param value
+     * @return 
+     */
+    public long process(byte[] key, byte[] value);
     public void commit();
     public void abort();
 }

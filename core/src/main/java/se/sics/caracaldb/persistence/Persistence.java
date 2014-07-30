@@ -20,6 +20,9 @@
  */
 package se.sics.caracaldb.persistence;
 
+import java.util.SortedMap;
+import se.sics.caracaldb.utils.ByteArrayRef;
+
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
@@ -36,14 +39,30 @@ public interface Persistence {
      * @param key
      * @param value
      */
-    public void put(byte[] key, byte[] value);
+    public void put(byte[] key, byte[] value, int version);
+    
+    /**
+     * Replaces the whole multi-version blob at key with value
+     * 
+     * @param key
+     * @param value 
+     */
+    public void replace(byte[] key, ByteArrayRef value);
 
     /**
-     * Removes the mapping for this key from this TreeMap if present.
+     * Removes the mapping for this key in this version if present.
      * <p>
      * @param key
      */
-    public void delete(byte[] key);
+    public void delete(byte[] key, int version);
+    
+    /**
+     * Cleans up all versions before version of data at this key if exists
+     * 
+     * @param key
+     * @param version 
+     */
+    public void deleteVersions(byte[] key, int version);
 
     /**
      * Returns the value to which the specified key is mapped, or null if this
@@ -52,7 +71,17 @@ public interface Persistence {
      * @param key
      * @return
      */
-    public byte[] get(byte[] key);
+    public ByteArrayRef get(byte[] key);
+    
+    /**
+     * Gives all currently existing versions for key.
+     * 
+     * If key doesn't exists, it returns an empty map.
+     * 
+     * @param key
+     * @return 
+     */
+    public SortedMap<Integer, ByteArrayRef> getAllVersions(byte[] key);
 
     /**
      * Prepares a write batch (allocate native memory in case of native

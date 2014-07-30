@@ -26,7 +26,7 @@ import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.flow.ChunkCollector.ClearFlowId;
-import se.sics.caracaldb.flow.FlowManager.BufferPointer;
+import se.sics.caracaldb.utils.ByteArrayRef;
 import se.sics.caracaldb.flow.FlowManager.CTS;
 import se.sics.caracaldb.flow.FlowManager.Chunk;
 import se.sics.caracaldb.flow.FlowManager.RTS;
@@ -119,12 +119,12 @@ public class FlowMessageSerializer implements Serializer {
         buf.writeInt(chunk.clearId);
         buf.writeInt(chunk.chunkNo);
         buf.writeInt(chunk.bytes);
-        BufferPointer data = chunk.data;
+        ByteArrayRef data = chunk.data;
         if (!full) {
             buf.writeInt(data.length);
             buf.writeBoolean(chunk.isFinal);
         }
-        buf.writeBytes(data.buffer, data.begin, data.length);
+        buf.writeBytes(data.getBackingArray(), data.begin, data.length);
     }
     
     private Chunk chunkFromBinary(ByteBuf buf, MessageFields fields) {
@@ -140,7 +140,7 @@ public class FlowMessageSerializer implements Serializer {
         }
         ClearFlowId id = new ClearFlowId(flowId, clearId);
         ChunkCollector coll = ChunkCollector.collectors.computeIfAbsent(id, k -> new ChunkCollector(flowId, clearId, bytes));
-        BufferPointer data = coll.readChunk(chunkNo, length, buf);
+        ByteArrayRef data = coll.readChunk(chunkNo, length, buf);
         return new Chunk(fields.src, fields.dst, fields.proto, flowId, clearId, chunkNo, bytes, data, isFinal);
     }
 }

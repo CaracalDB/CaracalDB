@@ -28,10 +28,8 @@ import se.sics.kompics.Init;
  */
 public class DataReceiverInit extends Init<DataReceiver> {
     public final InitiateTransfer event;
-    public final boolean force;
     
-    public DataReceiverInit(InitiateTransfer event, boolean force) {
+    public DataReceiverInit(InitiateTransfer event) {
         this.event = event;
-        this.force = force;
     }
 }

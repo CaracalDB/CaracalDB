@@ -43,6 +43,7 @@ import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
 import se.sics.caracaldb.operations.GetResponse;
+import se.sics.caracaldb.operations.MultiOpRequest;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.PutResponse;
 import se.sics.caracaldb.operations.RangeQuery;
@@ -56,6 +57,7 @@ import se.sics.caracaldb.replication.log.ReplicatedLog;
 import se.sics.caracaldb.replication.log.Value;
 import se.sics.caracaldb.store.GetReq;
 import se.sics.caracaldb.store.GetResp;
+import se.sics.caracaldb.store.MultiOp;
 import se.sics.caracaldb.store.Put;
 import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
@@ -102,6 +104,7 @@ public class ExecutionEngine extends ComponentDefinition {
     private final Actions actions = new Actions();
     private OperationsLog opLog = new InMemoryLog();
     private long lastSnapshotId = -1;
+    private int versionId = -1;
 
     public ExecutionEngine(ExecutionEngineInit event) {
         this.init = event;
@@ -244,14 +247,15 @@ public class ExecutionEngine extends ComponentDefinition {
                 Handler<InitiateTransfer> transferHandler = new Handler<InitiateTransfer>() {
                     @Override
                     public void handle(InitiateTransfer event) {
-                        final Component dataTransfer = create(DataReceiver.class, new DataReceiverInit(event, false));
+                        final Component dataTransfer = create(DataReceiver.class, new DataReceiverInit(event));
                         connect(dataTransfer.getNegative(Network.class), net, new TransferFilter(event.id));
                         connect(dataTransfer.getNegative(Timer.class), timer);
                         connect(dataTransfer.getNegative(Store.class), store);
 
                         final Long snapshotId = (Long) event.metadata.get("snapshotId");
-                        if (snapshotId == null) {
-                            LOG.error("Data transfer didn't provide snapshotID. "
+                        final Integer versionId = (Integer) event.metadata.get("versionId");
+                        if ((snapshotId == null) || (versionId == null)) {
+                            LOG.error("Data transfer didn't provide snapshotId or versionId. "
                                     + "Shutting down to avoid inconsistencies.");
                             System.exit(1);
                         }
@@ -273,6 +277,7 @@ public class ExecutionEngine extends ComponentDefinition {
                                 subscribe(cleanupHandler, dataTransfer.control());
 
                                 lastSnapshotId = snapshotId;
+                                ExecutionEngine.this.versionId = versionId;
                                 trigger(new Propose(new SyncedUp()), rLog);
                                 trigger(Synced.EVENT, rep);
                             }
@@ -443,6 +448,19 @@ public class ExecutionEngine extends ComponentDefinition {
                     return null;
                 }
             });
+            buffering.put(MultiOpRequest.class, new Action<MultiOpRequest>() {
+
+                @Override
+                public void initiate(MultiOpRequest op, long pos) {
+                    // TODO, I have no idea what to do here -.-
+                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                }
+
+                @Override
+                public StorageRequest prepareSnapshot(MultiOpRequest op) {
+                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                }
+            });
             /*
              * CATCHING_UP
              */
@@ -532,6 +550,22 @@ public class ExecutionEngine extends ComponentDefinition {
                     return null;
                 }
             });
+            active.put(MultiOpRequest.class, new Action<MultiOpRequest>() {
+
+                @Override
+                public void initiate(MultiOpRequest op, long pos) {
+                    MultiOp.Req request = new MultiOp.Req(op.conditions, op.successPuts, op.failurePuts);
+                    request.setId(op.id);
+                    trigger(request, store);
+                }
+
+                @Override
+                public StorageRequest prepareSnapshot(MultiOpRequest op) {
+                    MultiOp.Req request = new MultiOp.Req(op.conditions, op.successPuts, op.failurePuts);
+                    request.setId(op.id);
+                    return request;
+                }
+            });
         }
     }
 
@@ -550,11 +584,13 @@ public class ExecutionEngine extends ComponentDefinition {
                 responsible.add(adr);
             }
         }
+        versionId++;
         for (Address adr : responsible) {
             final Address dst = adr;
             UUID id = UUID.randomUUID(); // TODO there's certainly better ways...
             Map<String, Object> metadata = new HashMap<String, Object>();
             metadata.put("snapshotId", lastSnapshotId);
+            metadata.put("versionId", versionId);
             final Component sender = create(DataSender.class,
                     new DataSenderInit(id, init.range, self, dst,
                             2 * init.keepAlivePeriod, metadata));

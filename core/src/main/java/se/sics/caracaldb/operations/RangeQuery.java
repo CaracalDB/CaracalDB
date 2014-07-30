@@ -94,6 +94,10 @@ public class RangeQuery {
                     return KeyRange.overlap(subRange, rqr.subRange);
                 }
             }
+            if (op instanceof MultiOpRequest) {
+                MultiOpRequest mor = (MultiOpRequest) op;
+                return mor.isInRange(subRange);
+            }
             return false;
         }
 

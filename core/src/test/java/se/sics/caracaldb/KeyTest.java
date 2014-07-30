@@ -21,10 +21,11 @@
 package se.sics.caracaldb;
 
 import junit.framework.Assert;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import se.sics.caracaldb.KeyRange.Bound;
 
 /**
  *
@@ -105,6 +106,17 @@ public class KeyTest {
         Key someKeyInc = Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F7");
         System.out.println("Not so signed Key");
         assertTrue(someKey.inc().compareTo(someKeyInc) == 0);
+    }
+    
+    @Test
+    public void prefixTest() {
+        Key start = Key.fromHex("00 00 00 00 00 00 00 01");
+        Key end = Key.fromHex("00 00 00 00 00 00 00 02");
+        KeyRange kr = KeyRange.prefix(start);
+        assertEquals(kr.begin, start);
+        assertEquals(kr.beginBound, Bound.CLOSED);
+        assertEquals(kr.end, end);
+        assertEquals(kr.endBound, Bound.OPEN);
     }
     
     @Test

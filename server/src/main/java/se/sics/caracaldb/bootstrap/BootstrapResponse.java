@@ -20,20 +20,18 @@
  */
 package se.sics.caracaldb.bootstrap;
 
-import java.io.Serializable;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class BootstrapResponse extends Message implements Serializable {
+public class BootstrapResponse extends BootstrapMsg {
     
     public final byte[] lut;
     
     public BootstrapResponse(Address src, Address dest, byte[] lut) {
-        super(src, dest);
+        super(src, src, dest);
         this.lut = lut;
     }
 }

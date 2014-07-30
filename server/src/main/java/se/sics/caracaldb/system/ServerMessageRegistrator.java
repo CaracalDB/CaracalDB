@@ -22,6 +22,7 @@ package se.sics.caracaldb.system;
 
 import se.sics.caracaldb.MessageRegistrator;
 import se.sics.caracaldb.ServerSerializer;
+import se.sics.caracaldb.bootstrap.BootstrapMsg;
 import se.sics.caracaldb.global.Maintenance;
 import se.sics.caracaldb.global.MaintenanceMsg;
 import se.sics.caracaldb.replication.linearisable.ExecutionEngine.SMROp;
@@ -38,7 +39,7 @@ public class ServerMessageRegistrator {
 
     public static void register() {
         MessageRegistrator.register();
-        
+
         Serializers.register(ServerSerializer.FD.instance, "fdS");
         Serializers.register(FDMsg.class, "fdS");
         //
@@ -50,5 +51,8 @@ public class ServerMessageRegistrator {
         Serializers.register(SMROp.class, "xnginS");
         Serializers.register(SyncedUp.class, "xnginS");
         Serializers.register(Scan.class, "xnginS");
+        //
+        Serializers.register(ServerSerializer.BOOT.instance, "bootS");
+        Serializers.register(BootstrapMsg.class, "bootS");
     }
 }

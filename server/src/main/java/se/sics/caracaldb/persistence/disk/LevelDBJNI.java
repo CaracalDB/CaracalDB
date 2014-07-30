@@ -40,6 +40,8 @@ import se.sics.caracaldb.persistence.StoreIterator;
 public class LevelDBJNI implements Database {
 
     private DB db;
+    private final String dbPath;
+    private final int cacheSize;
 
     /**
      * @param dbPath
@@ -47,6 +49,8 @@ public class LevelDBJNI implements Database {
      * @throws IOException
      */
     public LevelDBJNI(String dbPath, int cacheSize) throws IOException {
+        this.dbPath = dbPath;
+        this.cacheSize = cacheSize;
         File dbDir = new File(dbPath);
         if (!dbDir.exists()) {
             if (!dbDir.mkdirs()) {
@@ -60,6 +64,11 @@ public class LevelDBJNI implements Database {
         options.compressionType(CompressionType.NONE);	// No compression
 
         db = JniDBFactory.factory.open(dbDir, options);
+    }
+    
+    @Override
+    public String toString() {
+        return "LevelDBJNI(\""+dbPath+"\", "+cacheSize+")";
     }
 
     @Override

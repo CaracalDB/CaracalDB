@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -18,40 +18,21 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.store;
+package se.sics.caracaldb.operations;
 
-import se.sics.caracaldb.Key;
-import se.sics.caracaldb.persistence.Persistence;
+import java.util.UUID;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author lkroll
  */
-public class Put extends StorageRequest {
-    
-    public final Key key;
-    public final byte[] value;
-    
-    public Put(Key k, byte[] v) {
-        key = k;
-        value = v;
+public class MultiOpResponse extends CaracalResponse {
+
+    public final boolean success;
+
+    public MultiOpResponse(UUID id, ResponseCode code, boolean success) {
+        super(id, code);
+        this.success = success;
     }
 
-    @Override
-    public StorageResponse execute(Persistence store) {
-        byte[] oldValue = store.get(key.getArray());
-        store.put(key.getArray(), value);
-        Diff diff = null;
-        if (oldValue == null) {
-            diff = new Diff(value.length+key.getKeySize(), 1);
-        } else {
-            diff = new Diff(value.length - oldValue.length, 0);
-        }
-        return new PutResp(this, diff);
-    }
-    
-    @Override
-    public String toString() {
-        return "PutReq("+key+", "+value+")";
-    }
 }

@@ -20,16 +20,24 @@
  */
 package se.sics.caracaldb.bootstrap;
 
-import java.io.Serializable;
 import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class BootstrapRequest extends Message implements Serializable {
+public class BootstrapRequest extends BootstrapMsg {
+
     public BootstrapRequest(Address src, Address dest) {
-        super(src, dest);
+        super(src, src, dest);
     }
+
+    BootstrapRequest(Address orig, Address src, Address dest) {
+        super(orig, src, dest);
+    }
+
+    public BootstrapRequest forward(Address from, Address to) {
+        return new BootstrapRequest(origin, from, to);
+    }
+
 }

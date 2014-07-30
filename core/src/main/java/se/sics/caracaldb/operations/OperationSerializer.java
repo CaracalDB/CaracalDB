@@ -21,7 +21,10 @@
 package se.sics.caracaldb.operations;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import io.netty.buffer.ByteBuf;
+import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -31,6 +34,8 @@ import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.store.MultiOp;
+import se.sics.caracaldb.store.MultiOp.Condition;
 import se.sics.caracaldb.store.RangeAction;
 import se.sics.caracaldb.store.TransformationFilter;
 import se.sics.caracaldb.utils.CustomSerialisers;
@@ -54,10 +59,11 @@ public class OperationSerializer implements Serializer {
     public final boolean REQ = false;
     public final boolean RESP = true;
     // OPS - Types
-    public final Boolean[] GET = new Boolean[]{false, false};
-    public final Boolean[] PUT = new Boolean[]{false, true};
-    public final Boolean[] RANGE = new Boolean[]{true, false};
-    public final Boolean[] EMPTY = new Boolean[]{true, true};
+    public final Boolean[] GET = new Boolean[]{false, false, false};
+    public final Boolean[] PUT = new Boolean[]{false, true, false};
+    public final Boolean[] RANGE = new Boolean[]{true, false, false};
+    public final Boolean[] EMPTY = new Boolean[]{true, true, false};
+    public final Boolean[] MULTI = new Boolean[]{false, false, true};
     //public final Boolean[] RANGE2 = new Boolean[] {true, true}; // Never serialised
 
     @Override
@@ -112,15 +118,15 @@ public class OperationSerializer implements Serializer {
     private void toBinaryOp(CaracalOp caracalOp, ByteBuf buf, BitBuffer flags) {
         SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(caracalOp.id, buf);
         if (caracalOp instanceof GetRequest) {
-            flags.write(REQ);
-            flags.write(GET);
+            flags.write(REQ); // 1
+            flags.write(GET); // 2 3 4
             GetRequest op = (GetRequest) caracalOp;
             CustomSerialisers.serialiseKey(op.key, buf);
             return;
         }
         if (caracalOp instanceof PutRequest) {
-            flags.write(REQ);
-            flags.write(PUT);
+            flags.write(REQ); // 1
+            flags.write(PUT); // 2 3 4
             PutRequest op = (PutRequest) caracalOp;
             CustomSerialisers.serialiseKey(op.key, buf);
             buf.writeInt(op.data.length);
@@ -128,8 +134,8 @@ public class OperationSerializer implements Serializer {
             return;
         }
         if (caracalOp instanceof RangeQuery.Request) {
-            flags.write(REQ);
-            flags.write(RANGE);
+            flags.write(REQ); // 1
+            flags.write(RANGE); // 2 3 4
             RangeQuery.Request op = (RangeQuery.Request) caracalOp;
             CustomSerialisers.serialiseKeyRange(op.initRange, buf);
             CustomSerialisers.serialiseKeyRange(op.subRange, buf);
@@ -139,13 +145,34 @@ public class OperationSerializer implements Serializer {
             Serializers.toBinary(op.action, buf);
             return;
         }
+        if (caracalOp instanceof MultiOpRequest) {
+            flags.write(REQ); // 1
+            flags.write(MULTI); // 2 3 4
+            MultiOpRequest op = (MultiOpRequest) caracalOp;
+            buf.writeInt(op.conditions.size());
+            for (Condition c : op.conditions) {
+                Serializers.toBinary(c, buf);
+            }
+            buf.writeInt(op.successPuts.size());
+            for (Entry<Key, byte[]> e : op.successPuts.entrySet()) {
+                CustomSerialisers.serialiseKey(e.getKey(), buf);
+                buf.writeInt(e.getValue().length);
+                buf.writeBytes(e.getValue());
+            }
+            buf.writeInt(op.failurePuts.size());
+            for (Entry<Key, byte[]> e : op.failurePuts.entrySet()) {
+                CustomSerialisers.serialiseKey(e.getKey(), buf);
+                buf.writeInt(e.getValue().length);
+                buf.writeBytes(e.getValue());
+            }
+            return;
+        }
         if (caracalOp instanceof GetResponse) {
-            flags.write(RESP);
+            flags.write(RESP); // 1
             GetResponse op = (GetResponse) caracalOp;
             buf.writeByte(op.code.id);
-            flags.write(GET);
+            flags.write(GET); // 2 3 4
             CustomSerialisers.serialiseKey(op.key, buf);
-            flags.write(false); // place holder 4
             if (op.data == null) {
                 flags.write(false); // 5
             } else {
@@ -156,10 +183,10 @@ public class OperationSerializer implements Serializer {
             return;
         }
         if (caracalOp instanceof PutResponse) {
-            flags.write(RESP);
+            flags.write(RESP); // 1
             PutResponse op = (PutResponse) caracalOp;
             buf.writeByte(op.code.id);
-            flags.write(PUT);
+            flags.write(PUT); // 2 3 4
             CustomSerialisers.serialiseKey(op.key, buf);
             return;
         }
@@ -167,10 +194,9 @@ public class OperationSerializer implements Serializer {
             flags.write(RESP); // 1
             RangeQuery.Response op = (RangeQuery.Response) caracalOp;
             buf.writeByte(op.code.id);
-            flags.write(RANGE); // 2, 3
+            flags.write(RANGE); // 2, 3 4
             CustomSerialisers.serialiseKeyRange(op.initRange, buf);
             CustomSerialisers.serialiseKeyRange(op.subRange, buf);
-            flags.write(false); // place holder 4
             if (op.data == null) {
                 flags.write(false); // 5
             } else {
@@ -193,7 +219,15 @@ public class OperationSerializer implements Serializer {
             flags.write(RESP); // 1
             CaracalResponse op = (CaracalResponse) caracalOp;
             buf.writeByte(op.code.id);
-            flags.write(EMPTY); // 2, 3
+            flags.write(EMPTY); // 2 3 4
+            return;
+        }
+        if (caracalOp instanceof MultiOpResponse) {
+            flags.write(RESP); // 1
+            MultiOpResponse op = (MultiOpResponse) caracalOp;
+            buf.writeByte(op.code.id);
+            flags.write(MULTI); // 2 3 4
+            flags.write(op.success); // 5
             return;
         }
         LOG.warn("Unkown op type: {}", caracalOp);
@@ -232,6 +266,41 @@ public class OperationSerializer implements Serializer {
             RangeAction action = (RangeAction) Serializers.fromBinary(buf, Optional.absent());
             return new RangeQuery.Request(id, subRange, initRange, tracker, filter, action, RangeQuery.Type.SEQUENTIAL);
         }
+        if (matches(flags, MULTI)) {
+            int numC = buf.readInt();
+            ImmutableSet.Builder<Condition> cB = ImmutableSet.builder();
+            for (int i = 0; i < numC; i++) {
+                Condition c = (Condition) Serializers.fromBinary(buf, Optional.absent());
+                cB.add(c);
+            }
+            int numS = buf.readInt();
+            ImmutableMap.Builder<Key, byte[]> sPB = ImmutableMap.builder();
+            for (int i = 0; i < numS; i++) {
+                Key k = CustomSerialisers.deserialiseKey(buf);
+                int l = buf.readInt();
+                if (l > 0) {
+                    byte[] v = new byte[l];
+                    buf.readBytes(v);
+                    sPB.put(k, v);
+                } else {
+                    sPB.put(k, null);
+                }
+            }
+            int numF = buf.readInt();
+            ImmutableMap.Builder<Key, byte[]> fPB = ImmutableMap.builder();
+            for (int i = 0; i < numF; i++) {
+                Key k = CustomSerialisers.deserialiseKey(buf);
+                int l = buf.readInt();
+                if (l > 0) {
+                    byte[] v = new byte[l];
+                    buf.readBytes(v);
+                    fPB.put(k, v);
+                } else {
+                    fPB.put(k, null);
+                }
+            }
+            return new MultiOpRequest(id, cB.build(), sPB.build(), fPB.build());
+        }
         LOG.warn("Got unkown request operation type with flags: {}", flags);
         return null;
     }
@@ -263,9 +332,13 @@ public class OperationSerializer implements Serializer {
                 for (int i = 0; i < size; i++) {
                     Key k = CustomSerialisers.deserialiseKey(buf);
                     int length = buf.readInt();
-                    byte[] data = new byte[length];
-                    buf.readBytes(data);
-                    result.put(k, data);
+                    if (length > 0) {
+                        byte[] data = new byte[length];
+                        buf.readBytes(data);
+                        result.put(k, data);
+                    } else {
+                        result.put(k, null);
+                    }
                 }
             }
             boolean readLimit = flags[6];
@@ -274,11 +347,14 @@ public class OperationSerializer implements Serializer {
         if (matches(flags, EMPTY)) {
             return new CaracalResponse(id, code);
         }
+        if (matches(flags, MULTI)) {
+            return new MultiOpResponse(id, code, flags[5]);
+        }
         LOG.warn("Got unkown response operation type with flags: {}", flags);
         return null;
     }
 
     private boolean matches(boolean[] flags, Boolean[] type) {
-        return (flags[2] == type[0]) && (flags[3] == type[1]);
+        return (flags[2] == type[0]) && (flags[3] == type[1]) && (flags[4] == type[2]);
     }
 }

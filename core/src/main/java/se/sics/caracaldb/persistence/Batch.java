@@ -20,12 +20,53 @@
  */
 package se.sics.caracaldb.persistence;
 
+import se.sics.caracaldb.utils.ByteArrayRef;
+
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public interface Batch {
-    public void put(byte[] key, byte[] value);
-    public void delete(byte[] key);
+
+    /**
+     * Associates the specified value with the specified key in this map. If the
+     * map previously contained a mapping for the key, the old value is
+     * replaced.
+     * <p>
+     * Do not write null as key or value! Use empty arrays instead.
+     * <p>
+     * @param key
+     * @param value
+     */
+    public void put(byte[] key, byte[] value, int version);
+
+    /**
+     * Replaces the whole multi-version blob at key with value
+     *
+     * @param key
+     * @param value
+     */
+    public void replace(byte[] key, ByteArrayRef value);
+
+    /**
+     * Removes the mapping for this key in this version if present.
+     * <p>
+     * @param key
+     */
+    public void delete(byte[] key, int version);
+
+    /**
+     * Cleans up all versions before version of data at this key if exists
+     *
+     * @param key
+     * @param version
+     */
+    public void deleteVersions(byte[] key, int version);
+
+    /**
+     * Closes the batch and frees up it's resources.
+     * 
+     * This method does NOT commit the batch! That should have been done already.
+     */
     public void close();
 }

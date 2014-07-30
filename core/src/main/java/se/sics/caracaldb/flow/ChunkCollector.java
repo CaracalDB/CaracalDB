@@ -26,7 +26,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import se.sics.caracaldb.flow.FlowManager.BufferPointer;
+import se.sics.caracaldb.utils.ByteArrayRef;
 import se.sics.caracaldb.flow.FlowManager.Chunk;
 
 /**
@@ -71,11 +71,11 @@ public class ChunkCollector {
         return missing;
     }
 
-    public synchronized BufferPointer readChunk(int chunkNo, int length, ByteBuf buf) {
+    public synchronized ByteArrayRef readChunk(int chunkNo, int length, ByteBuf buf) {
         int offset = chunkNo * FlowManager.CHUNK_SIZE;
         buf.readBytes(data, offset, length);
         receivedChunks.add(chunkNo);
-        return new BufferPointer(offset, length, data);
+        return new ByteArrayRef(offset, length, data);
     }
 
     public static ClearFlowId getIdFor(UUID flowId, int clearId) {
