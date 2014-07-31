@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.persistence;
 
+import com.google.common.collect.Ordering;
 import com.google.common.primitives.Ints;
 import java.util.Map.Entry;
 import java.util.SortedMap;
@@ -45,12 +46,17 @@ public abstract class MultiVersionUtil {
         }
         // first figure out the total array length
         int length = 0;
+        int dataLength = 0;
         for (Entry<Integer, ByteArrayRef> e : values.entrySet()) {
             length += 4; // header size;
             length += e.getValue().length; // data
+            dataLength += e.getValue().length;
             if (e.getValue().length > MAX_DATA_SIZE) {
                 return null; // this is pretty bad...should have been caught at the client already
             }
+        }
+        if (dataLength == 0) {
+            return null; // if all the data is empty, just delete the key
         }
         // then write all the data correctly into the array
         byte[] data = new byte[length];
@@ -71,7 +77,7 @@ public abstract class MultiVersionUtil {
     }
 
     public static SortedMap<Integer, ByteArrayRef> unpack(byte[] data) {
-        TreeMap<Integer, ByteArrayRef> values = new TreeMap<Integer, ByteArrayRef>();
+        TreeMap<Integer, ByteArrayRef> values = new TreeMap<Integer, ByteArrayRef>(Ordering.natural().reversed());
         if (data == null) {
             return values;
         }

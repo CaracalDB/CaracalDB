@@ -21,6 +21,7 @@
 package se.sics.caracaldb.store;
 
 import java.io.Serializable;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  *
@@ -58,7 +59,7 @@ public abstract class Limit {
          * @param value
          * @return <canReanCurrent>
          */
-        public boolean read(byte[] value);
+        public boolean read(ByteArrayRef value);
 
         /**
          * @return <canReadFurther>
@@ -71,7 +72,7 @@ public abstract class Limit {
     private static class NoLimit implements LimitTracker, Serializable {
 
         @Override
-        public boolean read(byte[] value) {
+        public boolean read(ByteArrayRef value) {
             return true;
         }
 
@@ -95,7 +96,7 @@ public abstract class Limit {
         }
 
         @Override
-        public boolean read(byte[] value) {
+        public boolean read(ByteArrayRef value) {
             if (itemCount >= 1) {
                 itemCount--;
                 return true;
@@ -123,7 +124,7 @@ public abstract class Limit {
         }
 
         @Override
-        public boolean read(byte[] value) {
+        public boolean read(ByteArrayRef value) {
             if (byteSize >= value.length) {
                 byteSize = byteSize - value.length;
                 return true;

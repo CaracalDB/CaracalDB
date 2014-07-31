@@ -42,6 +42,7 @@ import se.sics.caracaldb.store.RangeReq;
 import se.sics.caracaldb.store.RangeResp;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.caracaldb.system.Launcher;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>
@@ -114,36 +115,36 @@ public class DBTest {
 
             // PUT
             for (int i = 0; i < NUM; i++) {
-                db.put(keys[i].getArray(), keys[i].getArray());
+                db.put(keys[i].getArray(), keys[i].getArray(), 0);
             }
 
             // GET
             for (int i = 0; i < NUM; i++) {
-                byte[] val = db.get(keys[i].getArray());
+                ByteArrayRef val = db.get(keys[i].getArray());
                 assertNotNull(val);
-                Key k = new Key(val);
+                Key k = new Key(val.dereference());
                 assertEquals(keys[i], k);
             }
 
             // DELETE
             for (int i = 0; i < NUM; i++) {
-                db.delete(keys[i].getArray());
-                byte[] val = db.get(keys[i].getArray());
+                db.delete(keys[i].getArray(), 0);
+                ByteArrayRef val = db.get(keys[i].getArray());
                 assertNull(val);
             }
 
             // BATCH
             Batch b = db.createBatch();
             for (int i = 0; i < NUM; i++) {
-                b.put(keys[i].getArray(), keys[i].getArray());
+                b.put(keys[i].getArray(), keys[i].getArray(), 0);
             }
             db.writeBatch(b);
 
             // GET for batch
             for (int i = 0; i < NUM; i++) {
-                byte[] val = db.get(keys[i].getArray());
+                ByteArrayRef val = db.get(keys[i].getArray());
                 assertNotNull(val);
-                Key k = new Key(val);
+                Key k = new Key(val.dereference());
                 assertEquals(keys[i], k);
             }
 
@@ -154,11 +155,11 @@ public class DBTest {
                 int i = 0;
                 for (; it.hasNext(); it.next()) {
                     byte[] key = it.peekKey();
-                    byte[] val = it.peekValue();
+                    ByteArrayRef val = it.peekValue();
                     assertNotNull(key);
                     assertNotNull(val);
                     Key keyK = new Key(key);
-                    Key valK = new Key(val);
+                    Key valK = new Key(val.dereference());
                     //System.out.println("Step" + i + " " + keyK + " -> " + valK);
                     assertEquals(keys[i], keyK);
                     assertEquals(keys[i], valK);
@@ -177,11 +178,11 @@ public class DBTest {
                 StoreIterator it = closer.register(db.iterator(keys[OFFSET].getArray()));
                 for (; it.hasNext(); it.next()) {
                     byte[] key = it.peekKey();
-                    byte[] val = it.peekValue();
+                    ByteArrayRef val = it.peekValue();
                     assertNotNull(key);
                     assertNotNull(val);
                     Key keyK = new Key(key);
-                    Key valK = new Key(val);
+                    Key valK = new Key(val.dereference());
                     assertEquals(keys[i], keyK);
                     assertEquals(keys[i], valK);
                     i++;
@@ -213,14 +214,14 @@ public class DBTest {
     private void rangeQueryTest(Database db) throws IOException {
         Key[] keys = linearKeys(20);
         for (int i = 0; i < 20; i++) {
-            new Put(keys[i], ByteBuffer.allocate(4).putInt(i + 10).array()).execute(db);
+            new Put(keys[i], ByteBuffer.allocate(4).putInt(i + 10).array(), 0).execute(db);
         }
 
         GetResp getResp = (GetResp) new GetReq(keys[5]).execute(db);
         assertEquals(15, ByteBuffer.wrap(getResp.value).getInt());
 
         KeyRange range1 = KeyRange.closed(keys[0]).closed(keys[19]);
-        RangeReq r1 = new RangeReq(range1, null, null, null);
+        RangeReq r1 = new RangeReq(range1, null, null, null, 0);
         RangeResp rr1 = (RangeResp) r1.execute(db);
         assertEquals(20, rr1.result.size());
         for (int i = 0; i < 20; i++) {
@@ -229,7 +230,7 @@ public class DBTest {
         assertEquals(15, ByteBuffer.wrap(rr1.result.get(keys[5])).getInt());
 
         KeyRange range2 = KeyRange.closed(keys[1]).open(keys[18]);
-        RangeReq r2 = new RangeReq(range2, null, null, null);
+        RangeReq r2 = new RangeReq(range2, null, null, null, 0);
         RangeResp rr2 = (RangeResp) r2.execute(db);
         assertEquals(17, rr2.result.size());
         for (int i = 1; i < 18; i++) {

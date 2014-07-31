@@ -22,6 +22,7 @@ package se.sics.caracaldb.store;
 
 import java.io.Serializable;
 import org.javatuples.Pair;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -42,8 +43,8 @@ public class TFFactory {
     public static class TombFilter implements TransformationFilter, Serializable {
 
         @Override
-        public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
-            return new Pair<Boolean, byte[]>(serializedValue == null, serializedValue);
+        public Pair<Boolean, ByteArrayRef> execute(ByteArrayRef serializedValue) {
+            return new Pair<Boolean, ByteArrayRef>(serializedValue == null, serializedValue);
         }
 
     }
@@ -51,27 +52,27 @@ public class TFFactory {
     public static class NoFilter implements TransformationFilter, Serializable {
 
         @Override
-        public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
-            return new Pair<Boolean, byte[]>(Boolean.TRUE, serializedValue);
+        public Pair<Boolean, ByteArrayRef> execute(ByteArrayRef serializedValue) {
+            return new Pair<Boolean, ByteArrayRef>(Boolean.TRUE, serializedValue);
         }
 
     }
-    
+
     public static class Append implements TransformationFilter, Serializable {
-        
+
         public final byte[] newData;
-        
+
         public Append(byte[] newData) {
             this.newData = newData;
         }
 
         @Override
-        public Pair<Boolean, byte[]> execute(byte[] serializedValue) {
-            byte[] newValue = new byte[serializedValue.length+newData.length];
-            System.arraycopy(serializedValue, 0, newValue, 0, serializedValue.length);
-            System.arraycopy(newData, 0, newValue, serializedValue.length, newData.length);
-            return Pair.with(true, newValue);
+        public Pair<Boolean, ByteArrayRef> execute(ByteArrayRef serializedValue) {
+            byte[] data = new byte[serializedValue.length + newData.length];
+            serializedValue.copyTo(data, 0);
+            System.arraycopy(newData, 0, data, serializedValue.length, newData.length);
+            return Pair.with(true, new ByteArrayRef(0, newData.length, newData));
         }
-        
+
     }
 }

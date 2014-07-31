@@ -24,20 +24,22 @@ import com.google.common.io.Closer;
 import java.io.IOException;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.persistence.StoreIterator;
-import se.sics.kompics.Response;
 
 /**
  *
- * @author sario
+ * @author lkroll
  */
-public class SizeScan extends StorageRequest {
+public class CleanupReq extends StorageRequest {
 
     public final KeyRange range;
+    public final int versionId;
 
-    public SizeScan(KeyRange range) {
+    public CleanupReq(KeyRange range, int versionId) {
         this.range = range;
+        this.versionId = versionId;
     }
 
     @Override
@@ -46,15 +48,19 @@ public class SizeScan extends StorageRequest {
         long keys = 0;
 
         Closer closer = Closer.create();
+        Batch b;
         try {
             byte[] begin = range.begin.getArray();
+            b = closer.register(store.createBatch());
             for (StoreIterator it = closer.register(store.iterator(begin)); it.hasNext(); it.next()) {
                 byte[] key = it.peekKey();
                 if (range.contains(key)) {
-                    byte[] value = it.peekRaw();
-                    keys++;
-                    size += key.length;
-                    size += value.length;
+                    int l = b.deleteVersions(key, versionId);
+                    if (l > 0) {
+                        keys++;
+                        size += key.length;
+                        size += l;
+                    }
                 } else {
                     //special case (a,b) and key is a
                     if (Key.compare(begin, key) != 0) {
@@ -62,7 +68,7 @@ public class SizeScan extends StorageRequest {
                     }
                 }
             }
-
+            store.writeBatch(b);
         } catch (Throwable e) {
             closer.rethrow(e);
         } finally {

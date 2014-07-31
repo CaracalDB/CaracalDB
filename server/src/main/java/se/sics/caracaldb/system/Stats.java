@@ -115,14 +115,16 @@ public class Stats {
         mbean.numberOfKeys.set(totalNumKeys);
         try {
             mbean.averageOpS.set(Math.floorDiv(totalOpS, numVN));
+            return new Report(atHost, memUsage, previousCpuUsage, numVN,
+                    Math.floorDiv(totalOpS, numVN), Math.floorDiv(totalStoreSize, numVN),
+                    mapToList(xKSize.top()), mapToList(xKSize.bottom()),
+                    mapToList(xKOps.top()), mapToList(xKOps.bottom()));
         } catch (ArithmeticException ex) {
             mbean.averageOpS.set(0);
+            return new Report(atHost, memUsage, previousCpuUsage, 0,
+                    0, 0, mapToList(xKSize.top()), mapToList(xKSize.bottom()),
+                    mapToList(xKOps.top()), mapToList(xKOps.bottom()));
         }
-
-        return new Report(atHost, memUsage, previousCpuUsage, numVN,
-                Math.floorDiv(totalOpS, numVN),Math.floorDiv(totalStoreSize, numVN),
-                mapToList(xKSize.top()), mapToList(xKSize.bottom()),
-                mapToList(xKOps.top()), mapToList(xKOps.bottom()));
     }
 
     private static List<Key> mapToList(TopKMap<?, Address> map) {
@@ -147,7 +149,7 @@ public class Stats {
         public final List<Key> topKOps;
         public final List<Key> bottomKOps;
 
-        public Report(Address atHost, double memoryUsage, double cpuUsage, 
+        public Report(Address atHost, double memoryUsage, double cpuUsage,
                 int numberOfVNodes, long averageOpS, long averageSize,
                 List<Key> topKSize, List<Key> bottomKSize, List<Key> topKOps, List<Key> bottomKOps) {
             this.atHost = atHost;
@@ -171,7 +173,13 @@ public class Stats {
             sb.append(memoryUsage);
             sb.append("%, Cpu: ");
             sb.append(cpuUsage);
-            sb.append("%, Top-K (Size): [");
+            sb.append("%, VNodes: ");
+            sb.append(numberOfVNodes);
+            sb.append(", avg. Op/s: ");
+            sb.append(averageOpS);
+            sb.append(" per VNode, avg. Size: ");
+            sb.append(averageSize);
+            sb.append(" of a VNode, Top-K (Size): [");
             for (Key k : topKSize) {
                 sb.append(k);
                 sb.append(", ");

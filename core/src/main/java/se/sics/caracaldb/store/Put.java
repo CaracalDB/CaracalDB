@@ -22,6 +22,7 @@ package se.sics.caracaldb.store;
 
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Persistence;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  *
@@ -31,16 +32,18 @@ public class Put extends StorageRequest {
     
     public final Key key;
     public final byte[] value;
+    public final int versionId;
     
-    public Put(Key k, byte[] v) {
+    public Put(Key k, byte[] v, int versionId) {
         key = k;
         value = v;
+        this.versionId = versionId;
     }
 
     @Override
     public StorageResponse execute(Persistence store) {
-        byte[] oldValue = store.get(key.getArray());
-        store.put(key.getArray(), value);
+        ByteArrayRef oldValue = store.get(key.getArray());
+        store.put(key.getArray(), value, versionId);
         Diff diff = null;
         if (oldValue == null) {
             diff = new Diff(value.length+key.getKeySize(), 1);

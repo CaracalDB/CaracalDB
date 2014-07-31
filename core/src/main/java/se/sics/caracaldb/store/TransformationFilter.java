@@ -22,6 +22,7 @@ package se.sics.caracaldb.store;
 
 import java.io.Serializable;
 import org.javatuples.Pair;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -36,5 +37,5 @@ public interface TransformationFilter extends Serializable {
      * to be filtered out and false otherwise and value is the transformed final
      * value as byte array
      */
-    public Pair<Boolean, byte[]> execute(byte[] serializedValue);
+    public Pair<Boolean, ByteArrayRef> execute(ByteArrayRef serializedValue);
 }

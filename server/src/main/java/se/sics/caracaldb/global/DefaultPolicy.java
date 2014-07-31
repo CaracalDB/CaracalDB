@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.global.LUTUpdate.Action;
 import se.sics.caracaldb.global.LUTUpdate.PutHost;
-import se.sics.caracaldb.global.LUTUpdate.PutReplicationGroup;
 import se.sics.caracaldb.global.LUTUpdate.PutReplicationSet;
 import se.sics.caracaldb.system.Stats;
 import se.sics.caracaldb.utils.ExtremeKMap;

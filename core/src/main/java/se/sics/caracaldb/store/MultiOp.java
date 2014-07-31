@@ -28,9 +28,9 @@ import java.util.Arrays;
 import java.util.Map.Entry;
 import java.util.function.Predicate;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Persistence;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  *
@@ -43,18 +43,20 @@ public class MultiOp {
         public final ImmutableSet<Condition> conditions;
         public final ImmutableMap<Key, byte[]> successPuts;
         public final ImmutableMap<Key, byte[]> failurePuts;
+        public final int versionId;
 
-        public Req(ImmutableSet<Condition> conditions, ImmutableMap<Key, byte[]> successPuts, ImmutableMap<Key, byte[]> failurePuts) {
+        public Req(ImmutableSet<Condition> conditions, ImmutableMap<Key, byte[]> successPuts, ImmutableMap<Key, byte[]> failurePuts, int versionId) {
             this.conditions = conditions;
             this.successPuts = successPuts;
             this.failurePuts = failurePuts;
+            this.versionId = versionId;
         }
 
         @Override
         public StorageResponse execute(Persistence store) throws IOException {
             boolean success = true;
             for (Condition c : conditions) {
-                byte[] value = store.get(c.on().getArray());
+                ByteArrayRef value = store.get(c.on().getArray());
                 if (!c.holds(value)) {
                     success = false;
                     break;
@@ -77,15 +79,15 @@ public class MultiOp {
                 for (Entry<Key, byte[]> e : puts.entrySet()) {
                     byte[] key = e.getKey().getArray();
                     byte[] value = e.getValue();
-                    byte[] oldValue = store.get(key);
+                    ByteArrayRef oldValue = store.get(key);
                     if (value == null) {
-                        batch.delete(key);
+                        batch.delete(key, versionId);
                         if (oldValue != null) {
                             sizeDiff -= oldValue.length;
                             numDiff--;
                         }
                     } else {
-                        batch.put(key, value);
+                        batch.put(key, value, versionId);
                         if (oldValue == null) {
                             sizeDiff += value.length;
                             numDiff++;
@@ -119,24 +121,24 @@ public class MultiOp {
 
         public Key on();
 
-        public boolean holds(byte[] value);
+        public boolean holds(ByteArrayRef value);
     }
 
     public static abstract class ConditionFactory {
 
-        public static Condition check(Key k, Predicate<byte[]> pred) {
+        public static Condition check(Key k, Predicate<ByteArrayRef> pred) {
             return new FunctionalCondition(k, pred);
         }
     }
-    
+
     public static abstract class SingleKeyCondition implements Condition {
-        
+
         public final Key k;
-        
+
         public SingleKeyCondition(Key k) {
             this.k = k;
         }
-        
+
         @Override
         public Key on() {
             return k;
@@ -145,32 +147,32 @@ public class MultiOp {
 
     public static class FunctionalCondition extends SingleKeyCondition {
 
-        public final Predicate<byte[]> pred;
+        public final Predicate<ByteArrayRef> pred;
 
-        public FunctionalCondition(Key k, Predicate<byte[]> pred) {
+        public FunctionalCondition(Key k, Predicate<ByteArrayRef> pred) {
             super(k);
             this.pred = pred;
         }
 
         @Override
-        public boolean holds(byte[] value) {
+        public boolean holds(ByteArrayRef value) {
             return pred.test(value);
         }
     }
-    
+
     public static class EqualCondition extends SingleKeyCondition {
 
         public final byte[] oldValue;
-        
+
         public EqualCondition(Key k, byte[] oldValue) {
             super(k);
             this.oldValue = oldValue;
         }
 
         @Override
-        public boolean holds(byte[] value) {
-            return Arrays.equals(value, oldValue);
+        public boolean holds(ByteArrayRef value) {
+            return value.compareTo(oldValue) == 0;
         }
-        
+
     }
 }

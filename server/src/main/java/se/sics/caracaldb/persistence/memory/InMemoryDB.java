@@ -24,11 +24,14 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Database;
+import se.sics.caracaldb.persistence.MultiVersionUtil;
 import se.sics.caracaldb.persistence.StoreIterator;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  * A TreeMap based Database implementation.
@@ -51,23 +54,41 @@ public class InMemoryDB implements Database {
     }
 
     @Override
-    public void put(byte[] key, byte[] value) {
-        store.put(key, value);
+    public void put(byte[] key, byte[] value, int version) {
+        SortedMap<Integer, ByteArrayRef> versions = getAllVersions(key);
+        versions.put(version, new ByteArrayRef(0, value.length, value));
+        store.put(key, MultiVersionUtil.pack(versions));
     }
 
     @Override
-    public void delete(byte[] key) {
-        store.remove(key);
+    public void delete(byte[] key, int version) {
+        SortedMap<Integer, ByteArrayRef> versions = getAllVersions(key);
+        if (versions.isEmpty()) {
+            return; // nothing to do
+        }
+        versions.put(version, new ByteArrayRef(0, 0, null));
+        store.put(key, MultiVersionUtil.pack(versions));
     }
 
     @Override
-    public byte[] get(byte[] key) {
-        return store.get(key);
+    public ByteArrayRef get(byte[] key) {
+        SortedMap<Integer, ByteArrayRef> versions = getAllVersions(key);
+        if (versions.isEmpty()) {
+            return null;
+        }
+        return versions.get(versions.firstKey());
+    }
+
+    @Override
+    public SortedMap<Integer, ByteArrayRef> getAllVersions(byte[] key) {
+        byte[] data = store.get(key);
+        SortedMap<Integer, ByteArrayRef> versions = MultiVersionUtil.unpack(data);
+        return versions;
     }
 
     @Override
     public Batch createBatch() {
-        return new InMemBatch();
+        return new InMemBatch(this);
     }
 
     @Override
@@ -87,6 +108,34 @@ public class InMemoryDB implements Database {
     @Override
     public StoreIterator iterator(byte[] startKey) {
         return new NavigableMapIterator(store.tailMap(startKey, true).entrySet().iterator());
+    }
+
+    @Override
+    public void replace(byte[] key, ByteArrayRef value) {
+        store.put(key, value.getBackingArray());
+    }
+
+    @Override
+    public int deleteVersions(byte[] key, int version) {
+        SortedMap<Integer, ByteArrayRef> versions = getAllVersions(key);
+        if (versions.isEmpty()) {
+            return 0; // nothing to do
+        }
+        SortedMap<Integer, ByteArrayRef> newVersions = versions.headMap(version);
+        if (newVersions.isEmpty()) { // always retain the newest value
+            newVersions.put(versions.firstKey(), versions.get(versions.firstKey()));
+        }
+        byte[] newData = MultiVersionUtil.pack(newVersions);
+        store.put(key, newData);
+        if (newData == null) {
+            return 0;
+        }
+        return newData.length;
+    }
+
+    @Override
+    public byte[] getRaw(byte[] key) {
+        return store.get(key);
     }
 
     @Override
@@ -111,15 +160,54 @@ public class InMemoryDB implements Database {
     private static class InMemBatch implements Batch {
 
         List<Operation> ops = new LinkedList<Operation>();
+        InMemoryDB db;
 
-        @Override
-        public void put(byte[] key, byte[] value) {
-            ops.add(new PutOp(key, value));
+        InMemBatch(InMemoryDB db) {
+            this.db = db;
         }
 
         @Override
-        public void delete(byte[] key) {
-            ops.add(new DeleteOp(key));
+        public void put(byte[] key, byte[] value, int version) {
+            SortedMap<Integer, ByteArrayRef> versions = db.getAllVersions(key);
+            versions.put(version, new ByteArrayRef(0, value.length, value));
+            ops.add(new PutOp(key, MultiVersionUtil.pack(versions)));
+        }
+
+        @Override
+        public void delete(byte[] key, int version) {
+            SortedMap<Integer, ByteArrayRef> versions = db.getAllVersions(key);
+            if (versions.isEmpty()) {
+                return; // nothing to do
+            }
+            versions.put(version, new ByteArrayRef(0, 0, null));
+            ops.add(new PutOp(key, MultiVersionUtil.pack(versions)));
+        }
+
+        @Override
+        public void replace(byte[] key, ByteArrayRef value) {
+            if (value.length == 0) {
+                ops.add(new DeleteOp(key));
+            } else {
+                ops.add(new PutOp(key, value.getBackingArray()));
+            }
+        }
+
+        @Override
+        public int deleteVersions(byte[] key, int version) {
+            SortedMap<Integer, ByteArrayRef> versions = db.getAllVersions(key);
+            if (versions.isEmpty()) {
+                return 0; // nothing to do
+            }
+            SortedMap<Integer, ByteArrayRef> newVersions = versions.headMap(version);
+            if (newVersions.isEmpty()) { // always retain the newest value
+                newVersions.put(versions.firstKey(), versions.get(versions.firstKey()));
+            }
+            byte[] newData = MultiVersionUtil.pack(newVersions);
+            ops.add(new PutOp(key, newData));
+            if (newData == null) {
+                return 0;
+            }
+            return newData.length;
         }
 
         @Override
@@ -183,17 +271,26 @@ public class InMemoryDB implements Database {
         }
 
         @Override
-        public Entry<byte[], byte[]> peekNext() {
-            return currentEntry;
-        }
-
-        @Override
         public byte[] peekKey() {
             return currentEntry.getKey();
         }
 
         @Override
-        public byte[] peekValue() {
+        public ByteArrayRef peekValue() {
+            SortedMap<Integer, ByteArrayRef> versions = peekAllValues();
+            if (versions.isEmpty()) {
+                return null;
+            }
+            return versions.get(versions.firstKey());
+        }
+
+        @Override
+        public SortedMap<Integer, ByteArrayRef> peekAllValues() {
+            return MultiVersionUtil.unpack(peekRaw());
+        }
+
+        @Override
+        public byte[] peekRaw() {
             return currentEntry.getValue();
         }
 

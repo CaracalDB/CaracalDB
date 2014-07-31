@@ -60,30 +60,66 @@ public class ByteArrayRef implements Comparable<ByteArrayRef> {
     }
 
     public byte dereference(int i) {
+        if (i >= length) {
+            throw new IndexOutOfBoundsException("Asked for index " + i + " but length is only " + length);
+        }
         return backingArray[begin + i];
     }
 
-    /**
-     * Copy on write replace.
-     *
-     * @param newData
-     * @return
-     */
-    public ByteArrayRef replaceWith(byte[] newData) {
-        int newLength = backingArray.length + (newData.length - this.length);
-        byte[] newBack = new byte[newLength];
-        System.arraycopy(backingArray, 0, newBack, 0, begin);
-        System.arraycopy(newData, 0, newBack, begin, newData.length);
-        System.arraycopy(backingArray, begin + length, newBack, begin + newData.length, newLength - (begin + length));
-        return new ByteArrayRef(begin, newData.length, newBack);
+    public void assign(int i, byte val) {
+        if (i >= length) {
+            throw new IndexOutOfBoundsException("Asked for index " + i + " but length is only " + length);
+        }
+        backingArray[begin + i] = val;
     }
+
+    /* NOTE: This code just asks to be abused such that it circumvents correct 
+     (storage layer dependent) multi version usage.
+     Hence having is not such a greadt idea after all.
+
+     public ByteArrayRef replaceWith(byte[] newData) {
+     if (newData == null) {
+     delete();
+     }
+     int newLength = backingArray.length + (newData.length - this.length);
+     byte[] newBack = new byte[newLength];
+     System.arraycopy(backingArray, 0, newBack, 0, begin);
+     System.arraycopy(newData, 0, newBack, begin, newData.length);
+     System.arraycopy(backingArray, begin + length, newBack, begin + newData.length, newLength - (begin + length));
+     return new ByteArrayRef(begin, newData.length, newBack);
+     }
+
+     public ByteArrayRef append(byte[] newData) {
+     int newLength = backingArray.length + newData.length;
+     byte[] newBack = new byte[newLength];
+     System.arraycopy(backingArray, 0, newBack, 0, begin + length);
+     System.arraycopy(newData, 0, newBack, begin + length, newData.length);
+     System.arraycopy(backingArray, begin + length, newBack, begin + length + newData.length, newLength - (begin + length));
+     return new ByteArrayRef(begin, length + newData.length, newBack);
+     }
     
+     public ByteArrayRef delete() {
+     int newLength = backingArray.length - this.length;
+     if (newLength <= 4) {
+     return new ByteArrayRef(0, 0, null); // completely deleted
+     }
+     byte[] newBack = new byte[newLength];
+     System.arraycopy(backingArray, 0, newBack, 0, begin);
+     System.arraycopy(backingArray, begin + length, newBack, begin, newLength - (begin + length));
+     return new ByteArrayRef(begin, 0, newBack);
+     }
+   
+     */
     /**
      * Copies the data referenced here into the target starting at offset
+     *
      * @param target
-     * @param offset 
+     * @param offset
      */
     public void copyTo(byte[] target, int offset) {
+        if (backingArray == null) {
+            return; // ignore
+        }
         System.arraycopy(backingArray, begin, target, offset, length);
     }
 
@@ -120,6 +156,8 @@ public class ByteArrayRef implements Comparable<ByteArrayRef> {
     public boolean equals(Object that) {
         if (that instanceof ByteArrayRef) {
             return this.compareTo((ByteArrayRef) that) == 0;
+        } else if (that instanceof byte[]) {
+            return this.compareTo((byte[]) that) == 0;
         }
         return false;
     }

@@ -33,6 +33,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.paxos.Commands.Fail;
 import se.sics.caracaldb.paxos.Commands.Join;
@@ -149,7 +150,7 @@ public class SimulatorComponent extends ComponentDefinition {
             //ImmutableSet<Address> emptyGroup = ImmutableSet.of();
             View v = new View(ImmutableSortedSet.copyOf(group.values()), epoch + 1);
             bootNode(adr, null);
-            trigger(new Propose(new Reconfigure(UUID.randomUUID(), v, group.size() / 2 + 1)), oldC.getNegative(PaxosManagerPort.class));
+            trigger(new Propose(new Reconfigure(UUID.randomUUID(), v, group.size() / 2 + 1, 0, KeyRange.EMPTY)), oldC.getNegative(PaxosManagerPort.class));
 
         }
     };

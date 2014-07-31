@@ -44,4 +44,5 @@ public interface StoreIterator extends Closeable {
     public byte[] peekKey();
     public ByteArrayRef peekValue();
     public SortedMap<Integer, ByteArrayRef> peekAllValues();
+    public byte[] peekRaw();
 }

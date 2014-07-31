@@ -30,6 +30,7 @@ import se.sics.caracaldb.Key;
 import se.sics.caracaldb.store.MultiOp.Condition;
 import se.sics.caracaldb.store.MultiOp.EqualCondition;
 import se.sics.caracaldb.store.MultiOp.FunctionalCondition;
+import se.sics.caracaldb.utils.ByteArrayRef;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
@@ -101,7 +102,7 @@ public class ConditionSerializer implements Serializer {
     private Condition fromBinaryCondition(ByteBuf buf, boolean[] flags) {
         if (matches(flags, FUNC)) {
             Key k = CustomSerialisers.deserialiseKey(buf);
-            Predicate<byte[]> pred = (Predicate<byte[]>) Serializers.fromBinary(buf, Optional.absent());
+            Predicate<ByteArrayRef> pred = (Predicate<ByteArrayRef>) Serializers.fromBinary(buf, Optional.absent());
             return new FunctionalCondition(k, pred);
         }
         if (matches(flags, EQ)) {

@@ -22,17 +22,18 @@ package se.sics.caracaldb.persistence.disk;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
+import java.util.SortedMap;
 import org.fusesource.leveldbjni.JniDBFactory;
 import org.iq80.leveldb.CompressionType;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
-
 import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Database;
+import se.sics.caracaldb.persistence.MultiVersionUtil;
 import se.sics.caracaldb.persistence.StoreIterator;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -65,10 +66,10 @@ public class LevelDBJNI implements Database {
 
         db = JniDBFactory.factory.open(dbDir, options);
     }
-    
+
     @Override
     public String toString() {
-        return "LevelDBJNI(\""+dbPath+"\", "+cacheSize+")";
+        return "LevelDBJNI(\"" + dbPath + "\", " + cacheSize + ")";
     }
 
     @Override
@@ -80,23 +81,39 @@ public class LevelDBJNI implements Database {
     }
 
     @Override
-    public void put(byte[] key, byte[] value) {
-        db.put(key, value);
+    public void put(byte[] key, byte[] value, int version) {
+        SortedMap<Integer, ByteArrayRef> versions = getAllVersions(key);
+        versions.put(version, new ByteArrayRef(0, value.length, value));
+        db.put(key, MultiVersionUtil.pack(versions));
     }
 
     @Override
-    public void delete(byte[] key) {
-        db.delete(key);
+    public void delete(byte[] key, int version) {
+        SortedMap<Integer, ByteArrayRef> versions = getAllVersions(key);
+        if (versions.isEmpty()) {
+            return; // nothing to do
+        }
+        versions.put(version, new ByteArrayRef(0, 0, null));
+        byte[] data = MultiVersionUtil.pack(versions);
+        if (data == null) {
+            db.delete(key);
+        } else {
+            db.put(key, data);
+        }
     }
 
     @Override
-    public byte[] get(byte[] key) {
-        return db.get(key);
+    public ByteArrayRef get(byte[] key) {
+        SortedMap<Integer, ByteArrayRef> versions = getAllVersions(key);
+        if (versions.isEmpty()) {
+            return null;
+        }
+        return versions.get(versions.firstKey());
     }
 
     @Override
     public Batch createBatch() {
-        return new LevelDBBatch(db.createWriteBatch());
+        return new LevelDBBatch(db.createWriteBatch(), this);
     }
 
     @Override
@@ -116,22 +133,73 @@ public class LevelDBJNI implements Database {
         return new LevelDBIterator(db.iterator(), startKey);
     }
 
+    @Override
+    public void replace(byte[] key, ByteArrayRef value) {
+        db.put(key, value.getBackingArray());
+    }
+
+    @Override
+    public int deleteVersions(byte[] key, int version) {
+        SortedMap<Integer, ByteArrayRef> versions = getAllVersions(key);
+        if (versions.isEmpty()) {
+            return 0; // nothing to do
+        }
+        SortedMap<Integer, ByteArrayRef> newVersions = versions.headMap(version);
+        if (newVersions.isEmpty()) { // always retain the newest value
+            newVersions.put(versions.firstKey(), versions.get(versions.firstKey()));
+        }
+        byte[] newData = MultiVersionUtil.pack(newVersions);
+        if (newData == null) {
+            db.delete(key);
+            return 0;
+        }
+        db.put(key, newData);
+        return newData.length;
+
+    }
+
+    @Override
+    public SortedMap<Integer, ByteArrayRef> getAllVersions(byte[] key) {
+        byte[] data = db.get(key);
+        SortedMap<Integer, ByteArrayRef> versions = MultiVersionUtil.unpack(data);
+        return versions;
+    }
+
+    @Override
+    public byte[] getRaw(byte[] key) {
+        return db.get(key);
+    }
+
     private static class LevelDBBatch implements Batch {
 
         private WriteBatch batch;
+        private LevelDBJNI db;
 
-        private LevelDBBatch(WriteBatch batch) {
+        private LevelDBBatch(WriteBatch batch, LevelDBJNI db) {
             this.batch = batch;
+            this.db = db;
         }
 
         @Override
-        public void put(byte[] key, byte[] value) {
-            batch.put(key, value);
+        public void put(byte[] key, byte[] value, int version) {
+            SortedMap<Integer, ByteArrayRef> versions = db.getAllVersions(key);
+            versions.put(version, new ByteArrayRef(0, value.length, value));
+            batch.put(key, MultiVersionUtil.pack(versions));
         }
 
         @Override
-        public void delete(byte[] key) {
-            batch.delete(key);
+        public void delete(byte[] key, int version) {
+            SortedMap<Integer, ByteArrayRef> versions = db.getAllVersions(key);
+            if (versions.isEmpty()) {
+                return; // nothing to do
+            }
+            versions.put(version, new ByteArrayRef(0, 0, null));
+            byte[] data = MultiVersionUtil.pack(versions);
+            if (data == null) {
+                batch.delete(key);
+            } else {
+                batch.put(key, data);
+            }
         }
 
         @Override
@@ -144,6 +212,30 @@ public class LevelDBJNI implements Database {
 
         private WriteBatch getLevelDBBatch() {
             return batch;
+        }
+
+        @Override
+        public void replace(byte[] key, ByteArrayRef value) {
+            batch.put(key, value.getBackingArray());
+        }
+
+        @Override
+        public int deleteVersions(byte[] key, int version) {
+            SortedMap<Integer, ByteArrayRef> versions = db.getAllVersions(key);
+            if (versions.isEmpty()) {
+                return 0; // nothing to do
+            }
+            SortedMap<Integer, ByteArrayRef> newVersions = versions.headMap(version);
+            if (newVersions.isEmpty()) { // always retain the newest value
+                newVersions.put(versions.firstKey(), versions.get(versions.firstKey()));
+            }
+            byte[] newData = MultiVersionUtil.pack(newVersions);
+            if (newData == null) {
+                batch.delete(key);
+                return 0;
+            }
+            batch.put(key, newData);
+            return newData.length;
         }
     }
 
@@ -172,18 +264,17 @@ public class LevelDBJNI implements Database {
         }
 
         @Override
-        public Map.Entry<byte[], byte[]> peekNext() {
-            return it.peekNext();
-        }
-
-        @Override
         public byte[] peekKey() {
             return it.peekNext().getKey();
         }
 
         @Override
-        public byte[] peekValue() {
-            return it.peekNext().getValue();
+        public ByteArrayRef peekValue() {
+            SortedMap<Integer, ByteArrayRef> versions = peekAllValues();
+            if (versions.isEmpty()) {
+                return null;
+            }
+            return versions.get(versions.firstKey());
         }
 
         @Override
@@ -192,6 +283,16 @@ public class LevelDBJNI implements Database {
                 it.close();
                 it = null;
             }
+        }
+
+        @Override
+        public SortedMap<Integer, ByteArrayRef> peekAllValues() {
+            return MultiVersionUtil.unpack(peekRaw());
+        }
+
+        @Override
+        public byte[] peekRaw() {
+            return it.peekNext().getValue();
         }
     }
 }

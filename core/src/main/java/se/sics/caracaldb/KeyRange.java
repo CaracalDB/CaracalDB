@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * @author Lars Kroll <lkroll@sics.se>
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class KeyRange {
+public class KeyRange implements Comparable<KeyRange> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KeyRange.class);
 
@@ -59,8 +59,9 @@ public class KeyRange {
 
     /**
      * Create a KeyRange that only includes key
+     *
      * @param key
-     * @return 
+     * @return
      */
     public static KeyRange key(Key key) {
         return new KeyRange(CLOSED, key, key, CLOSED);
@@ -81,7 +82,7 @@ public class KeyRange {
     public static KRBuilder startFrom(KeyRange kr) {
         return new KRBuilder(kr.beginBound, kr.begin);
     }
-    
+
     public static boolean overlap(KeyRange a, KeyRange b) {
         if (a.equals(EMPTY) || b.equals(EMPTY)) {
             return false;
@@ -134,7 +135,7 @@ public class KeyRange {
             }
         }
     }
-    
+
     public boolean overlapsWith(KeyRange that) {
         return KeyRange.overlap(this, that);
     }
@@ -228,6 +229,31 @@ public class KeyRange {
     }
 
     @Override
+    public int compareTo(KeyRange that) {
+        int b = this.begin.compareTo(that.begin);
+        if (b != 0) {
+            return b;
+        }
+        if (this.beginBound == Bound.CLOSED && that.beginBound == Bound.OPEN) {
+            return -1; // closed before open
+        }
+        if (this.beginBound == Bound.OPEN && that.beginBound == Bound.CLOSED) {
+            return 1; // closed before open
+        }
+        int e = this.end.compareTo(that.end);
+        if (e != 0) {
+            return b;
+        }
+        if (this.endBound == Bound.CLOSED && that.endBound == Bound.OPEN) {
+            return -1; // closed before open
+        }
+        if (this.endBound == Bound.OPEN && that.endBound == Bound.CLOSED) {
+            return 1; // closed before open
+        }
+        return 0;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (o instanceof KeyRange) {
             KeyRange that = (KeyRange) o;
@@ -248,7 +274,7 @@ public class KeyRange {
             return false;
         }
     }
-    
+
     @Override
     public int hashCode() {
         return Objects.hashCode(beginBound, begin, end, endBound);

@@ -106,6 +106,7 @@ public class MaintenanceSerializer implements Serializer {
             flags.write(false, false); // reserve bits 3&4
             CustomSerialisers.serialiseView(m.change.view, buf);
             buf.writeInt(m.change.quorum);
+            CustomSerialisers.serialiseKeyRange(m.change.range, buf);
             return;
         }
         if (op instanceof LUTUpdate) {
@@ -148,7 +149,8 @@ public class MaintenanceSerializer implements Serializer {
         if (matches(flags, RECONF)) {
             View view = CustomSerialisers.deserialiseView(buf);
             int quorum = buf.readInt();
-            return new Reconfiguration(new ViewChange(view, quorum));
+            KeyRange range = CustomSerialisers.deserialiseKeyRange(buf);
+            return new Reconfiguration(new ViewChange(view, quorum, range));
         }
         if (matches(flags, UPDATE)) {
             try {

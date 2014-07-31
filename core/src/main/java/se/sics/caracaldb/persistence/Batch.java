@@ -20,13 +20,14 @@
  */
 package se.sics.caracaldb.persistence;
 
+import java.io.Closeable;
 import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public interface Batch {
+public interface Batch extends Closeable {
 
     /**
      * Associates the specified value with the specified key in this map. If the
@@ -60,8 +61,9 @@ public interface Batch {
      *
      * @param key
      * @param version
+     * @return the new data size
      */
-    public void deleteVersions(byte[] key, int version);
+    public int deleteVersions(byte[] key, int version);
 
     /**
      * Closes the batch and frees up it's resources.

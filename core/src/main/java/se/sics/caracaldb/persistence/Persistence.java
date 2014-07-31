@@ -61,8 +61,9 @@ public interface Persistence {
      * 
      * @param key
      * @param version 
+     * @return the new data size
      */
-    public void deleteVersions(byte[] key, int version);
+    public int deleteVersions(byte[] key, int version);
 
     /**
      * Returns the value to which the specified key is mapped, or null if this
@@ -82,6 +83,16 @@ public interface Persistence {
      * @return 
      */
     public SortedMap<Integer, ByteArrayRef> getAllVersions(byte[] key);
+    
+    /**
+     * Gives the actual data stored in the underlying layer.
+     * 
+     * Useful to calculate storage size, for example.
+     * 
+     * @param key
+     * @return 
+     */
+    public byte[] getRaw(byte[] key);
 
     /**
      * Prepares a write batch (allocate native memory in case of native

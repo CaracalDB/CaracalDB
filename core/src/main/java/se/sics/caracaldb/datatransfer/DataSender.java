@@ -59,6 +59,7 @@ public class DataSender extends DataTransferComponent {
     private UUID timeoutId;
     private ClearToSend activeCTS;
     private final Queue<ClearToSend> pendingCTS = new LinkedList<>();
+    private int versionId;
 
     public DataSender(DataSenderInit init) {
         super(init.id);
@@ -67,6 +68,7 @@ public class DataSender extends DataTransferComponent {
         destination = init.destination;
         retryTime = init.retryTime;
         metadata = init.metadata;
+        versionId = (int) metadata.get("versionId");
         // subscriptions
         subscribe(startHandler, control);
         subscribe(timeoutHandler, timer);
@@ -164,11 +166,15 @@ public class DataSender extends DataTransferComponent {
 
     private void requestData(int quota) {
         if (lastKey == null) {
-            trigger(new RangeReq(range, Limit.toBytes(quota), TFFactory.tombstoneFilter(), ActionFactory.noop()), store);
+            RangeReq rr = new RangeReq(range, Limit.toBytes(quota), TFFactory.tombstoneFilter(), ActionFactory.noop(), -1);
+            rr.setMaxVersionId(versionId);
+            trigger(rr, store);
             return;
         }
 
         KeyRange subRange = KeyRange.open(lastKey).endFrom(range);
-        trigger(new RangeReq(subRange, Limit.toBytes(quota), TFFactory.tombstoneFilter(), ActionFactory.noop()), store);
+        RangeReq rr = new RangeReq(subRange, Limit.toBytes(quota), TFFactory.tombstoneFilter(), ActionFactory.noop(), -1);
+        rr.setMaxVersionId(versionId);
+        trigger(rr, store);
     }
 }

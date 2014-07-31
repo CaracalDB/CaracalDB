@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.replication.linearisable;
 
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.kompics.KompicsEvent;
 
@@ -31,10 +32,12 @@ public class ViewChange implements KompicsEvent, Comparable<ViewChange> {
 
     public final View view;
     public final int quorum;
+    public final KeyRange range;
 
-    public ViewChange(View v, int quorum) {
+    public ViewChange(View v, int quorum, KeyRange range) {
         this.view = v;
         this.quorum = quorum;
+        this.range = range;
     }
 
     @Override
@@ -46,6 +49,7 @@ public class ViewChange implements KompicsEvent, Comparable<ViewChange> {
         if (quorum != that.quorum) {
             return quorum - that.quorum;
         }
-        return 0;
+        diff = this.range.compareTo(that.range);
+        return diff;
     }
 }

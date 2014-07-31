@@ -21,7 +21,10 @@
 package se.sics.caracaldb.store;
 
 import com.google.common.io.Closer;
+import com.google.common.primitives.Ints;
 import java.io.IOException;
+import java.util.Map.Entry;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
@@ -29,6 +32,7 @@ import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.store.Limit.LimitTracker;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  *
@@ -41,8 +45,10 @@ public class RangeReq extends StorageRequest {
     private final TransformationFilter transFilter;
     private final LimitTracker limit;
     private final RangeAction action;
+    private int maxVersionId = Ints.MAX_POWER_OF_TWO;
+    private int actionVersionId;
 
-    public RangeReq(KeyRange range, LimitTracker limit, TransformationFilter transFilter, RangeAction action) {
+    public RangeReq(KeyRange range, LimitTracker limit, TransformationFilter transFilter, RangeAction action, int actionVersionId) {
         this.range = range;
         if (limit != null) {
             this.limit = limit;
@@ -59,12 +65,21 @@ public class RangeReq extends StorageRequest {
         } else {
             this.action = ActionFactory.noop();
         }
+        this.actionVersionId = actionVersionId;
+    }
+
+    public void setMaxVersionId(int id) {
+        this.maxVersionId = id;
+    }
+
+    public int getMaxVersionId() {
+        return this.maxVersionId;
     }
 
     @Override
     public StorageResponse execute(Persistence store) throws IOException {
         TreeMap<Key, byte[]> results = new TreeMap<Key, byte[]>();
-        
+
         long lengthDiff = 0;
         long keyNumDiff = 0;
         Diff diff = null;
@@ -75,18 +90,27 @@ public class RangeReq extends StorageRequest {
             byte[] begin = range.begin.getArray();
             for (StoreIterator it = closer.register(store.iterator(begin)); it.hasNext(); it.next()) {
                 byte[] key = it.peekKey();
-                byte[] oldVal = it.peekValue();
+                SortedMap<Integer, ByteArrayRef> oldVals = it.peekAllValues();
+                ByteArrayRef oldVal = null;
+                for (Entry<Integer, ByteArrayRef> e : oldVals.entrySet()) {
+                    if (e.getKey() <= maxVersionId) {
+                        oldVal = e.getValue();
+                        break;
+                    }
+                }
                 if (range.contains(key)) {
-                    Pair<Boolean, byte[]> res = transFilter.execute(oldVal);
+                    Pair<Boolean, ByteArrayRef> res = transFilter.execute(oldVal);
                     if (res.getValue0()) {
                         if (limit.read(res.getValue1())) {
-                            results.put(new Key(key), res.getValue1());
-                            long newSize = action.process(key, res.getValue1());
-                            if (newSize == 0) {
-                                lengthDiff -= oldVal.length;
-                                keyNumDiff--;
-                            } else if (newSize > 0) {
-                                lengthDiff -= oldVal.length - newSize;
+                            results.put(new Key(key), res.getValue1().dereference());
+                            long newSize = action.process(key, res.getValue1(), actionVersionId);
+                            if (oldVal != null) {
+                                if (newSize == 0) {
+                                    lengthDiff -= oldVal.length;
+                                    keyNumDiff--;
+                                } else if (newSize > 0) {
+                                    lengthDiff -= oldVal.length - newSize;
+                                }
                             }
                             if (!limit.canRead()) {
                                 break;

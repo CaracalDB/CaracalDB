@@ -22,6 +22,7 @@ package se.sics.caracaldb.replication.log;
 
 import com.google.common.collect.ComparisonChain;
 import java.util.UUID;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 
 /**
@@ -32,11 +33,15 @@ public class Reconfigure extends Value {
 
     public final View view;
     public final int quorum;
+    public final int versionId;
+    public final KeyRange responsibility;
 
-    public Reconfigure(UUID id, View v, int quorum) {
+    public Reconfigure(UUID id, View v, int quorum, int versionId, KeyRange responsibility) {
         super(id);
         this.view = v;
         this.quorum = quorum;
+        this.versionId = versionId;
+        this.responsibility = responsibility;
     }
 
     @Override
@@ -59,6 +64,8 @@ public class Reconfigure extends Value {
         return ComparisonChain.start()
                 .compare(this.view, that.view)
                 .compare(this.quorum, that.quorum)
+                .compare(this.versionId, that.versionId)
+                //.compare(this.responsibility, that.responsibility) FIXME
                 .result();
     }
 
@@ -68,8 +75,12 @@ public class Reconfigure extends Value {
         sb.append("Reconfigure(");
         sb.append("\n     View: ");
         sb.append(view);
-        sb.append("\n     Quorum: ");
+        
         sb.append(quorum);
+        sb.append("\n     Version: ");
+        sb.append(versionId);
+        sb.append("\n     Range: ");
+        sb.append(responsibility);
         sb.append("\n     )");
         return sb.toString();
     }

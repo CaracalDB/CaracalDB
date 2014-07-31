@@ -22,8 +22,7 @@ package se.sics.caracaldb.store;
 
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Persistence;
-import se.sics.kompics.Request;
-import se.sics.kompics.Response;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  *
@@ -39,8 +38,12 @@ public class GetReq extends StorageRequest {
 
     @Override
     public StorageResponse execute(Persistence store) {
-        byte[] val = store.get(key.getArray());
-        return new GetResp(this, key, val);
+        ByteArrayRef val = store.get(key.getArray());
+        if (val == null) {
+            return new GetResp(this, key, null);
+        }
+        return new GetResp(this, key, val.dereference());
+
     }
 
     @Override

@@ -40,6 +40,7 @@ import se.sics.caracaldb.persistence.Database;
 import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.persistence.memory.InMemoryDB;
 import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>
@@ -48,20 +49,20 @@ public class ValidationStore2 {
 
     private final Database store;
     private static final Logger LOG = LoggerFactory.getLogger(ValidationStore2.class);
-    
+
     private boolean end = false;
-    
+
     public ValidationStore2() {
         this.store = new InMemoryDB();
     }
-    
+
     public Validator startOp(CaracalOp op) {
         if (op instanceof GetRequest) {
             GetRequest get = (GetRequest) op;
             return new GetValidator(get, store.get(get.key.getArray()));
         } else if (op instanceof PutRequest) {
             PutRequest put = (PutRequest) op;
-            store.put(put.key.getArray(), put.data);
+            store.put(put.key.getArray(), put.data, 0);
             return new PutValidator(put);
         } else if (op instanceof RangeQuery.Request) {
             RangeQuery.Request rq = (RangeQuery.Request) op;
@@ -70,29 +71,29 @@ public class ValidationStore2 {
             return null;
         }
     }
-    
+
     public void endExperiment() {
         this.end = true;
     }
-    
+
     public boolean experimentEnded() {
         return end;
     }
 
-    private NavigableMap<Key, byte[]> getExpectedRangeResult(RangeQuery.Request rq) {
-        TreeMap<Key, byte[]> expectedResult = new TreeMap<Key, byte[]>();
+    private NavigableMap<Key, ByteArrayRef> getExpectedRangeResult(RangeQuery.Request rq) {
+        TreeMap<Key, ByteArrayRef> expectedResult = new TreeMap<Key, ByteArrayRef>();
         Limit.LimitTracker lt = rq.limitTracker.doClone();
         StoreIterator it = store.iterator(rq.initRange.begin.getArray());
         while (it.hasNext()) {
             Key key = new Key(it.peekKey());
-            if(!rq.subRange.contains(key)) {
-                if(key.equals(rq.subRange.begin)) {
+            if (!rq.subRange.contains(key)) {
+                if (key.equals(rq.subRange.begin)) {
                     continue;
                 }
                 break;
             }
             if (lt.canRead()) {
-                Pair<Boolean, byte[]> result = rq.transFilter.execute(it.peekValue());
+                Pair<Boolean, ByteArrayRef> result = rq.transFilter.execute(it.peekValue());
                 if (result.getValue0()) {
                     if (lt.read(result.getValue1())) {
                         expectedResult.put(key, result.getValue1());
@@ -113,8 +114,10 @@ public class ValidationStore2 {
 
         /**
          * @param resp
-         * @return true if operation finished successfully, false if the operation is not done or throw and exception if the operation failed
-         * @throws se.sics.caracaldb.simulation.ValidationStore2.ValidatorException 
+         * @return true if operation finished successfully, false if the
+         * operation is not done or throw and exception if the operation failed
+         * @throws
+         * se.sics.caracaldb.simulation.ValidationStore2.ValidatorException
          */
         boolean validateAndContinue(CaracalResponse resp) throws ValidatorException;
     }
@@ -122,9 +125,9 @@ public class ValidationStore2 {
     static class GetValidator implements Validator {
 
         private final GetRequest req;
-        private final byte[] expectedResult;
+        private final ByteArrayRef expectedResult;
 
-        GetValidator(GetRequest req, byte[] expectedResult) {
+        GetValidator(GetRequest req, ByteArrayRef expectedResult) {
             this.req = req;
             this.expectedResult = expectedResult;
         }
@@ -140,7 +143,7 @@ public class ValidationStore2 {
                 if (!getResp.code.equals(ResponseCode.SUCCESS)) {
                     LOG.debug("operation {} failed with resp {}", new Object[]{req, resp.code});
                     throw new ValidatorException();
-                } else if (Arrays.equals(expectedResult, getResp.data)) {
+                } else if (expectedResult.equals(getResp.data)) {
                     return true;
                 } else {
                     LOG.debug("operation {} returned wrong value", req);
@@ -186,9 +189,9 @@ public class ValidationStore2 {
 
         private final RangeQuery.Request req;
         private final RangeQuery.SeqCollector col;
-        private final NavigableMap<Key, byte[]> expectedResult;
+        private final NavigableMap<Key, ByteArrayRef> expectedResult;
 
-        RangeQueryValidator(RangeQuery.Request req, NavigableMap<Key, byte[]> expectedResult) {
+        RangeQueryValidator(RangeQuery.Request req, NavigableMap<Key, ByteArrayRef> expectedResult) {
             this.req = req;
             this.col = new RangeQuery.SeqCollector(req);
             this.expectedResult = expectedResult;
@@ -214,8 +217,8 @@ public class ValidationStore2 {
                         throw new ValidatorException();
                     }
                     for (Entry<Key, byte[]> e : result.entrySet()) {
-                        byte[] expectedData = expectedResult.get(e.getKey());
-                        if (!Arrays.equals(expectedData, e.getValue())) {
+                        ByteArrayRef expectedData = expectedResult.get(e.getKey());
+                        if (!expectedData.equals(e.getValue())) {
                             LOG.debug("operation {} returned wrong value", req);
                             throw new ValidatorException();
                         }

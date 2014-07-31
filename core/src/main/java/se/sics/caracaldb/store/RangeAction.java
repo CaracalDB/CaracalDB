@@ -23,6 +23,7 @@ package se.sics.caracaldb.store;
 
 import java.io.Serializable;
 import se.sics.caracaldb.persistence.Persistence;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  *
@@ -38,10 +39,10 @@ public interface RangeAction extends Serializable {
      * 0 if deleted
      * x > 0 if changed to x
      * @param key
-     * @param value
+     * @param newValue
      * @return 
      */
-    public long process(byte[] key, byte[] value);
+    public long process(byte[] key, ByteArrayRef newValue, int versionId);
     public void commit();
     public void abort();
 }

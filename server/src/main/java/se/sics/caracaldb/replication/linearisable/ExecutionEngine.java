@@ -55,6 +55,7 @@ import se.sics.caracaldb.replication.log.Prune;
 import se.sics.caracaldb.replication.log.Reconfigure;
 import se.sics.caracaldb.replication.log.ReplicatedLog;
 import se.sics.caracaldb.replication.log.Value;
+import se.sics.caracaldb.store.CleanupReq;
 import se.sics.caracaldb.store.GetReq;
 import se.sics.caracaldb.store.GetResp;
 import se.sics.caracaldb.store.MultiOp;
@@ -86,7 +87,7 @@ public class ExecutionEngine extends ComponentDefinition {
     public static enum State {
 
         PASSIVE, // wait for installation of first view
-        BUFFERING, // transfer snapshot in the background and handle incoming requests
+        TRANSFERING, // transfer snapshot in the background and handle incoming requests
         CATCHING_UP, // receiving snapshot in the background but ignore/forward incoming requests
         ACTIVE; // handle requests
     }
@@ -99,6 +100,7 @@ public class ExecutionEngine extends ComponentDefinition {
     // Instance
     private State state;
     private View view;
+    private KeyRange range;
     private Address self;
     private ExecutionEngineInit init;
     private final Actions actions = new Actions();
@@ -111,6 +113,7 @@ public class ExecutionEngine extends ComponentDefinition {
 
         this.view = init.view;
         this.self = init.self;
+        this.range = init.range;
 
         state = State.PASSIVE;
 
@@ -189,7 +192,7 @@ public class ExecutionEngine extends ComponentDefinition {
                         view, event.view);
                 return;
             }
-            Reconfigure reconf = new Reconfigure(UUID.randomUUID(), event.view, event.quorum);
+            Reconfigure reconf = new Reconfigure(UUID.randomUUID(), event.view, event.quorum, versionId, event.range);
             trigger(new Propose(reconf), rLog);
         }
     };
@@ -243,6 +246,7 @@ public class ExecutionEngine extends ComponentDefinition {
                 unsubscribe(this, rLog);
                 view = event.view;
                 state = State.CATCHING_UP;
+                versionId = event.versionId + 1;
 
                 Handler<InitiateTransfer> transferHandler = new Handler<InitiateTransfer>() {
                     @Override
@@ -297,18 +301,23 @@ public class ExecutionEngine extends ComponentDefinition {
     };
 
     private void goActive() {
+        State oldState = state;
         state = State.ACTIVE;
 
-        Pair<Long, List<CaracalOp>> diff = opLog.getSnapshotDiff(lastSnapshotId);
-        SnapshotReq req = new SnapshotReq(diff.getValue0());
-        for (CaracalOp op : diff.getValue1()) {
-            StorageRequest sreq = actions.get(state, op).prepareSnapshot(op);
-            if (sreq != null) {
-                req.addReq(sreq);
+        if (oldState == State.CATCHING_UP) {
+            Pair<Long, List<CaracalOp>> diff = opLog.getSnapshotDiff(lastSnapshotId);
+            SnapshotReq req = new SnapshotReq(diff.getValue0());
+            for (CaracalOp op : diff.getValue1()) {
+                StorageRequest sreq = actions.get(state, op).prepareSnapshot(op);
+                if (sreq != null) {
+                    req.addReq(sreq);
+                }
             }
+            trigger(req, store);
+            lastSnapshotId = diff.getValue0();
         }
-        trigger(req, store);
-        lastSnapshotId = diff.getValue0();
+        CleanupReq cr = new CleanupReq(range, versionId);
+        trigger(cr, store);
     }
 
     private void doReconf(Reconfigure rconf) {
@@ -323,7 +332,8 @@ public class ExecutionEngine extends ComponentDefinition {
         LOG.info("Moved to view {}", view);
         //TODO update MethCat view as well
 
-        state = State.BUFFERING;
+        state = State.TRANSFERING;
+        versionId++;
 
         // transfer data
         transferDataMaybe(oldView, view);
@@ -354,7 +364,6 @@ public class ExecutionEngine extends ComponentDefinition {
     private class Actions {
 
         private Map<Class<? extends CaracalOp>, Action> passive = new HashMap<Class<? extends CaracalOp>, Action>();
-        private Map<Class<? extends CaracalOp>, Action> buffering = new HashMap<Class<? extends CaracalOp>, Action>();
         private Map<Class<? extends CaracalOp>, Action> catchingUp = new HashMap<Class<? extends CaracalOp>, Action>();
         private Map<Class<? extends CaracalOp>, Action> active = new HashMap<Class<? extends CaracalOp>, Action>();
 
@@ -362,8 +371,8 @@ public class ExecutionEngine extends ComponentDefinition {
             switch (s) {
                 case PASSIVE:
                     return passive.get(op.getClass());
-                case BUFFERING:
-                    return buffering.get(op.getClass());
+                case TRANSFERING:
+                    return active.get(op.getClass());
                 case CATCHING_UP:
                     return catchingUp.get(op.getClass());
                 case ACTIVE:
@@ -376,8 +385,8 @@ public class ExecutionEngine extends ComponentDefinition {
             switch (s) {
                 case PASSIVE:
                     return passive.containsKey(op.getClass());
-                case BUFFERING:
-                    return buffering.containsKey(op.getClass());
+                case TRANSFERING:
+                    return active.containsKey(op.getClass());
                 case CATCHING_UP:
                     return catchingUp.containsKey(op.getClass());
                 case ACTIVE:
@@ -403,62 +412,6 @@ public class ExecutionEngine extends ComponentDefinition {
                 @Override
                 public StorageRequest prepareSnapshot(CaracalOp op) {
                     return null;
-                }
-            });
-            /*
-             * BUFFERING
-             */
-            buffering.put(GetRequest.class, new Action<GetRequest>() {
-                @Override
-                public void initiate(GetRequest op, long pos) {
-                    List<CaracalOp> prefix = opLog.getApplicableForOp(pos, op, lastSnapshotId);
-                    ReplayGetReq rgr = new ReplayGetReq(op.key, prefix);
-                    rgr.setId(op.id);
-                    trigger(rgr, store);
-                }
-
-                @Override
-                public StorageRequest prepareSnapshot(GetRequest op) {
-                    return null;
-                }
-            });
-            buffering.put(PutRequest.class, new Action<PutRequest>() {
-                @Override
-                public void initiate(PutRequest op, long pos) {
-                    // Just reply. Will be applied when the next snapshot is taken.
-                    trigger(new PutResponse(op.id, op.key), rep);
-                }
-
-                @Override
-                public StorageRequest prepareSnapshot(PutRequest op) {
-                    return null;
-                }
-            });
-            buffering.put(RangeQuery.Request.class, new Action<RangeQuery.Request>() {
-                @Override
-                public void initiate(RangeQuery.Request op, long pos) {
-                    List<CaracalOp> prefix = opLog.getApplicableForOp(pos, op, lastSnapshotId);
-                    ReplayRangeReq replayReq = new ReplayRangeReq(op.subRange, op.limitTracker, op.transFilter, op.action, prefix);
-                    replayReq.setId(op.id);
-                    trigger(replayReq, store);
-                }
-
-                @Override
-                public StorageRequest prepareSnapshot(RangeQuery.Request op) {
-                    return null;
-                }
-            });
-            buffering.put(MultiOpRequest.class, new Action<MultiOpRequest>() {
-
-                @Override
-                public void initiate(MultiOpRequest op, long pos) {
-                    // TODO, I have no idea what to do here -.-
-                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-                }
-
-                @Override
-                public StorageRequest prepareSnapshot(MultiOpRequest op) {
-                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                 }
             });
             /*
@@ -525,7 +478,7 @@ public class ExecutionEngine extends ComponentDefinition {
             active.put(PutRequest.class, new Action<PutRequest>() {
                 @Override
                 public void initiate(PutRequest op, long pos) {
-                    Put request = new Put(op.key, op.data);
+                    Put request = new Put(op.key, op.data, versionId);
                     trigger(request, store);
                     trigger(new PutResponse(op.id, op.key), rep);
                     lastSnapshotId = pos;
@@ -533,13 +486,13 @@ public class ExecutionEngine extends ComponentDefinition {
 
                 @Override
                 public StorageRequest prepareSnapshot(PutRequest op) {
-                    return new Put(op.key, op.data);
+                    return new Put(op.key, op.data, versionId);
                 }
             });
             active.put(RangeQuery.Request.class, new Action<RangeQuery.Request>() {
                 @Override
                 public void initiate(RangeQuery.Request op, long pos) {
-                    RangeReq request = new RangeReq(op.subRange, op.limitTracker, op.transFilter, op.action);
+                    RangeReq request = new RangeReq(op.subRange, op.limitTracker, op.transFilter, op.action, versionId);
                     request.setId(op.id);
                     trigger(request, store);
                 }
@@ -554,14 +507,14 @@ public class ExecutionEngine extends ComponentDefinition {
 
                 @Override
                 public void initiate(MultiOpRequest op, long pos) {
-                    MultiOp.Req request = new MultiOp.Req(op.conditions, op.successPuts, op.failurePuts);
+                    MultiOp.Req request = new MultiOp.Req(op.conditions, op.successPuts, op.failurePuts, versionId);
                     request.setId(op.id);
                     trigger(request, store);
                 }
 
                 @Override
                 public StorageRequest prepareSnapshot(MultiOpRequest op) {
-                    MultiOp.Req request = new MultiOp.Req(op.conditions, op.successPuts, op.failurePuts);
+                    MultiOp.Req request = new MultiOp.Req(op.conditions, op.successPuts, op.failurePuts, versionId);
                     request.setId(op.id);
                     return request;
                 }
@@ -584,7 +537,6 @@ public class ExecutionEngine extends ComponentDefinition {
                 responsible.add(adr);
             }
         }
-        versionId++;
         for (Address adr : responsible) {
             final Address dst = adr;
             UUID id = UUID.randomUUID(); // TODO there's certainly better ways...

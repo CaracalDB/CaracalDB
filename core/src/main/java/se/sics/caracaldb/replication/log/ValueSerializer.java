@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
@@ -64,6 +65,8 @@ public class ValueSerializer implements Serializer {
             Reconfigure r = (Reconfigure) val;
             CustomSerialisers.serialiseView(r.view, buf);
             buf.writeInt(r.quorum);
+            buf.writeInt(r.versionId);
+            CustomSerialisers.serialiseKeyRange(r.responsibility, buf);
             return;
         }
         LOG.error("Can't serialize {}:{}!", o, o.getClass());
@@ -79,7 +82,9 @@ public class ValueSerializer implements Serializer {
             case RECONFIGURE:
                 View v = CustomSerialisers.deserialiseView(buf);
                 int quorum = buf.readInt();
-                return new Reconfigure(id, v, quorum);
+                int versionId = buf.readInt();
+                KeyRange r = CustomSerialisers.deserialiseKeyRange(buf);
+                return new Reconfigure(id, v, quorum, versionId, r);
             default:
                 LOG.error("Can't deserialize for type {}!", type);
                 return null;

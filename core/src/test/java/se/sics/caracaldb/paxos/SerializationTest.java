@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import se.sics.caracaldb.CoreSerializer;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.paxos.Paxos.Accept;
 import se.sics.caracaldb.paxos.Paxos.Accepted;
@@ -138,7 +139,7 @@ public class SerializationTest {
         buf.clear();
         
         // INSTALL
-        Reconfigure reconf = new Reconfigure(new UUID(0, 1), v, 3);
+        Reconfigure reconf = new Reconfigure(new UUID(0, 1), v, 3, 0, KeyRange.EMPTY);
         Install install = new Install(source, dest, 1, reconf, 10, ImmutableSortedMap.of(1l, Noop.val, 2l, Noop.val));
         paxosS.toBinary(install, buf);
         Install install2 = (Install) paxosS.fromBinary(buf, Optional.absent());

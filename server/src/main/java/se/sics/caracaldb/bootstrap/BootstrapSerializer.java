@@ -73,7 +73,7 @@ public class BootstrapSerializer implements Serializer {
         }
         if (o instanceof BootUp) {
             BootUp bu = (BootUp) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(bu, buf, READY[0], READY[1]);
+            SpecialSerializers.MessageSerializationUtil.msgToBinary(bu, buf, BOOT[0], BOOT[1]);
             return;
         }
         LOG.warn("Couldn't serialize BootstrapMsg {}: {}", o, o.getClass());

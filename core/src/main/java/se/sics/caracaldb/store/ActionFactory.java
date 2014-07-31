@@ -23,6 +23,7 @@ package se.sics.caracaldb.store;
 import java.io.Serializable;
 import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Persistence;
+import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
  *
@@ -35,11 +36,15 @@ public class ActionFactory {
     public static RangeAction noop() {
         return NOOP;
     }
-    
+
     public static RangeAction delete() {
         return new Delete();
     }
-    
+
+    public static RangeAction fullDelete() {
+        return new FullDelete();
+    }
+
     public static RangeAction writeBack() {
         return new WriteBack();
     }
@@ -52,7 +57,7 @@ public class ActionFactory {
         }
 
         @Override
-        public long process(byte[] key, byte[] value) {
+        public long process(byte[] key, ByteArrayRef newValue, int versionId) {
             // ignore
             return -1;
         }
@@ -74,6 +79,9 @@ public class ActionFactory {
         private Persistence store;
         private Batch batch;
 
+        public Delete() {
+        }
+
         @Override
         public void prepare(Persistence store) {
             this.store = store;
@@ -81,8 +89,41 @@ public class ActionFactory {
         }
 
         @Override
-        public long process(byte[] key, byte[] value) {
-            batch.delete(key);
+        public long process(byte[] key, ByteArrayRef newValue, int versionId) {
+            batch.delete(key, versionId);
+            return 0;
+        }
+
+        @Override
+        public void commit() {
+            store.writeBatch(batch);
+            batch.close();
+        }
+
+        @Override
+        public void abort() {
+            batch.close();
+        }
+
+    }
+
+    public static class FullDelete implements RangeAction, Serializable {
+
+        private Persistence store;
+        private Batch batch;
+
+        public FullDelete() {
+        }
+
+        @Override
+        public void prepare(Persistence store) {
+            this.store = store;
+            batch = store.createBatch();
+        }
+
+        @Override
+        public long process(byte[] key, ByteArrayRef newValue, int versionId) {
+            batch.replace(key, new ByteArrayRef(0, 0, null));
             return 0;
         }
 
@@ -107,6 +148,9 @@ public class ActionFactory {
         private Batch batch;
         private int curBatchSize = 0;
 
+        public WriteBack() {
+        }
+
         @Override
         public void prepare(Persistence store) {
             this.store = store;
@@ -114,15 +158,21 @@ public class ActionFactory {
         }
 
         @Override
-        public long process(byte[] key, byte[] value) {
-            batch.put(key, value);
-            curBatchSize++;
+        public long process(byte[] key, ByteArrayRef newValue, int versionId) {
             if (curBatchSize >= MAX_BATCH_SIZE) {
                 store.writeBatch(batch);
                 batch.close();
                 batch = store.createBatch();
             }
-            return value.length;
+            curBatchSize++;
+            if (newValue == null) {
+                batch.delete(key, versionId);
+                return 0;
+            } else {
+                batch.put(key, newValue.dereference(), versionId);
+            }
+
+            return newValue.length;
         }
 
         @Override
@@ -135,6 +185,5 @@ public class ActionFactory {
         public void abort() {
             batch.close();
         }
-
     }
 }

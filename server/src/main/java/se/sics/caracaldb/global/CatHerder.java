@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.logging.Level;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,6 +130,7 @@ public class CatHerder extends ComponentDefinition {
         heartBeatKey = LookupTable.RESERVED_HEARTBEATS.append(CustomSerialisers.serialiseAddress(self)).get();
 
         policy = init.conf.getMaintenancePolicy();
+        policy.init(lut);
 
         checkMasterGroup();
         if (checkMaster()) {
@@ -595,7 +595,7 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(CheckHeartbeats event) {
-            RangeReq rr = new RangeReq(KeyRange.prefix(LookupTable.RESERVED_HEARTBEATS), Limit.noLimit(), TFFactory.noTF(), ActionFactory.delete());
+            RangeReq rr = new RangeReq(KeyRange.prefix(LookupTable.RESERVED_HEARTBEATS), Limit.noLimit(), TFFactory.noTF(), ActionFactory.fullDelete(), -1);
             /*
              * I suppose one can argue whether or not it's correct to do this
              * directly on the storage, bypassing the replication. But consider

@@ -27,7 +27,7 @@ package se.sics.caracaldb.store;
  */
 public class SizeResp extends StorageResponse {
 
-    public SizeResp(SizeScan req, Diff diff) {
+    public SizeResp(StorageRequest req, Diff diff) {
         super(req, diff);
     }
     

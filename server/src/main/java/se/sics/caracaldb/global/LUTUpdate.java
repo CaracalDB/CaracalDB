@@ -261,7 +261,7 @@ public class LUTUpdate implements Maintenance {
                 Set<Key> vNodes = lut.getVirtualNodesFor(id);
                 for (Key k : vNodes) {
                     View v = new View(ImmutableSortedSet.copyOf(lut.getHosts(id)), version);
-                    call.reconf(k, new ViewChange(v, v.members.size() / 2 + 1));
+                    call.reconf(k, new ViewChange(v, v.members.size() / 2 + 1, lut.getResponsibility(k)));
                 }
             }
         }
@@ -319,7 +319,7 @@ public class LUTUpdate implements Maintenance {
             }
             if ((posNew >= 0) && (posOld >= 0)) { // no change for me, but set membership changed
                 View v = new View(ImmutableSortedSet.copyOf(lut.getResponsibles(key)), lut.replicationSetVersions().get(replicationSet));
-                call.reconf(key, new ViewChange(v, v.members.size() / 2 + 1));
+                call.reconf(key, new ViewChange(v, v.members.size() / 2 + 1, lut.getResponsibility(key)));
             }
         }
 
