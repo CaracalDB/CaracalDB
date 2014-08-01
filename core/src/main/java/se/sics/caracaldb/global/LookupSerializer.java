@@ -70,16 +70,16 @@ public class LookupSerializer implements Serializer {
             Sample msg = (Sample) o;
             SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SAMPLE[0], SAMPLE[1]);
             buf.writeInt(msg.nodes.size());
-            msg.nodes.forEach((addr) -> {
+            for (Address addr : msg.nodes) {
                 SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
-            });
+            }
             return;
         }
         LOG.warn("Couldn't serialize {}: {}", o, o.getClass());
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
         if (matches(fields, FORWARD)) {
             Key key = CustomSerialisers.deserialiseKey(buf);

@@ -58,7 +58,7 @@ public class DataSender extends DataTransferComponent {
     private final Map<String, Object> metadata;
     private UUID timeoutId;
     private ClearToSend activeCTS;
-    private final Queue<ClearToSend> pendingCTS = new LinkedList<>();
+    private final Queue<ClearToSend> pendingCTS = new LinkedList<ClearToSend>();
     private int versionId;
 
     public DataSender(DataSenderInit init) {
@@ -68,7 +68,7 @@ public class DataSender extends DataTransferComponent {
         destination = init.destination;
         retryTime = init.retryTime;
         metadata = init.metadata;
-        versionId = (int) metadata.get("versionId");
+        versionId = (Integer) metadata.get("versionId");
         // subscriptions
         subscribe(startHandler, control);
         subscribe(timeoutHandler, timer);

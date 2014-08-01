@@ -36,13 +36,13 @@ import se.sics.kompics.network.netty.serialization.Serializer;
  */
 public class CoreSerializer<S extends Serializer> {
     
-    public static final CoreSerializer<FlowMessageSerializer> FLOW = new CoreSerializer<>(100, new FlowMessageSerializer());
-    public static final CoreSerializer<PaxosSerializer> PAXOS = new CoreSerializer<>(101, new PaxosSerializer());
-    public static final CoreSerializer<ValueSerializer> VALUE = new CoreSerializer<>(102, new ValueSerializer());
-    public static final CoreSerializer<SystemSerializer> SYSTEM = new CoreSerializer<>(103, new SystemSerializer());
-    public static final CoreSerializer<OperationSerializer> OP = new CoreSerializer<>(104, new OperationSerializer());
-    public static final CoreSerializer<LookupSerializer> LOOKUP = new CoreSerializer<>(105, new LookupSerializer());
-    public static final CoreSerializer<ConditionSerializer> COND = new CoreSerializer<>(106, new ConditionSerializer());
+    public static final CoreSerializer<FlowMessageSerializer> FLOW = new CoreSerializer<FlowMessageSerializer>(100, new FlowMessageSerializer());
+    public static final CoreSerializer<PaxosSerializer> PAXOS = new CoreSerializer<PaxosSerializer>(101, new PaxosSerializer());
+    public static final CoreSerializer<ValueSerializer> VALUE = new CoreSerializer<ValueSerializer>(102, new ValueSerializer());
+    public static final CoreSerializer<SystemSerializer> SYSTEM = new CoreSerializer<SystemSerializer>(103, new SystemSerializer());
+    public static final CoreSerializer<OperationSerializer> OP = new CoreSerializer<OperationSerializer>(104, new OperationSerializer());
+    public static final CoreSerializer<LookupSerializer> LOOKUP = new CoreSerializer<LookupSerializer>(105, new LookupSerializer());
+    public static final CoreSerializer<ConditionSerializer> COND = new CoreSerializer<ConditionSerializer>(106, new ConditionSerializer());
     
     public final int id;
     public final S instance;

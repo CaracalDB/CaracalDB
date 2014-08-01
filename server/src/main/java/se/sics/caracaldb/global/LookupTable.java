@@ -619,8 +619,8 @@ public class LookupTable {
     }
 
     Map<Address, Integer> getIdsForAddresses(ImmutableSet<Address> addresses) {
-        TreeSet<Address> remaining = new TreeSet<>(addresses);
-        TreeMap<Address, Integer> m = new TreeMap<>();
+        TreeSet<Address> remaining = new TreeSet<Address>(addresses);
+        TreeMap<Address, Integer> m = new TreeMap<Address, Integer>();
         int index = 0;
         for (Address addr : hosts) {
             if (remaining.isEmpty()) {

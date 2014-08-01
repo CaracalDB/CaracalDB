@@ -56,7 +56,9 @@ public class TimestampIdFactory implements IdFactory {
     public synchronized ImmutableSortedSet<UUID> newIds(int n) {
         checkUpdateTs();
         ImmutableSortedSet.Builder<UUID> idBuilder = ImmutableSortedSet.naturalOrder();
-        IntStream.range(0, n).forEach((i) -> idBuilder.add(nextId()));
+        for (int i = 0; i < n; i++) {
+            idBuilder.add(nextId());
+        }
         return idBuilder.build();
     }
 

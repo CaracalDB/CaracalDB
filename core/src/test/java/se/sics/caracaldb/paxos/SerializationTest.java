@@ -57,7 +57,7 @@ import se.sics.kompics.network.netty.serialization.Serializers;
  */
 @RunWith(JUnit4.class)
 public class SerializationTest {
-    
+
     static {
         Serializers.register(CoreSerializer.PAXOS.instance, "paxosS");
         Serializers.register(Paxos.PaxosMsg.class, "paxosS");
@@ -97,7 +97,7 @@ public class SerializationTest {
         Assert.assertEquals(promise.maxInstances.size(), promise2.maxInstances.size());
         Assert.assertEquals(promise.view, promise2.view);
         buf.clear();
-        
+
         // NO_PROMISE
         NoPromise noPromise = new NoPromise(source, dest, 1);
         paxosS.toBinary(noPromise, buf);
@@ -106,7 +106,7 @@ public class SerializationTest {
         Assert.assertEquals(noPromise.dst, noPromise2.dst);
         Assert.assertEquals(noPromise.ballot, noPromise2.ballot);
         buf.clear();
-        
+
         // ACCEPT
         Accept accept = new Accept(source, dest, 1, i);
         paxosS.toBinary(accept, buf);
@@ -116,7 +116,7 @@ public class SerializationTest {
         Assert.assertEquals(accept.ballot, accept2.ballot);
         Assert.assertEquals(accept.i, accept2.i);
         buf.clear();
-        
+
         // ACCEPTED
         Accepted accepted = new Accepted(source, dest, 1, i, v);
         paxosS.toBinary(accepted, buf);
@@ -127,7 +127,7 @@ public class SerializationTest {
         Assert.assertEquals(accepted.i, accepted2.i);
         Assert.assertEquals(accepted.view, accepted2.view);
         buf.clear();
-        
+
         // REJECTED
         Rejected rejected = new Rejected(source, dest, 1, i);
         paxosS.toBinary(rejected, buf);
@@ -137,10 +137,11 @@ public class SerializationTest {
         Assert.assertEquals(rejected.ballot, rejected2.ballot);
         Assert.assertEquals(rejected.i, rejected2.i);
         buf.clear();
-        
+
         // INSTALL
         Reconfigure reconf = new Reconfigure(new UUID(0, 1), v, 3, 0, KeyRange.EMPTY);
-        Install install = new Install(source, dest, 1, reconf, 10, ImmutableSortedMap.of(1l, Noop.val, 2l, Noop.val));
+        ImmutableSortedMap<Long, Value> bla = ImmutableSortedMap.of(1l, (Value) Noop.val, 2l, (Value) Noop.val); // how hard can it be to detec covariance correctly -.-
+        Install install = new Install(source, dest, 1, reconf, 10, bla);
         paxosS.toBinary(install, buf);
         Install install2 = (Install) paxosS.fromBinary(buf, Optional.absent());
         Assert.assertEquals(install.src, install2.src);
@@ -150,7 +151,7 @@ public class SerializationTest {
         Assert.assertEquals(install.event, install2.event);
         Assert.assertEquals(install.log.size(), install2.log.size());
         buf.clear();
-        
+
         // FORWARD
         Forward forward = new Forward(source, dest, source, Noop.val);
         paxosS.toBinary(forward, buf);
@@ -160,7 +161,7 @@ public class SerializationTest {
         Assert.assertEquals(forward.orig, forward2.orig);
         Assert.assertEquals(forward.p, forward2.p);
         buf.clear();
-        
+
         buf.release();
     }
 }

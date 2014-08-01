@@ -29,7 +29,7 @@ import se.sics.kompics.network.netty.serialization.Serializer;
 
 
 public class DMCoreSerializer <S extends Serializer> {
-    public static final DMCoreSerializer<DMNetMsgSerializer> DM = new DMCoreSerializer<>(150, new DMNetMsgSerializer());
+    public static final DMCoreSerializer<DMNetMsgSerializer> DM = new DMCoreSerializer<DMNetMsgSerializer>(150, new DMNetMsgSerializer());
     
     public final int id;
     public final S instance;

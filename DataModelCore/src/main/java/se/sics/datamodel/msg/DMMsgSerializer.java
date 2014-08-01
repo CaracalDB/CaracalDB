@@ -47,7 +47,7 @@ public class DMMsgSerializer {
     private static final Map<Class<?>, DMSerializer<?>> instance;
 
     static {
-        instance = new HashMap<>();
+        instance = new HashMap<Class<?>, DMSerializer<?>>();
         instance.put(ByteId.class, new ByteIdSerializer());
         instance.put(DMMessage.ResponseCode.class, new ResponseCodeSerializer());
         instance.put(GetAllTypes.Req.class, new GetAllTypesReqSerializer());
@@ -154,7 +154,7 @@ public class DMMsgSerializer {
         }
 
         private Map<String, ByteId> deserializeTypes(ByteBuf buf) throws DMException {
-            Map<String, ByteId> result = new TreeMap<>();
+            Map<String, ByteId> result = new TreeMap<String, ByteId>();
             int typesLength = buf.readInt();
             for (; typesLength > 0; typesLength--) {
                 try {
@@ -350,7 +350,7 @@ public class DMMsgSerializer {
         }
 
         private Map<ByteId, Object> deserializeIndexes(ByteBuf buf) throws DMException {
-            Map<ByteId, Object> result = new TreeMap<>();
+            Map<ByteId, Object> result = new TreeMap<ByteId, Object>();
             int indexesLength = buf.readInt();
             for (; indexesLength > 0; indexesLength--) {
                 ByteId key = DMMsgSerializer.deserialize(ByteId.class, buf);
@@ -467,7 +467,7 @@ public class DMMsgSerializer {
         }
 
         private Map<ByteId, ByteBuffer> deserializeObjects(ByteBuf buf) throws DMException {
-            Map<ByteId, ByteBuffer> result = new TreeMap<>();
+            Map<ByteId, ByteBuffer> result = new TreeMap<ByteId, ByteBuffer>();
             int objectsLength = buf.readInt();
             for (; objectsLength > 0; objectsLength--) {
                 ByteId key = DMMsgSerializer.deserialize(ByteId.class, buf);

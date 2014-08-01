@@ -33,6 +33,7 @@ import se.sics.caracaldb.Key;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
@@ -61,8 +62,8 @@ public class BootstrapServer extends ComponentDefinition {
     // instance
     private Address self;
     private Configuration config;
-    private Set<Address> fresh = new HashSet<>();
-    private Set<Address> active = new HashSet<>();
+    private Set<Address> fresh = new HashSet<Address>();
+    private Set<Address> active = new HashSet<Address>();
     private State state;
     private ImmutableSet<Address> bootSet;
     private ImmutableSet<Address> waitSet;
@@ -77,10 +78,16 @@ public class BootstrapServer extends ComponentDefinition {
         self = init.self;
         config = init.config;
         state = State.COLLECTING;
+        // Subscriptions
+        subscribe(startHandler, control);
+        subscribe(brHandler, net);
+        subscribe(readyHandler, net);
+        subscribe(timeoutHandler, timer);
     }
+    Handler<Start> startHandler = new Handler<Start>() {
 
-    {
-        handle(control, Start.class, e -> {
+        @Override
+        public void handle(Start event) {
             log.info("Starting up bootstrap server on {}, waiting for {} nodes",
                     self, config.getInt("caracal.bootThreshold"));
 
@@ -90,8 +97,12 @@ public class BootstrapServer extends ComponentDefinition {
             spt.setTimeoutEvent(new ClearTimeout(spt));
             trigger(spt, timer);
             active.add(self);
-        });
-        handle(net, BootstrapRequest.class, e -> {
+        }
+    };
+    Handler<BootstrapRequest> brHandler = new Handler<BootstrapRequest>() {
+
+        @Override
+        public void handle(BootstrapRequest e) {
             if (state != State.DONE) {
                 fresh.add(e.getSource());
                 if (!active.contains(e.getSource())) {
@@ -101,14 +112,22 @@ public class BootstrapServer extends ComponentDefinition {
             if (state == State.SEEDING) {
                 trigger(new BootstrapResponse(self, e.getSource(), lutData), net);
             }
-        });
-        handle(net, Ready.class, e -> {
+        }
+    };
+    Handler<Ready> readyHandler = new Handler<Ready>() {
+
+        @Override
+        public void handle(Ready e) {
             fresh.add(e.getSource());
             if (state == State.SEEDING) {
                 readySet.add(e.getSource());
             }
-        });
-        handle(timer, ClearTimeout.class, e -> {
+        }
+    };
+    Handler<ClearTimeout> timeoutHandler = new Handler<ClearTimeout>() {
+
+        @Override
+        public void handle(ClearTimeout e) {
             if (timeoutId == null) {
                 timeoutId = e.getTimeoutId();
             }
@@ -136,8 +155,8 @@ public class BootstrapServer extends ComponentDefinition {
                     startUp();
                 }
             }
-        });
-    }
+        }
+    };
 
     private void bootUp() {
         log.info("Threshold reached. Seeding LUT.");

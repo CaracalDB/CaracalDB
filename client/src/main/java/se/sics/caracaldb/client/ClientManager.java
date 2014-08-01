@@ -74,7 +74,7 @@ public class ClientManager extends ComponentDefinition {
     private static Config conf = null;
     private final Address bootstrapServer;
     private final Address self;
-    private final SortedSet<Address> vNodes = new TreeSet<>();
+    private final SortedSet<Address> vNodes = new TreeSet<Address>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
 

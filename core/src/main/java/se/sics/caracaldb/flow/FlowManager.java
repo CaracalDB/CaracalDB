@@ -20,20 +20,21 @@
  */
 package se.sics.caracaldb.flow;
 
-import se.sics.caracaldb.utils.ByteArrayRef;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.math.IntMath;
 import java.math.RoundingMode;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
+import se.sics.caracaldb.utils.ByteArrayRef;
 import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
@@ -54,12 +55,12 @@ import se.sics.kompics.timer.Timer;
  * @author lkroll
  */
 public class FlowManager extends ComponentDefinition {
-    
+
     static final Logger LOG = LoggerFactory.getLogger(FlowManager.class);
     static final long LEASE_TIME = 10 * 60 * 1000; // 10min
     static final long CLEANUP_PERIOD = 60 * 1000; // 1min
     static final int CHUNK_SIZE = 65000;
-    
+
     static {
         Serializers.register(CoreSerializer.FLOW.instance, "flowS");
         Serializers.register(FlowMessage.class, "flowS");
@@ -75,14 +76,14 @@ public class FlowManager extends ComponentDefinition {
     private int minAlloc;
     private int bufferSize;
     private int freeBuffer;
-    private final Map<UUID, ClearToSend> requestedFlows = new HashMap<>();
-    private final Queue<RTS> openRequests = new LinkedList<>();
-    private final Queue<CTS> openClears = new LinkedList<>();
-    private final Map<UUID, Integer> clearIds = new HashMap<>();
+    private final Map<UUID, ClearToSend> requestedFlows = new HashMap<UUID, ClearToSend>();
+    private final Queue<RTS> openRequests = new LinkedList<RTS>();
+    private final Queue<CTS> openClears = new LinkedList<CTS>();
+    private final Map<UUID, Integer> clearIds = new HashMap<UUID, Integer>();
     private final ArrayListMultimap<UUID, CTS> promises = ArrayListMultimap.create();
-    private final Map<UUID, Chunk> pendingChunks = new HashMap<>();
+    private final Map<UUID, Chunk> pendingChunks = new HashMap<UUID, Chunk>();
     private UUID timeoutId = null;
-    
+
     public FlowManager(FlowManagerInit init) {
         // Init
         minAlloc = init.minAlloc;
@@ -90,45 +91,69 @@ public class FlowManager extends ComponentDefinition {
         freeBuffer = bufferSize;
         protocol = init.protocol;
         self = init.self;
+        // subscriptions
+        subscribe(startHandler, control);
+        subscribe(stopHandler, control);
+        subscribe(freeHandler, timer);
+        subscribe(rtsHandler, flow);
+        subscribe(dataHandler, flow);
+        subscribe(rts2Handler, net);
+        subscribe(ctsHandler, net);
+        subscribe(notifyRespHandler, net);
+        subscribe(chunkHandler, net);
     }
-    
-    {
-        handle(control, Start.class, e -> {
+
+    Handler<Start> startHandler = new Handler<Start>() {
+
+        @Override
+        public void handle(Start event) {
             SchedulePeriodicTimeout spt = new SchedulePeriodicTimeout(CLEANUP_PERIOD, CLEANUP_PERIOD);
             FreeTime ft = new FreeTime(spt);
             spt.setTimeoutEvent(ft);
             timeoutId = ft.getTimeoutId();
             trigger(spt, timer);
-        });
-        
-        handle(control, Stop.class, e -> {
+        }
+    };
+    Handler<Stop> stopHandler = new Handler<Stop>() {
+
+        @Override
+        public void handle(Stop event) {
             if (timeoutId != null) {
                 CancelPeriodicTimeout cpt = new CancelPeriodicTimeout(timeoutId);
             }
-        });
-        
-        handle(timer, FreeTime.class, e -> {
+        }
+    };
+    Handler<FreeTime> freeHandler = new Handler<FreeTime>() {
+
+        @Override
+        public void handle(FreeTime event) {
             long time = System.currentTimeMillis();
-            promises.values().removeIf(v -> {
+            for (Iterator<CTS> it = promises.values().iterator(); it.hasNext();) {
+                CTS v = it.next();
                 if (v.validThrough > time) {
                     freeBuffer += v.allowance;
-                    return true;
+                    it.remove();
                 }
-                return false;
-            });
+            }
             tryAssigningClears();
             tryAssigningRequests();
-        });
-        
-        handle(flow, RequestToSend.class, e -> {
+        }
+    };
+    Handler<RequestToSend> rtsHandler = new Handler<RequestToSend>() {
+
+        @Override
+        public void handle(RequestToSend e) {
             ClearToSend cts = e.getEvent();
             requestedFlows.put(cts.getFlowId(), cts);
             Address src = (cts.getSource() == null) ? self : cts.getSource();
             RTS rts = new RTS(src, cts.getDestination(), protocol, cts.getFlowId(), e.hint);
             trigger(rts, net);
-        });
-        
-        handle(flow, DataMessage.class, e -> {
+        }
+    };
+    Handler<DataMessage> dataHandler = new Handler<DataMessage>() {
+
+        @Override
+        public void handle(DataMessage e) {
             byte[] data = e.data;
             int numberOfChunks = Chunk.numberOfChunks(data.length);
             int fullChunks = numberOfChunks - 1;
@@ -152,17 +177,23 @@ public class FlowManager extends ComponentDefinition {
                 RTS rts = new RTS(src, ctsE.getDestination(), protocol, ctsE.getFlowId(), data.length);
                 trigger(rts, net);
             }
-        });
-        
-        handle(net, RTS.class, e -> {
+        }
+    };
+    Handler<RTS> rts2Handler = new Handler<RTS>() {
+
+        @Override
+        public void handle(RTS e) {
             if (!clearIds.containsKey(e.flowId)) {
                 clearIds.put(e.flowId, 0);
             }
             openRequests.offer(e); // Assign requests in FIFO order
             tryAssigningRequests();
-        });
-        
-        handle(net, CTS.class, e -> {
+        }
+    };
+    Handler<CTS> ctsHandler = new Handler<CTS>() {
+
+        @Override
+        public void handle(CTS e) {
             if (e.validThrough < System.currentTimeMillis()) {
                 LOG.error("You have badly synchronized clocks in your system. "
                         + "Some data flows might not make any progress. "
@@ -171,18 +202,24 @@ public class FlowManager extends ComponentDefinition {
             }
             openClears.offer(e); // Assign clears in FIFO order
             tryAssigningClears();
-        });
-        
-        handle(net, MessageNotify.Resp.class, e -> {
+        }
+    };
+    Handler<MessageNotify.Resp> notifyRespHandler = new Handler<MessageNotify.Resp>() {
+
+        @Override
+        public void handle(MessageNotify.Resp e) {
             Chunk c = pendingChunks.remove(e.msgId);
             freeBuffer += c.data.length;
             tryAssigningClears();
             if (c.isLast()) { // After the last piece assign remote requests if there is buffer left
                 tryAssigningRequests();
             }
-        });
-        
-        handle(net, Chunk.class, e -> {
+        }
+    };
+    Handler<Chunk> chunkHandler = new Handler<Chunk>() {
+
+        @Override
+        public void handle(Chunk e) {
             LOG.debug("Got chunk {}" + e);
             if (e.isLast()) { // Only act on getting the last chunk for a datamessage
                 ChunkCollector coll = ChunkCollector.collectors.remove(ChunkCollector.getIdFor(e.flowId, e.clearId));
@@ -197,11 +234,10 @@ public class FlowManager extends ComponentDefinition {
                 DataMessage dm = new DataMessage(e.flowId, e.clearId, coll.data, e.isFinal);
                 trigger(dm, flow);
             }
-            // TODO consider if handling lost messages is worth the effort
-        });
-        
-    }
-    
+            // TODO consider if handling lost messages is worth the effort}
+        }
+    };
+
     private void assignSpace(RTS rts) { // remote assign
         int allowance;
         if (rts.hint > 0) { // Need finite amount of space
@@ -215,12 +251,16 @@ public class FlowManager extends ComponentDefinition {
         }
         freeBuffer -= allowance;
         long validThrough = System.currentTimeMillis() + LEASE_TIME;
-        int clearId = clearIds.computeIfPresent(rts.flowId, (k, v) -> v + 1);
+        Integer clearId = clearIds.get(rts.flowId);
+        if (clearId != null) {
+            clearId++;
+            clearIds.put(rts.flowId, clearId);
+        }
         CTS cts = new CTS(self, rts.getSource(), protocol, rts.flowId, clearId, allowance, validThrough);
         promises.put(rts.flowId, cts);
         trigger(cts, net);
     }
-    
+
     private void assignSpace(CTS cts) {
         try {
             // local assign
@@ -234,13 +274,13 @@ public class FlowManager extends ComponentDefinition {
             LOG.warn("Clould not clone CTS!", ex);
         }
     }
-    
+
     private void tryAssigningRequests() {
         while ((freeBuffer >= minAlloc) && !openRequests.isEmpty()) {
             assignSpace(openRequests.poll());
         }
     }
-    
+
     private void tryAssigningClears() {
         long time = System.currentTimeMillis();
         while ((freeBuffer >= minAlloc) && !openClears.isEmpty()) {
@@ -255,59 +295,59 @@ public class FlowManager extends ComponentDefinition {
             }
         }
     }
-    
+
     public static abstract class FlowMessage implements Msg {
-        
+
         public final Address source;
         public final Address destination;
         public final Transport protocol;
-        
+
         public final UUID flowId;
-        
+
         public FlowMessage(Address src, Address dst, Transport protocol, UUID flowId) {
             this.source = src;
             this.destination = dst;
             this.protocol = protocol;
             this.flowId = flowId;
         }
-        
+
         @Override
         public Address getSource() {
             return this.source;
         }
-        
+
         @Override
         public Address getDestination() {
             return this.destination;
         }
-        
+
         @Override
         public Address getOrigin() {
             return this.source;
         }
-        
+
         @Override
         public Transport getProtocol() {
             return this.protocol;
         }
     }
-    
+
     public static class RTS extends FlowMessage {
-        
+
         public final int hint;
-        
+
         public RTS(Address src, Address dst, Transport protocol, UUID flowId, int hint) {
             super(src, dst, protocol, flowId);
             this.hint = hint;
         }
     }
-    
+
     public static class CTS extends FlowMessage {
-        
+
         public final int clearId;
         public final int allowance;
         public final long validThrough;
-        
+
         public CTS(Address src, Address dst, Transport protocol, UUID flowId, int clearId, int allowance, long validThrough) {
             super(src, dst, protocol, flowId);
             this.clearId = clearId;
@@ -315,15 +355,15 @@ public class FlowManager extends ComponentDefinition {
             this.validThrough = validThrough;
         }
     }
-    
+
     public static class Chunk extends FlowMessage {
-        
+
         public final int clearId;
         public final int chunkNo; // number of this chunk
         public final int bytes; // overall bytes on this clearId
         public final ByteArrayRef data;
         public final boolean isFinal;
-        
+
         public Chunk(Address src, Address dst, Transport protocol, UUID flowId, int clearId, int chunkNo, int bytes, ByteArrayRef data, boolean isFinal) {
             super(src, dst, protocol, flowId);
             this.clearId = clearId;
@@ -332,26 +372,26 @@ public class FlowManager extends ComponentDefinition {
             this.data = data;
             this.isFinal = isFinal;
         }
-        
+
         public int numberOfChunks() {
             return Chunk.numberOfChunks(bytes);
         }
-        
+
         public static int numberOfChunks(int bytes) {
             return IntMath.divide(bytes, FlowManager.CHUNK_SIZE, RoundingMode.UP);
         }
-        
+
         public boolean isLast() {
             return chunkNo == (numberOfChunks() - 1);
         }
-        
+
     }
-    
+
     public static class FreeTime extends Timeout {
-        
+
         public FreeTime(SchedulePeriodicTimeout spt) {
             super(spt);
         }
     }
-    
+
 }

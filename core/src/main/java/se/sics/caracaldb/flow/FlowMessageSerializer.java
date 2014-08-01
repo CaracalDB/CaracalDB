@@ -69,7 +69,7 @@ public class FlowMessageSerializer implements Serializer {
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
         if ((fields.flag1 == RTS.getValue0()) && (fields.flag2 == RTS.getValue1())) {
             return rtsFromBinary(buf, fields);
@@ -95,7 +95,7 @@ public class FlowMessageSerializer implements Serializer {
         int hint = buf.readInt();
         return new RTS(fields.src, fields.dst, fields.proto, flowId, hint);
     }
-    
+
     private void ctsToBinary(CTS cts, ByteBuf buf) {
         MessageSerializationUtil.msgToBinary(cts, buf, CTS.getValue0(), CTS.getValue1());
         SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(cts.flowId, buf);
@@ -103,7 +103,7 @@ public class FlowMessageSerializer implements Serializer {
         buf.writeInt(cts.allowance);
         buf.writeLong(cts.validThrough);
     }
-    
+
     private CTS ctsFromBinary(ByteBuf buf, MessageFields fields) {
         UUID flowId = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         int clearId = buf.readInt();
@@ -111,7 +111,7 @@ public class FlowMessageSerializer implements Serializer {
         long valid = buf.readLong();
         return new CTS(fields.src, fields.dst, fields.proto, flowId, clearId, allowance, valid);
     }
-    
+
     private void chunkToBinary(Chunk chunk, ByteBuf buf) {
         boolean full = chunk.data.length == FlowManager.CHUNK_SIZE;
         MessageSerializationUtil.msgToBinary(chunk, buf, CHUNK.getValue0(), full);
@@ -126,7 +126,7 @@ public class FlowMessageSerializer implements Serializer {
         }
         buf.writeBytes(data.getBackingArray(), data.begin, data.length);
     }
-    
+
     private Chunk chunkFromBinary(ByteBuf buf, MessageFields fields) {
         UUID flowId = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         int clearId = buf.readInt();
@@ -139,7 +139,11 @@ public class FlowMessageSerializer implements Serializer {
             isFinal = buf.readBoolean();
         }
         ClearFlowId id = new ClearFlowId(flowId, clearId);
-        ChunkCollector coll = ChunkCollector.collectors.computeIfAbsent(id, k -> new ChunkCollector(flowId, clearId, bytes));
+        ChunkCollector coll = ChunkCollector.collectors.get(id);
+        if (coll == null) {
+            coll = new ChunkCollector(flowId, clearId, bytes);
+            ChunkCollector.collectors.put(id, coll);
+        }
         ByteArrayRef data = coll.readChunk(chunkNo, length, buf);
         return new Chunk(fields.src, fields.dst, fields.proto, flowId, clearId, chunkNo, bytes, data, isFinal);
     }

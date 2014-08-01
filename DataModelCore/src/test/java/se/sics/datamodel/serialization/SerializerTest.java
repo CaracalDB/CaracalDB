@@ -106,7 +106,7 @@ public class SerializerTest {
         Map<String, ByteId> types;
         
         buf = Unpooled.buffer();
-        types = new TreeMap<>();
+        types = new TreeMap<String, ByteId>();
         resp = new GetAllTypes.Resp(oneId, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), types);
         DMMsgSerializer.serialize(GetAllTypes.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(GetAllTypes.Resp.class, buf);
@@ -114,7 +114,7 @@ public class SerializerTest {
         buf.release();
         
         buf = Unpooled.buffer();
-        types = new TreeMap<>();
+        types = new TreeMap<String, ByteId>();
         types.put("type1", new ByteId(new byte[]{1,2}));
         resp = new GetAllTypes.Resp(oneId, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), types);
         DMMsgSerializer.serialize(GetAllTypes.Resp.class, resp, buf);
@@ -208,7 +208,7 @@ public class SerializerTest {
         Map<ByteId, Object> indexes;
         
         buf = Unpooled.buffer();
-        indexes = new TreeMap<>();
+        indexes = new TreeMap<ByteId, Object>();
         req = new PutObj.Req(oneId, Triplet.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2}), new ByteId(new byte[]{1,3})), new byte[]{1,1}, indexes);
         DMMsgSerializer.serialize(PutObj.Req.class, req, buf);
         desReq = DMMsgSerializer.deserialize(PutObj.Req.class, buf);
@@ -216,7 +216,7 @@ public class SerializerTest {
         buf.release();
         
         buf = Unpooled.buffer();
-        indexes = new TreeMap<>();
+        indexes = new TreeMap<ByteId, Object>();
         long l = 15;
         indexes.put(new ByteId(new byte[]{1,1}), (Integer)1);
         indexes.put(new ByteId(new byte[]{1,2}), (Long)l);
@@ -272,7 +272,7 @@ public class SerializerTest {
         Map<ByteId, ByteBuffer> objs;
         
         buf = Unpooled.buffer();
-        objs = new TreeMap<>();
+        objs = new TreeMap<ByteId, ByteBuffer>();
         resp = new QueryObj.Resp(oneId, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), objs);
         DMMsgSerializer.serialize(QueryObj.Resp.class, resp, buf);
         desResp = DMMsgSerializer.deserialize(QueryObj.Resp.class, buf);
@@ -280,7 +280,7 @@ public class SerializerTest {
         buf.release();
         
         buf = Unpooled.buffer();
-        objs = new TreeMap<>();
+        objs = new TreeMap<ByteId, ByteBuffer>();
         objs.put(new ByteId(new byte[]{1,1}), ByteBuffer.wrap(new byte[]{1,1}));
         resp = new QueryObj.Resp(oneId, DMMessage.ResponseCode.SUCCESS, Pair.with(new ByteId(new byte[]{1,1}), new ByteId(new byte[]{1,2})), objs);
         DMMsgSerializer.serialize(QueryObj.Resp.class, resp, buf);
@@ -306,7 +306,7 @@ public class SerializerTest {
         buf.release();
         
         buf = Unpooled.buffer();
-        Map<String, ByteId> typesMap = new TreeMap<>();
+        Map<String, ByteId> typesMap = new TreeMap<String, ByteId>();
         resp = new DMNetworkMessage.Resp(self, self, new GetAllTypes.Resp(oneId, DMMessage.ResponseCode.SUCCESS, new ByteId(new byte[]{1,1}), typesMap));
         Serializers.toBinary(resp, buf);
         desResp = (DMNetworkMessage.Resp)Serializers.fromBinary(buf, Optional.absent());

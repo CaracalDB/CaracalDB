@@ -51,7 +51,7 @@ public class DataReceiver extends DataTransferComponent {
         super(init.event.id);
         self = init.event.getDestination();
         source = init.event.getSource();
-        versionId = (int) init.event.metadata.get("versionId");
+        versionId = (Integer) init.event.metadata.get("versionId");
 
         // subscriptions
         subscribe(startHandler, control);

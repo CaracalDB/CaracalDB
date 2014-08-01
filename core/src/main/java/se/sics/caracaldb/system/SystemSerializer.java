@@ -67,7 +67,7 @@ public class SystemSerializer implements Serializer {
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
         if (fields.flag1 == START) {
             int size = buf.readInt();

@@ -69,7 +69,7 @@ public class FDSerializer implements Serializer {
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
         UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         long ts = buf.readLong();

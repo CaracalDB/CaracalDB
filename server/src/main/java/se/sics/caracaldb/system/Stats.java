@@ -66,7 +66,7 @@ public class Stats {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
             ObjectName name = new ObjectName("se.sics.caracaldb.system:type=CaracalStats");
             mbs.registerMBean(mbean, name);
-        } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException ex) {
+        } catch (Exception ex) { // without java8 multi catch it's easier to just catch whatever
             LOG.warn("Couldn't subscribe JMX object: {}", ex);
         }
     }
@@ -89,8 +89,8 @@ public class Stats {
             LOG.error("Sigar Cpu Error: ", se);
             return null;
         }
-        ExtremeKMap<Long, Address> xKSize = new ExtremeKMap<>(K);
-        ExtremeKMap<Long, Address> xKOps = new ExtremeKMap<>(K);
+        ExtremeKMap<Long, Address> xKSize = new ExtremeKMap<Long, Address>(K);
+        ExtremeKMap<Long, Address> xKOps = new ExtremeKMap<Long, Address>(K);
         long totalStoreSize = 0;
         long totalNumKeys = 0;
         long totalOpS = 0;

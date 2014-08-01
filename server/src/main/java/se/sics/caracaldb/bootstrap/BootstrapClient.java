@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
@@ -66,10 +67,18 @@ public class BootstrapClient extends ComponentDefinition {
         self = init.self;
         config = init.config;
         state = State.WAITING;
+        // subscriptions
+        subscribe(startHandler, control);
+        subscribe(stopHandler, control);
+        subscribe(timeoutHandler, timer);
+        subscribe(brspHandler, net);
+        subscribe(bootHandler, net);
     }
 
-    {
-        handle(control, Start.class, e -> {
+    Handler<Start> startHandler = new Handler<Start>() {
+
+        @Override
+        public void handle(Start event) {
             log.debug("Starting bootstrap client on {}", self);
 
             SchedulePeriodicTimeout spt
@@ -78,8 +87,12 @@ public class BootstrapClient extends ComponentDefinition {
             timeoutEvent = new RequestTimeout(spt);
             spt.setTimeoutEvent(timeoutEvent);
             trigger(spt, timer);
-        });
-        handle(timer, RequestTimeout.class, e -> {
+        }
+    };
+    Handler<RequestTimeout> timeoutHandler = new Handler<RequestTimeout>() {
+
+        @Override
+        public void handle(RequestTimeout e) {
             if (timeoutId == null) {
                 timeoutId = e.getTimeoutId();
             }
@@ -95,8 +108,12 @@ public class BootstrapClient extends ComponentDefinition {
                 // this should have been done already, actually
                 trigger(new CancelPeriodicTimeout(e.getTimeoutId()), timer);
             }
-        });
-        handle(net, BootstrapResponse.class, e -> {
+        }
+    };
+    Handler<BootstrapResponse> brspHandler = new Handler<BootstrapResponse>() {
+
+        @Override
+        public void handle(BootstrapResponse e) {
             if (state == State.WAITING) {
                 try {
                     lut = LookupTable.deserialise(e.lut);
@@ -119,9 +136,13 @@ public class BootstrapClient extends ComponentDefinition {
                     // If this problem keeps coming up I guess something is wrong ;)
                 }
             }
-            // If LUT is already there, just ignore the duplicate
-        });
-        handle(net, BootUp.class, e -> {
+            // If LUT is already there, just ignore the duplicate    
+        }
+    };
+    Handler<BootUp> bootHandler = new Handler<BootUp>() {
+
+        @Override
+        public void handle(BootUp event) {
             if (state == State.READY) {
                 log.info("{} Booting up.", self);
                 trigger(new Bootstrapped(lut), bootstrap);
@@ -129,10 +150,14 @@ public class BootstrapClient extends ComponentDefinition {
             } else {
                 state = State.STARTED;
             }
-        });
-        handle(control, Stop.class, e -> {
+        }
+    };
+    Handler<Stop> stopHandler = new Handler<Stop>() {
+
+        @Override
+        public void handle(Stop event) {
             // Just some cleanup
             trigger(new CancelPeriodicTimeout(timeoutEvent.getTimeoutId()), timer);
-        });
-    }
+        }
+    };
 }

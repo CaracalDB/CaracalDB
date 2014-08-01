@@ -35,14 +35,14 @@ import se.sics.caracaldb.flow.FlowManager.Chunk;
  */
 public class ChunkCollector {
 
-    public static final ConcurrentMap<ClearFlowId, ChunkCollector> collectors = new ConcurrentSkipListMap<>();
+    public static final ConcurrentMap<ClearFlowId, ChunkCollector> collectors = new ConcurrentSkipListMap<ClearFlowId, ChunkCollector>();
 
     public final ClearFlowId id;
     /**
      * Don't write into that array!
      */
     public final byte[] data;
-    private final TreeSet<Integer> receivedChunks = new TreeSet<>();
+    private final TreeSet<Integer> receivedChunks = new TreeSet<Integer>();
     private final int numberOfChunks;
 
     public ChunkCollector(UUID flowId, int clearId, int bytes) {
@@ -56,7 +56,7 @@ public class ChunkCollector {
     }
 
     public synchronized TreeSet<Integer> getMissingChunks() {
-        TreeSet<Integer> missing = new TreeSet<>();
+        TreeSet<Integer> missing = new TreeSet<Integer>();
         if (isComplete()) {
             return missing;
         }

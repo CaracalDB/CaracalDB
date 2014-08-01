@@ -18,7 +18,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 package se.sics.caracaldb.utils;
 
 import com.google.common.collect.Ordering;
@@ -29,31 +28,41 @@ import java.util.Comparator;
  * @author lkroll
  */
 public class ExtremeKMap<K extends Comparable, V> {
+
     public final int k;
-    
+
     private final TopKMap<K, V> tops;
     private final TopKMap<K, V> bottoms;
-    
+
     public ExtremeKMap(int k) {
-        this(k, Ordering.natural().reverse());
+        Comparator<K> comparator = Ordering.natural(); // this is all mega ungly and unnecessary in java8 -.-
+        Comparator<K> inverseComparator = Ordering.natural().reverse();
+        this.k = k;
+        tops = new TopKMap(k, comparator);
+        bottoms = new TopKMap(k, inverseComparator);
     }
+
     public ExtremeKMap(int k, Comparator<K> inverseComparator) {
-        this(k, Ordering.natural(), inverseComparator);
+        Comparator<K> comparator = Ordering.natural();
+        this.k = k;
+        tops = new TopKMap(k, comparator);
+        bottoms = new TopKMap(k, inverseComparator);
     }
+
     public ExtremeKMap(int k, Comparator<K> comparator, Comparator<K> inverseComparator) {
         this.k = k;
         tops = new TopKMap(k, comparator);
         bottoms = new TopKMap(k, inverseComparator);
     }
-    
+
     public TopKMap<K, V> top() {
         return tops;
     }
-    
+
     public TopKMap<K, V> bottom() {
         return bottoms;
     }
-    
+
     public void put(K key, V value) {
         tops.put(key, value);
         bottoms.put(key, value);

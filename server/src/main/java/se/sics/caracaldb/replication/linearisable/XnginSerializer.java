@@ -83,7 +83,7 @@ public class XnginSerializer implements Serializer {
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         byte[] flagsB = new byte[1];
         buf.readBytes(flagsB);
         boolean[] flags = BitBuffer.extract(8, flagsB);

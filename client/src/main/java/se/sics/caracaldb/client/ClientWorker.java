@@ -62,7 +62,7 @@ public class ClientWorker extends ComponentDefinition {
     private final BlockingQueue<CaracalResponse> responseQ;
     private final Address self;
     private final Address bootstrapServer;
-    private final SortedSet<Address> knownNodes = new TreeSet<>();
+    private final SortedSet<Address> knownNodes = new TreeSet<Address>();
     private final int sampleSize;
     private UUID currentRequestId = new UUID(-1, -1);
     private RangeQuery.SeqCollector col;

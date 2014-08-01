@@ -24,6 +24,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedMap;
 import io.netty.buffer.ByteBuf;
+import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
@@ -130,17 +131,19 @@ public class PaxosSerializer implements Serializer {
             Serializers.toBinary(inst.event, buf);
             buf.writeLong(inst.highestDecided);
             buf.writeInt(inst.log.size());
-            inst.log.forEach((k, v) -> {
+            for (Entry<Long, Value> e : inst.log.entrySet()) {
+                Long k = e.getKey();
+                Value v = e.getValue();
                 buf.writeLong(k);
                 Serializers.toBinary(v, buf);
-            });
+            }
             return;
         }
         LOG.error("Could not find serializer for {}:{}!", o, o.getClass());
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
         if (fields.flag1) {
             return otherFromBinary(fields, buf);

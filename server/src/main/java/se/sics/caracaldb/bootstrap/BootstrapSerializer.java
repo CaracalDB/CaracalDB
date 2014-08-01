@@ -80,7 +80,7 @@ public class BootstrapSerializer implements Serializer {
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
         if (matches(fields, REQ)) {
             return new BootstrapRequest(fields.orig, fields.src, fields.dst);

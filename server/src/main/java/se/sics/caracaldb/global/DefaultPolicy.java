@@ -91,11 +91,11 @@ public class DefaultPolicy implements MaintenancePolicy {
 
         if (relocActions.size() > MAX_ACTIONS) {
             // Don't try any more balancing...there'll already be enough data movement
-            return assembleUpdate(ImmutableList.of(hostActions, relocActions));
+            return assembleUpdate(ImmutableList.of((List<Action>) hostActions, (List<Action>) relocActions));
         }
 
         // VERY conservative balacer
-        ArrayList<Action> rebalanceActions = new ArrayList<>();
+        ArrayList<Action> rebalanceActions = new ArrayList<Action>();
         // TODO make better^^
         Entry<Double, Address> topMemory = xKMemory.top().ceilingEntry();
         Entry<Double, Address> bottomMemory = xKMemory.bottom().ceilingEntry();
@@ -104,7 +104,7 @@ public class DefaultPolicy implements MaintenancePolicy {
         }
         if (relocActions.size() + rebalanceActions.size() > MAX_ACTIONS) {
             // Don't try any more balancing...there'll already be enough data movement
-            return assembleUpdate(ImmutableList.of(hostActions, relocActions, rebalanceActions));
+            return assembleUpdate(ImmutableList.of((List<Action>) hostActions, (List<Action>) relocActions, (List<Action>) rebalanceActions));
         }
         Entry<Double, Address> topCpu = xKCpu.top().ceilingEntry();
         Entry<Double, Address> bottomCpu = xKCpu.bottom().ceilingEntry();
@@ -112,12 +112,12 @@ public class DefaultPolicy implements MaintenancePolicy {
             switchOperationBalance(topCpu.getValue(), bottomCpu.getValue(), rebalanceActions, stats);
         }
 
-        return assembleUpdate(ImmutableList.of(hostActions, relocActions, rebalanceActions));
+        return assembleUpdate(ImmutableList.of((List<Action>) hostActions, (List<Action>) relocActions, (List<Action>) rebalanceActions));
     }
 
     private Pair<ExtremeKMap<Double, Address>, ExtremeKMap<Double, Address>> updateAverages(ImmutableMap<Address, Stats.Report> stats) {
-        ExtremeKMap<Double, Address> xKMemory = new ExtremeKMap<>(K);
-        ExtremeKMap<Double, Address> xKCpu = new ExtremeKMap<>(K);
+        ExtremeKMap<Double, Address> xKMemory = new ExtremeKMap<Double, Address>(K);
+        ExtremeKMap<Double, Address> xKCpu = new ExtremeKMap<Double, Address>(K);
 
         double totalCpu = 0.0;
         double totalMemory = 0.0;
@@ -140,9 +140,9 @@ public class DefaultPolicy implements MaintenancePolicy {
     }
 
     private ImmutableSortedMap<Integer, Address> getIdsForJoins(ImmutableSet<Address> joins, ImmutableSortedMap<Integer, Address> failIds) {
-        TreeSet<Address> remaining = new TreeSet<>(joins);
+        TreeSet<Address> remaining = new TreeSet<Address>(joins);
         ImmutableSortedMap.Builder<Integer, Address> ids = ImmutableSortedMap.naturalOrder();
-        TreeSet<Integer> usedIds = new TreeSet<>();
+        TreeSet<Integer> usedIds = new TreeSet<Integer>();
         // If nodes fail and rejoind try to assign the same id
         for (Entry<Integer, Address> e : failIds.entrySet()) {
             if (remaining.isEmpty()) {
@@ -188,7 +188,7 @@ public class DefaultPolicy implements MaintenancePolicy {
     }
 
     private ImmutableSortedMap<Integer, Address> getIdsForFails(ImmutableSet<Address> fails) {
-        Set<Address> remaining = new HashSet<>(fails);
+        Set<Address> remaining = new HashSet<Address>(fails);
         ImmutableSortedMap.Builder<Integer, Address> ids = ImmutableSortedMap.naturalOrder();
         if (remaining.isEmpty()) {
             return ids.build();
@@ -210,9 +210,13 @@ public class DefaultPolicy implements MaintenancePolicy {
     private ArrayList<Action> getHostActions(ImmutableSortedMap<Integer, Address> failIds, ImmutableSortedMap<Integer, Address> joinIds) {
         SortedMapDifference<Integer, Address> idDiff = Maps.difference(failIds, joinIds);
         SortedMap<Integer, Address> nullableIds = idDiff.entriesOnlyOnLeft();
-        ArrayList<Action> actions = new ArrayList<>();
-        nullableIds.forEach((k, v) -> actions.add(new PutHost(k, null)));
-        joinIds.forEach((k, v) -> actions.add(new PutHost(k, v)));
+        ArrayList<Action> actions = new ArrayList<Action>();
+        for (Entry<Integer, Address> e : nullableIds.entrySet()) {
+            actions.add(new PutHost(e.getKey(), null));
+        }
+        for (Entry<Integer, Address> e : joinIds.entrySet()) {
+            actions.add(new PutHost(e.getKey(), e.getValue()));
+        }
         return actions;
     }
 
@@ -220,7 +224,7 @@ public class DefaultPolicy implements MaintenancePolicy {
             ImmutableSortedMap<Integer, Address> joinIds, ExtremeKMap<Double, Address> xKMemory,
             ExtremeKMap<Double, Address> xKCpu, ImmutableMap<Address, Stats.Report> stats) {
 
-        TreeSet<Integer> idsToDealWith = new TreeSet<>(failIds.keySet());
+        TreeSet<Integer> idsToDealWith = new TreeSet<Integer>(failIds.keySet());
         TreeMultimap<Long, Integer> candidates = TreeMultimap.create();
         // If a node fails and rejoins immediately, assign the same id and don't touch 
         // its replicationSets, since it may still have data from before the failure
@@ -236,13 +240,15 @@ public class DefaultPolicy implements MaintenancePolicy {
         candidateAddrs.addAll(xKMemory.bottom().values())
                 .addAll(xKCpu.bottom().values()).build();
         Map<Address, Integer> candidateIds = lut.getIdsForAddresses(candidateAddrs.build());
-        candidateIds.forEach((addr, id) -> {
+        for (Entry<Address, Integer> e : candidateIds.entrySet()) {
+            Address addr = e.getKey();
+            Integer id = e.getValue();
             Stats.Report rep = stats.get(addr);
             long curSize = rep.averageSize * rep.numberOfVNodes;
             candidates.put(curSize, id);
-        });
+        }
 
-        ArrayList<Action> actions = new ArrayList<>();
+        ArrayList<Action> actions = new ArrayList<Action>();
         // Replace nodes in affected sets
         int index = 0;
         for (Integer[] member : lut.replicationSets()) {
@@ -300,7 +306,7 @@ public class DefaultPolicy implements MaintenancePolicy {
 
     private long guessAddedSize(Integer[] member, ImmutableMap<Address, Stats.Report> stats) {
         // Use the average of the average node size of all live members to guess the size for this group
-        ArrayList<Long> avgSizes = new ArrayList<>(member.length);
+        ArrayList<Long> avgSizes = new ArrayList<Long>(member.length);
         for (Integer id : member) {
             Address addr = lut.getHost(id);
             Stats.Report rep = stats.get(addr);
@@ -308,7 +314,11 @@ public class DefaultPolicy implements MaintenancePolicy {
                 avgSizes.add(rep.averageSize);
             }
         }
-        return Math.floorDiv(avgSizes.stream().reduce(0l, (a, b) -> a + b), avgSizes.size());
+        long sum = 0;
+        for (Long l : avgSizes) {
+            sum += l;
+        }
+        return Math.floorDiv(sum, avgSizes.size());
     }
 
     private LUTUpdate assembleUpdate(ImmutableList<List<Action>> actions) {

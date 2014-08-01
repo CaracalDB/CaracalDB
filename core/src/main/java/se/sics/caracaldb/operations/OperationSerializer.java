@@ -95,7 +95,7 @@ public class OperationSerializer implements Serializer {
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         byte[] flagsB = new byte[1];
         buf.readBytes(flagsB);
         boolean[] flags = BitBuffer.extract(8, flagsB);
@@ -202,11 +202,13 @@ public class OperationSerializer implements Serializer {
             } else {
                 flags.write(true); // 5
                 buf.writeInt(op.data.size());
-                op.data.forEach((k, v) -> {
+                for (Entry<Key, byte[]> e : op.data.entrySet()) {
+                    Key k = e.getKey();
+                    byte[] v = e.getValue();
                     CustomSerialisers.serialiseKey(k, buf);
                     buf.writeInt(v.length);
                     buf.writeBytes(v);
-                });
+                }
             }
             flags.write(op.readLimit); // 6
             return;
@@ -328,7 +330,7 @@ public class OperationSerializer implements Serializer {
             SortedMap<Key, byte[]> result = null;
             if (flags[5]) {
                 int size = buf.readInt();
-                result = new TreeMap<>();
+                result = new TreeMap<Key, byte[]>();
                 for (int i = 0; i < size; i++) {
                     Key k = CustomSerialisers.deserialiseKey(buf);
                     int length = buf.readInt();

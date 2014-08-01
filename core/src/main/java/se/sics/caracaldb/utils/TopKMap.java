@@ -127,7 +127,7 @@ public class TopKMap<K extends Comparable, V> {
     }
     
     public List<V> values() {
-        ArrayList<V> newlist = new ArrayList<>(list.size());
+        ArrayList<V> newlist = new ArrayList<V>(list.size());
         for (Pair<K, V> p : list) {
             newlist.add(p.getValue1());
         }
@@ -135,7 +135,7 @@ public class TopKMap<K extends Comparable, V> {
     }
     
     public List<K> keys() {
-        ArrayList<K> newlist = new ArrayList<>(list.size());
+        ArrayList<K> newlist = new ArrayList<K>(list.size());
         for (Pair<K, V> p : list) {
             newlist.add(p.getValue0());
         }

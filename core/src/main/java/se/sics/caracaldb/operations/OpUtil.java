@@ -23,6 +23,7 @@ package se.sics.caracaldb.operations;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import java.util.HashMap;
 import java.util.UUID;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
@@ -49,7 +50,7 @@ public abstract class OpUtil {
      */
     public static MultiOpRequest cas(UUID id, Key key, byte[] oldValue, byte[] newValue) {
         Condition c = new EqualCondition(key, oldValue);
-        return new MultiOpRequest(id, ImmutableSet.of(c), ImmutableMap.of(key, newValue), ImmutableMap.of());
+        return new MultiOpRequest(id, ImmutableSet.of(c), ImmutableMap.of(key, newValue), ImmutableMap.copyOf(new HashMap<Key, byte[]>())); // java6 is soooooo baaaadd -.-
     }
     /**
      * Puts value if there's no value associated with key currently.
@@ -61,7 +62,7 @@ public abstract class OpUtil {
      */
     public static MultiOpRequest putIfAbsent(UUID id, Key key, byte[] value) {
         Condition c = new EqualCondition(key, null);
-        return new MultiOpRequest(id, ImmutableSet.of(c), ImmutableMap.of(key, value), ImmutableMap.of());
+        return new MultiOpRequest(id, ImmutableSet.of(c), ImmutableMap.of(key, value), ImmutableMap.copyOf(new HashMap<Key, byte[]>())); // see above
     }
     
     /**

@@ -31,7 +31,7 @@
     </licenses>
         
     <properties>
-        <java.compiler.version>1.8</java.compiler.version>
+        <java.compiler.version>1.6</java.compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kompics.version>0.6.0-SNAPSHOT</kompics.version>
     </properties>

@@ -26,6 +26,7 @@ import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueFactory;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Map.Entry;
 import jline.console.ConsoleReader;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PatternLayout;
@@ -70,33 +71,28 @@ public class Console {
             String[] sline = line.split(" ", 2);
             String cmd = sline[0];
             out.println("Command: " + cmd);
-            switch (cmd) {
-                case "connect":
-                    if (sline.length == 2) {
-                        connect(sline[1]);
-                    } else {
-                        out.println("'connect' takes \"bootstrapaddress:port clientaddress:port\" parameters!");
-                    }
-                    break;
-                case "config":
-                    if (sline.length == 1) {
-                        printConfig();
-                    } else {
-                        handleConfigCmd(sline[1]);
-                    }
-                    break;
-                case "help":
-                    out.println("Interface currently disconnected use 'connect' to establish server connection.\n\n");
-                    out.println("Available commands: \n\n");
-                    out.println("connect {bootstrapaddress}:{port} {clientaddress}:{port}       connects to a server");
-                    out.println("config show|list|get <key>|set <key> <value>                   edits or queries the current configuration");
-                    out.println("help                                                           shows this help");
-                    out.println("exit|quit                                                      closes to shell");
-                    break;
-                case "exit":
-                case "quit":
-                    out.println("Exiting...");
-                    System.exit(0);
+            if (cmd.equalsIgnoreCase("connect")) {
+                if (sline.length == 2) {
+                    connect(sline[1]);
+                } else {
+                    out.println("'connect' takes \"bootstrapaddress:port clientaddress:port\" parameters!");
+                }
+            } else if (cmd.equalsIgnoreCase("config")) {
+                if (sline.length == 1) {
+                    printConfig();
+                } else {
+                    handleConfigCmd(sline[1]);
+                }
+            } else if (cmd.equalsIgnoreCase("help")) {
+                out.println("Interface currently disconnected use 'connect' to establish server connection.\n\n");
+                out.println("Available commands: \n\n");
+                out.println("connect {bootstrapaddress}:{port} {clientaddress}:{port}       connects to a server");
+                out.println("config show|list|get <key>|set <key> <value>                   edits or queries the current configuration");
+                out.println("help                                                           shows this help");
+                out.println("exit|quit                                                      closes to shell");
+            } else if (cmd.equalsIgnoreCase("exit") || cmd.equalsIgnoreCase("quit")) {
+                out.println("Exiting...");
+                System.exit(0);
             }
         }
         System.out.println("No more input...exiting.");
@@ -155,52 +151,47 @@ public class Console {
             }
             String[] cmdline = line.split(" ", 2);
             String cmd = cmdline[0];
-            switch (cmd) {
-                case "get":
-                    if (cmdline.length == 2) {
-                        Key k = Key.fromHex(correctFormat(cmdline[1]));
-                        out.println("Getting " + k.toString() + "...");
-                        GetResponse resp = worker.get(k);
-                        if (resp.code == ResponseCode.SUCCESS) {
-                            out.println("success!");
-                            out.println("   " + k.toString() + "->" + new String(resp.data));
-                        } else {
-                            out.println("Result: " + resp.code.name());
-                        }
+            if (cmd.equalsIgnoreCase("get")) {
+                if (cmdline.length == 2) {
+                    Key k = Key.fromHex(correctFormat(cmdline[1]));
+                    out.println("Getting " + k.toString() + "...");
+                    GetResponse resp = worker.get(k);
+                    if (resp.code == ResponseCode.SUCCESS) {
+                        out.println("success!");
+                        out.println("   " + k.toString() + "->" + new String(resp.data));
                     } else {
-                        out.println("Usage: get <key>");
+                        out.println("Result: " + resp.code.name());
                     }
-                    break;
-                case "put":
-                    if (cmdline.length == 2) {
-                        String[] kvline = cmdline[1].split(" ", 2);
-                        if (kvline.length != 2) {
-                            out.println("Usage: put <key> <value>");
-                            continue;
-                        }
-                        Key k = Key.fromHex(correctFormat(kvline[0]));
-                        byte[] value = kvline[1].getBytes();
-                        out.println("Setting " + k.toString() + " to " + kvline[1] + "...");
-                        ResponseCode resp = worker.put(k, value);
-                        out.println("Result: " + resp.name());
-                    } else {
+                } else {
+                    out.println("Usage: get <key>");
+                }
+            } else if (cmd.equalsIgnoreCase("put")) {
+                if (cmdline.length == 2) {
+                    String[] kvline = cmdline[1].split(" ", 2);
+                    if (kvline.length != 2) {
                         out.println("Usage: put <key> <value>");
+                        continue;
                     }
-                    break;
-               case "help":
-                    out.println("Interface currently connected to " + bootstrapAddr + ":" + bootstrapPort + ".\n\n");
-                    out.println("Available commands: \n\n");
-                    out.println("get <key>              gets the current <value> for <key>");
-                    out.println("put <key> <value>      sets <key> to <value>");
-                    out.println("help                   shows this help");
-                    out.println("exit|quit              closes to shell");
-                    break;
-                case "exit":
-                case "quit":
-                    out.println("Exiting...");
-                    System.exit(0);
-                default:
-                    out.println("Unkown command: " + cmd + " (use 'help' to see available commands)");
+                    Key k = Key.fromHex(correctFormat(kvline[0]));
+                    byte[] value = kvline[1].getBytes();
+                    out.println("Setting " + k.toString() + " to " + kvline[1] + "...");
+                    ResponseCode resp = worker.put(k, value);
+                    out.println("Result: " + resp.name());
+                } else {
+                    out.println("Usage: put <key> <value>");
+                }
+            } else if (cmd.equalsIgnoreCase("help")) {
+                out.println("Interface currently connected to " + bootstrapAddr + ":" + bootstrapPort + ".\n\n");
+                out.println("Available commands: \n\n");
+                out.println("get <key>              gets the current <value> for <key>");
+                out.println("put <key> <value>      sets <key> to <value>");
+                out.println("help                   shows this help");
+                out.println("exit|quit              closes to shell");
+            } else if (cmd.equalsIgnoreCase("exit") || cmd.equalsIgnoreCase("quit")) {
+                out.println("Exiting...");
+                System.exit(0);
+            } else {
+                out.println("Unkown command: " + cmd + " (use 'help' to see available commands)");
             }
         }
     }
@@ -208,42 +199,37 @@ public class Console {
     private void handleConfigCmd(String line) {
         String[] sline = line.split(" ", 2);
         String cmd = sline[0];
-        switch (cmd) {
-            case "show":
-            case "list":
-                printConfig();
-                break;
-            case "get":
-                if (sline.length == 2) {
-                    out.println("   " + sline[1] + "->" + conf.getValue(sline[1]).render());
-                } else {
-                    out.println("Usage: config get <key>");
-                }
-                break;
-            case "set":
-                if (sline.length == 2) {
-                    String[] kvline = sline[1].split(" ", 2);
-                    String key = kvline[0];
-                    if (kvline.length == 2) {
-                        String value = kvline[1];
-                        ConfigValue val = null;
-                        if (value.startsWith("\"")) {
-                            val = ConfigValueFactory.fromAnyRef(value.substring(1, value.length() - 1));
-                        } else {
-                            val = ConfigValueFactory.fromAnyRef(Long.parseLong(value));
-                        }
-                        conf = conf.withValue(key, val);
-                        out.println("Updated config. New value:");
-                        out.println("   " + key + "->" + conf.getValue(key).render());
+        if (cmd.equalsIgnoreCase("show") || cmd.equalsIgnoreCase("list")) {
+            printConfig();
+        } else if (cmd.equalsIgnoreCase("get")) {
+            if (sline.length == 2) {
+                out.println("   " + sline[1] + "->" + conf.getValue(sline[1]).render());
+            } else {
+                out.println("Usage: config get <key>");
+            }
+        } else if (cmd.equalsIgnoreCase("set")) {
+            if (sline.length == 2) {
+                String[] kvline = sline[1].split(" ", 2);
+                String key = kvline[0];
+                if (kvline.length == 2) {
+                    String value = kvline[1];
+                    ConfigValue val = null;
+                    if (value.startsWith("\"")) {
+                        val = ConfigValueFactory.fromAnyRef(value.substring(1, value.length() - 1));
                     } else {
-                        out.println("Usage: config set <key> <value>");
+                        val = ConfigValueFactory.fromAnyRef(Long.parseLong(value));
                     }
+                    conf = conf.withValue(key, val);
+                    out.println("Updated config. New value:");
+                    out.println("   " + key + "->" + conf.getValue(key).render());
                 } else {
                     out.println("Usage: config set <key> <value>");
                 }
-                break;
-            default:
-                out.println("Usage: config show|list|get <key>|set <key> <value>");
+            } else {
+                out.println("Usage: config set <key> <value>");
+            }
+        } else {
+            out.println("Usage: config show|list|get <key>|set <key> <value>");
         }
     }
 
@@ -252,9 +238,9 @@ public class Console {
     }
 
     private void printConfig(Config someConf) {
-        someConf.entrySet().stream().forEach((e) -> {
+        for (Entry<String, ConfigValue> e : someConf.entrySet()) {
             out.println("   " + e.getKey() + "->" + e.getValue().render());
-        });
+        }
     }
 
     private String correctFormat(String key) {

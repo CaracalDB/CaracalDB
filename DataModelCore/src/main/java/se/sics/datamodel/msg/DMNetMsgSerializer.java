@@ -68,7 +68,7 @@ public class DMNetMsgSerializer implements Serializer {
     }
 
     @Override
-    public Object fromBinary(ByteBuf buf, Optional<Class> hint) {
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
         MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
         if (fields.flag2 == REQ) {
             DMMessage.Req req = fromBinaryDMReq(buf);

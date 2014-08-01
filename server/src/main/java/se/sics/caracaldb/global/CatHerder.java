@@ -112,10 +112,10 @@ public class CatHerder extends ComponentDefinition {
     private UUID checkHeartbeatsId = null;
     private HashMap<Address, NodeStats> nodeStats = new HashMap<Address, NodeStats>();
     private TreeMap<Long, LUTUpdate> stalledUpdates = new TreeMap<Long, LUTUpdate>();
-    private TreeMap<UUID, RangeQuery.SeqCollector> collectors = new TreeMap<>();
+    private TreeMap<UUID, RangeQuery.SeqCollector> collectors = new TreeMap<UUID, RangeQuery.SeqCollector>();
     // master
     private HashSet<Address> outstandingJoins = new HashSet<Address>();
-    private TreeMap<UUID, LUTUpdate> pendingUpdates = new TreeMap<>();
+    private TreeMap<UUID, LUTUpdate> pendingUpdates = new TreeMap<UUID, LUTUpdate>();
     //private Component paxos;
     //private Positive<ReplicatedLog> rlog = requires(ReplicatedLog.class);
     private final MaintenancePolicy policy;
@@ -761,7 +761,7 @@ public class CatHerder extends ComponentDefinition {
     }
 
     private void checkMasterGroup() {
-        masterGroup = new TreeSet<>();
+        masterGroup = new TreeSet<Address>();
         Address[] mGroup = lut.getHosts(0);
         masterGroup.addAll(Arrays.asList(mGroup));
     }
