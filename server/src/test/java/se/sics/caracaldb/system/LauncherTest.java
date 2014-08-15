@@ -20,9 +20,13 @@
  */
 package se.sics.caracaldb.system;
 
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,7 +76,15 @@ public class LauncherTest {
         } catch (UnknownHostException ex) {
             fail(ex.getMessage());
         }
-        port = 22333;
+        
+        try {
+            ServerSocket s = new ServerSocket(0); // try to find a free port
+            port = s.getLocalPort();
+            s.close();
+        } catch (IOException ex) {
+            System.out.println("No free port available!");
+            System.exit(1);
+        }
 
         netAddr = new Address(localHost, port, null);
         virtAddr1 = netAddr.newVirtual((byte) 0);

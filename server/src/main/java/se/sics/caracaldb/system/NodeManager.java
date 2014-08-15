@@ -47,6 +47,7 @@ import se.sics.kompics.ControlPort;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Init.None;
+import se.sics.kompics.Kill;
 import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Port;
@@ -149,7 +150,7 @@ public class NodeManager extends ComponentDefinition {
         @Override
         public void handle(StopVNode event) {
             LOG.info("Node shutting down (" + self + ")");
-            trigger(Stop.event, control.getPair());
+            suicide();
         }
     };
     Handler<MaintenanceMsg> maintenanceHandler = new Handler<MaintenanceMsg>() {
