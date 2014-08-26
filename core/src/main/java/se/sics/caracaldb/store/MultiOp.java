@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Map.Entry;
-import java.util.function.Predicate;
+//import java.util.function.Predicate;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Persistence;
@@ -124,12 +124,12 @@ public class MultiOp {
         public boolean holds(ByteArrayRef value);
     }
 
-    public static abstract class ConditionFactory {
+    // public static abstract class ConditionFactory {
 
-        public static Condition check(Key k, Predicate<ByteArrayRef> pred) {
-            return new FunctionalCondition(k, pred);
-        }
-    }
+    //     public static Condition check(Key k, Predicate<ByteArrayRef> pred) {
+    //         return new FunctionalCondition(k, pred);
+    //     }
+    // }
 
     public static abstract class SingleKeyCondition implements Condition {
 
@@ -145,20 +145,20 @@ public class MultiOp {
         }
     }
 
-    public static class FunctionalCondition extends SingleKeyCondition {
+    // public static class FunctionalCondition extends SingleKeyCondition {
 
-        public final Predicate<ByteArrayRef> pred;
+    //     public final Predicate<ByteArrayRef> pred;
 
-        public FunctionalCondition(Key k, Predicate<ByteArrayRef> pred) {
-            super(k);
-            this.pred = pred;
-        }
+    //     public FunctionalCondition(Key k, Predicate<ByteArrayRef> pred) {
+    //         super(k);
+    //         this.pred = pred;
+    //     }
 
-        @Override
-        public boolean holds(ByteArrayRef value) {
-            return pred.test(value);
-        }
-    }
+    //     @Override
+    //     public boolean holds(ByteArrayRef value) {
+    //         return pred.test(value);
+    //     }
+    // }
 
     public static class EqualCondition extends SingleKeyCondition {
 

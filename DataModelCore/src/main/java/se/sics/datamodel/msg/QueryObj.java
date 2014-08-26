@@ -23,7 +23,7 @@ package se.sics.datamodel.msg;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.Objects;
+import com.google.common.base.Objects;
 import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.store.Limit.LimitTracker;
@@ -72,16 +72,16 @@ public class QueryObj {
                 return false;
             }
             final Req other = (Req) obj;
-            if (!Objects.equals(this.id, other.id)) {
+            if (!Objects.equal(this.id, other.id)) {
                 return false;
             }
-            if (!Objects.equals(this.typeId, other.typeId)) {
+            if (!Objects.equal(this.typeId, other.typeId)) {
                 return false;
             }
-            if (!Objects.equals(this.indexId, other.indexId)) {
+            if (!Objects.equal(this.indexId, other.indexId)) {
                 return false;
             }
-            if (!Objects.equals(this.indexVal, other.indexVal)) {
+            if (!Objects.equal(this.indexVal, other.indexVal)) {
                 return false;
             }
             return true;
@@ -122,16 +122,16 @@ public class QueryObj {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (!Objects.equals(this.id, other.id)) {
+            if (!Objects.equal(this.id, other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {
                 return false;
             }
-            if (!Objects.equals(this.typeId, other.typeId)) {
+            if (!Objects.equal(this.typeId, other.typeId)) {
                 return false;
             }
-            if (!Objects.equals(this.objs, other.objs)) {
+            if (!Objects.equal(this.objs, other.objs)) {
                 return false;
             }
             return true;

@@ -114,9 +114,9 @@ public class Stats {
         mbean.numberOfVNodes.set(numVN);
         mbean.numberOfKeys.set(totalNumKeys);
         try {
-            mbean.averageOpS.set(Math.floorDiv(totalOpS, numVN));
+            mbean.averageOpS.set(Stats.floorDiv(totalOpS, numVN));
             return new Report(atHost, memUsage, previousCpuUsage, numVN,
-                    Math.floorDiv(totalOpS, numVN), Math.floorDiv(totalStoreSize, numVN),
+                    Stats.floorDiv(totalOpS, numVN), Stats.floorDiv(totalStoreSize, numVN),
                     mapToList(xKSize.top()), mapToList(xKSize.bottom()),
                     mapToList(xKOps.top()), mapToList(xKOps.bottom()));
         } catch (ArithmeticException ex) {
@@ -134,6 +134,13 @@ public class Stats {
             list.add(new Key(addr.getId()));
         }
         return list;
+    }
+
+    public static long floorDiv(long a, int b) {
+        double aD = (double) a;
+        double bD = (double) b;
+        double cD = aD/bD;
+        return (long) Math.floor(cD);
     }
 
     public static class Report {

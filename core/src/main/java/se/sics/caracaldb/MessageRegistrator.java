@@ -50,6 +50,6 @@ public class MessageRegistrator {
         Serializers.register(se.sics.caracaldb.global.Message.class, "lookupS");
         //
         Serializers.register(CoreSerializer.COND.instance, "condS");
-        Serializers.register(MultiOp.FunctionalCondition.class, "condS");
+        //Serializers.register(MultiOp.FunctionalCondition.class, "condS");
     }
 }

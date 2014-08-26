@@ -19,7 +19,7 @@ package se.sics.datamodel.util;
 
 import se.sics.datamodel.QueryType;
 import java.io.IOException;
-import java.util.Objects;
+import com.google.common.base.Objects;
 import org.javatuples.Pair;
 import se.sics.caracaldb.KeyRange;
 
@@ -58,10 +58,10 @@ public class FieldScan implements QueryType {
             return false;
         }
         final FieldScan other = (FieldScan) obj;
-        if (!Objects.equals(this.from, other.from)) {
+        if (!Objects.equal(this.from, other.from)) {
             return false;
         }
-        if (!Objects.equals(this.to, other.to)) {
+        if (!Objects.equal(this.to, other.to)) {
             return false;
         }
         return true;

@@ -20,7 +20,7 @@
  */
 package se.sics.datamodel.msg;
 
-import java.util.Objects;
+import com.google.common.base.Objects;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Transport;
@@ -80,13 +80,13 @@ public class DMNetworkMessage {
                 return false;
             }
             final Req other = (Req) obj;
-            if (!Objects.equals(this.src, other.src)) {
+            if (!Objects.equal(this.src, other.src)) {
                 return false;
             }
-            if (!Objects.equals(this.dst, other.dst)) {
+            if (!Objects.equal(this.dst, other.dst)) {
                 return false;
             }
-            if (!Objects.equals(this.payload, other.payload)) {
+            if (!Objects.equal(this.payload, other.payload)) {
                 return false;
             }
             return true;
@@ -143,13 +143,13 @@ public class DMNetworkMessage {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (!Objects.equals(this.src, other.src)) {
+            if (!Objects.equal(this.src, other.src)) {
                 return false;
             }
-            if (!Objects.equals(this.dst, other.dst)) {
+            if (!Objects.equal(this.dst, other.dst)) {
                 return false;
             }
-            if (!Objects.equals(this.payload, other.payload)) {
+            if (!Objects.equal(this.payload, other.payload)) {
                 return false;
             }
             return true;

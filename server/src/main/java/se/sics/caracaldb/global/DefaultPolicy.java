@@ -131,7 +131,7 @@ public class DefaultPolicy implements MaintenancePolicy {
         }
         double newMemAvg = totalMemory / ((double) stats.size());
         double newCpuAvg = totalCpu / ((double) stats.size());
-        averageHostSize = Math.floorDiv(totalClusterSize, stats.size());
+        averageHostSize = Stats.floorDiv(totalClusterSize, stats.size());
         // Exponential moving average with coefficient ALPHA
         memoryAvg = ALPHA * newMemAvg + MINUS_ALPHA * memoryAvg;
         cpuAvg = ALPHA * newCpuAvg + MINUS_ALPHA * cpuAvg;
@@ -318,7 +318,7 @@ public class DefaultPolicy implements MaintenancePolicy {
         for (Long l : avgSizes) {
             sum += l;
         }
-        return Math.floorDiv(sum, avgSizes.size());
+        return Stats.floorDiv(sum, avgSizes.size());
     }
 
     private LUTUpdate assembleUpdate(ImmutableList<List<Action>> actions) {

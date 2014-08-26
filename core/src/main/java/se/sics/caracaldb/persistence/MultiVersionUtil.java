@@ -77,7 +77,7 @@ public abstract class MultiVersionUtil {
     }
 
     public static SortedMap<Integer, ByteArrayRef> unpack(byte[] data) {
-        TreeMap<Integer, ByteArrayRef> values = new TreeMap<Integer, ByteArrayRef>(Ordering.natural().reversed());
+        TreeMap<Integer, ByteArrayRef> values = new TreeMap<Integer, ByteArrayRef>(Ordering.natural().reverse());
         if (data == null) {
             return values;
         }

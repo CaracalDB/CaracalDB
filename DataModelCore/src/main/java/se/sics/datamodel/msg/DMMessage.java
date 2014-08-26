@@ -20,7 +20,7 @@
  */
 package se.sics.datamodel.msg;
 
-import java.util.Objects;
+import com.google.common.base.Objects;
 import java.util.UUID;
 import se.sics.kompics.Event;
 

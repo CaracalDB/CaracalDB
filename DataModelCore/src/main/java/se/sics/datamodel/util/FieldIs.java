@@ -18,7 +18,7 @@ package se.sics.datamodel.util;
 
 import se.sics.datamodel.QueryType;
 import java.io.IOException;
-import java.util.Objects;
+import com.google.common.base.Objects;
 import org.javatuples.Pair;
 import se.sics.caracaldb.KeyRange;
 
@@ -55,7 +55,7 @@ public class FieldIs implements QueryType {
             return false;
         }
         final FieldIs other = (FieldIs) obj;
-        if (!Objects.equals(this.indexVal, other.indexVal)) {
+        if (!Objects.equal(this.indexVal, other.indexVal)) {
             return false;
         }
         return true;

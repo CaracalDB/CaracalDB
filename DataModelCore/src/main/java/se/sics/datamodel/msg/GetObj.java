@@ -21,7 +21,7 @@
 package se.sics.datamodel.msg;
 
 import java.util.Arrays;
-import java.util.Objects;
+import com.google.common.base.Objects;
 import java.util.UUID;
 import org.javatuples.Triplet;
 import se.sics.datamodel.util.ByteId;
@@ -62,10 +62,10 @@ public class GetObj {
                 return false;
             }
             final Req other = (Req) obj;
-            if (!Objects.equals(this.id, other.id)) {
+            if (!Objects.equal(this.id, other.id)) {
                 return false;
             }
-            if (!Objects.equals(this.objId, other.objId)) {
+            if (!Objects.equal(this.objId, other.objId)) {
                 return false;
             }
             return true;
@@ -107,13 +107,13 @@ public class GetObj {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (!Objects.equals(this.id, other.id)) {
+            if (!Objects.equal(this.id, other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {
                 return false;
             }
-            if (!Objects.equals(this.objId, other.objId)) {
+            if (!Objects.equal(this.objId, other.objId)) {
                 return false;
             }
             if (!Arrays.equals(this.value, other.value)) {

@@ -22,14 +22,14 @@ package se.sics.caracaldb.operations;
 
 import com.google.common.base.Optional;
 import io.netty.buffer.ByteBuf;
-import java.util.function.Predicate;
+//import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.store.MultiOp.Condition;
 import se.sics.caracaldb.store.MultiOp.EqualCondition;
-import se.sics.caracaldb.store.MultiOp.FunctionalCondition;
+//import se.sics.caracaldb.store.MultiOp.FunctionalCondition;
 import se.sics.caracaldb.utils.ByteArrayRef;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
@@ -76,13 +76,13 @@ public class ConditionSerializer implements Serializer {
     }
 
     private void toBinaryCondition(Condition c, ByteBuf buf, BitBuffer flags) {
-        if (c instanceof FunctionalCondition) {
-            flags.write(FUNC); // 1
-            FunctionalCondition fc = (FunctionalCondition) c;
-            CustomSerialisers.serialiseKey(fc.k, buf);
-            Serializers.toBinary(fc.pred, buf);
-            return;
-        }
+        // if (c instanceof FunctionalCondition) {
+        //     flags.write(FUNC); // 1
+        //     FunctionalCondition fc = (FunctionalCondition) c;
+        //     CustomSerialisers.serialiseKey(fc.k, buf);
+        //     Serializers.toBinary(fc.pred, buf);
+        //     return;
+        // }
         if (c instanceof EqualCondition) {
             flags.write(EQ); // 1
             EqualCondition ec = (EqualCondition) c;
@@ -102,8 +102,10 @@ public class ConditionSerializer implements Serializer {
     private Condition fromBinaryCondition(ByteBuf buf, boolean[] flags) {
         if (matches(flags, FUNC)) {
             Key k = CustomSerialisers.deserialiseKey(buf);
-            Predicate<ByteArrayRef> pred = (Predicate<ByteArrayRef>) Serializers.fromBinary(buf, Optional.absent());
-            return new FunctionalCondition(k, pred);
+            Serializers.fromBinary(buf, Optional.absent());
+            // Predicate<ByteArrayRef> pred = (Predicate<ByteArrayRef>) Serializers.fromBinary(buf, Optional.absent());
+            // return new FunctionalCondition(k, pred);
+            return null;
         }
         if (matches(flags, EQ)) {
             Key k = CustomSerialisers.deserialiseKey(buf);

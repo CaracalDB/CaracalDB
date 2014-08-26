@@ -22,7 +22,7 @@
 package se.sics.datamodel.msg;
 
 import java.util.Map;
-import java.util.Objects;
+import com.google.common.base.Objects;
 import java.util.UUID;
 import se.sics.datamodel.util.ByteId;
 
@@ -61,10 +61,10 @@ public class GetAllTypes {
                 return false;
             }
             final Req other = (Req) obj;
-            if (!Objects.equals(this.id, other.id)) {
+            if (!Objects.equal(this.id, other.id)) {
                 return false;
             }
-            if (!Objects.equals(this.dbId, other.dbId)) {
+            if (!Objects.equal(this.dbId, other.dbId)) {
                 return false;
             }
             return true;
@@ -105,16 +105,16 @@ public class GetAllTypes {
                 return false;
             }
             final Resp other = (Resp) obj;
-            if (!Objects.equals(this.id, other.id)) {
+            if (!Objects.equal(this.id, other.id)) {
                 return false;
             }
             if (this.respCode != other.respCode) {
                 return false;
             }
-            if (!Objects.equals(this.dbId, other.dbId)) {
+            if (!Objects.equal(this.dbId, other.dbId)) {
                 return false;
             }
-            if (!Objects.equals(this.types, other.types)) {
+            if (!Objects.equal(this.types, other.types)) {
                 return false;
             }
             return true;
