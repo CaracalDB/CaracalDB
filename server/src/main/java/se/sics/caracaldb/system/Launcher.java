@@ -20,6 +20,8 @@
  */
 package se.sics.caracaldb.system;
 
+import java.io.File;
+import se.sics.caracaldb.persistence.DatabaseManager;
 import se.sics.caracaldb.simulation.SimulationHelper;
 import se.sics.caracaldb.simulation.SimulatorMain;
 import se.sics.kompics.ComponentDefinition;
@@ -92,6 +94,7 @@ public abstract class Launcher {
 
     public static void start() {
         config = configBuilder.finalise();
+        DatabaseManager.preloadStores(config.core());
         Kompics.createAndStart(LauncherComponent.class, Runtime.getRuntime().availableProcessors(), 20); // Yes 20 is totally arbitrary
     }
 
@@ -100,13 +103,54 @@ public abstract class Launcher {
     }
 
     public static void simulate(SimulationScenario scenario) {
+        config = configBuilder.finalise();
+        cleanUp(config.getString("caracal.database.pathHead"));
         newSimulate(SimulatorMain.class, scenario);
     }
+    
+    public static void cleanUp(String dbPath) {
+        File dbDir = new File(dbPath);
+        if (dbDir.exists() && dbDir.isDirectory()) {
+            if (!removeDirectory(dbDir)) {
+                throw new RuntimeException("Unable to clean DB directory");
+            }
+        }
+    }
+    
+    //TODO Alex - not symlink safe, replace with java implementation once we move to java 7+
+    public static boolean removeDirectory(File dbDir) {
+        if (dbDir == null) {
+            return false;
+        }
+        if (!dbDir.exists()) {
+            return false;
+        }
+        if (!dbDir.isDirectory()) {
+            return false;
+        }
+
+        File[] childrenFiles = dbDir.listFiles();
+        if (childrenFiles == null) {
+            return false;
+        }
+        for (File file : childrenFiles) {
+            if (file.isDirectory()) {
+                if (!removeDirectory(file)) {
+                    return false;
+                }
+            } else {
+                if (!file.delete()) {
+                    return false;
+                }
+            }
+        }
+        return dbDir.delete();
+    }
+
     
     //added by Alex
     public static void newSimulate(Class<? extends ComponentDefinition> simulatorClass, SimulationScenario scenario) {
         simulation = true;
-        config = configBuilder.finalise();
         scheduler = new SimulatorScheduler();
         Launcher.scenario = scenario;
         Kompics.setScheduler(scheduler);

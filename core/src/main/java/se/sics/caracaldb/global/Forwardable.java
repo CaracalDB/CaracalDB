@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.global;
 
+import java.util.UUID;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Msg;
 
@@ -36,4 +37,13 @@ public interface Forwardable<T extends Msg> {
      * @return Message to be forwarded
      */
     public T insertDestination(Address src, Address dest);
+    
+    /**
+     * Return a unique ID for this Forwardable.
+     * 
+     * This is used to avoid endless redirect loops.
+     * 
+     * @return 
+     */
+    public UUID getId();
 }

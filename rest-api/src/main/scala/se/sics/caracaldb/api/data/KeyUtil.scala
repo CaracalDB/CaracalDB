@@ -4,17 +4,13 @@ import se.sics.caracaldb.Key
 import java.security.MessageDigest
 
 object KeyUtil {
-	
-	val digest = MessageDigest.getInstance("MD5");
 
-	def schemaToKey(schema: String, key: String): Key = {
-		val schemaHash = digest.digest(schema.getBytes("UTF-8"));
-		if (key == null) {
-			return new Key(schemaHash);
-		}
-		val k = Key.fromHex(correctFormat(key));		
-		return k.prepend(schemaHash).get();
-	}
+	def stringToKey(key: String): Key = {
+        if (key == null) {
+            return Key.NULL_KEY;
+        }
+        return Key.fromHex(correctFormat(key));
+    }
 	
 	def correctFormat(key: String): String = {
 		val str = new StringBuilder();

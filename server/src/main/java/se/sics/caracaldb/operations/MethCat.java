@@ -89,7 +89,9 @@ public class MethCat extends ComponentDefinition {
         this.self = init.self;
         this.view = init.view;
         this.timerInterval = init.statsPeriod;
-
+        
+        LOG.info("{} vnode responsibility:{}", new Object[]{self, responsibility});
+        
         state = State.FORWARDING;
 
         // subscriptions
@@ -195,6 +197,17 @@ public class MethCat extends ComponentDefinition {
                     ForwardToAny fta = new ForwardToAny(req.key, event);
                     trigger(fta, lookup);
                 }
+            } else if (event.op instanceof MultiOpRequest) {
+                MultiOpRequest req = (MultiOpRequest) event.op;
+                if (req.isInRange(responsibility)) {
+                    LOG.debug("{}: Processing request {}", new Object[]{self, event});
+                    openOps.put(event.op.id, event);
+                    trigger(event.op, replication);
+                } else { // if a node is not responsible for all keys in the MultiOp it must be rejected!
+                    LOG.debug("{}: Rejecting request {}", new Object[]{self, event});
+                    MultiOpResponse resp = new MultiOpResponse(req.id, ResponseCode.NOT_COLLOCATED, false);
+                    trigger(new CaracalMsg(self, event.orig, resp), network);
+                }
             } else {
                 LOG.warn("Unknown operation {}", event.op);
             }
@@ -217,13 +230,16 @@ public class MethCat extends ComponentDefinition {
                 RangeQuery.Response resp = iResp.finalize(req);
                 rsp = resp;
                 if (req.execType.equals(RangeQuery.Type.SEQUENTIAL) && !resp.readLimit) {
+                    LOG.debug("{} origRange:{} currRange:{} localResponsability:{}", new Object[]{self, req.initRange, req.subRange, responsibility});
+                    
                     if(req.subRange.end.equals(req.initRange.end) && req.subRange.endBound.equals(req.initRange.endBound)) {
+                        LOG.debug("{}: Range query:{} from:{} finalized", new Object[]{self, rsp, orig.getOrigin()});
                         //finished rangequery do no forward it further
                     } else {
                         KeyRange endRange = KeyRange.closed(req.subRange.end).endFrom(req.initRange);
+                        LOG.debug("{}: RangeQuery sequentialy:{} from:{} restRange:{}", new Object[]{self, rsp, orig.getOrigin(), endRange});
                         ForwardToRange fta = new ForwardToRange(req, endRange, orig.getOrigin());
                         trigger(fta, lookup);
-                        LOG.debug("{}: RangeQuery sequentialy {} from {}", new Object[]{self, rsp, orig.getOrigin()});
                     }
                 } else {
                     //finished rangequery do not forward it further

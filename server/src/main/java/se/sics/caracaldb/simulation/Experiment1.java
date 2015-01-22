@@ -115,11 +115,6 @@ public class Experiment1 extends ComponentDefinition {
         }
         byte[] bytes = new byte[s];
         RAND.nextBytes(bytes);
-        // don't write in the 00 XX... key range
-        // it's reserved
-        if (bytes[0] == 0) {
-            bytes[0] = 1;
-        }
-        return new Key(bytes);
+        return SimulationHelper.schemaPrefix.append(bytes).get();
     }
 }

@@ -227,6 +227,10 @@ public class KeyRange implements Comparable<KeyRange> {
             return false;
         }
     }
+    
+    public KeyRange replaceKeys(Key newStart, Key newEnd) {
+        return new KeyRange(beginBound, newStart, newEnd, endBound);
+    }
 
     @Override
     public int compareTo(KeyRange that) {

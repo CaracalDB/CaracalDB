@@ -20,19 +20,20 @@
  */
 package se.sics.caracaldb.system;
 
+import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import se.sics.caracaldb.TestUtil;
+import se.sics.caracaldb.global.SchemaData;
 import se.sics.caracaldb.system.Configuration.NodePhase;
 import se.sics.caracaldb.system.Configuration.SystemPhase;
 import se.sics.kompics.Component;
@@ -64,9 +65,12 @@ public class LauncherTest {
     private static Address virtAddr1;
     private static Address virtAddr2;
     private static boolean spawn2;
+    private static SchemaData.SingleSchema schema;
 
     static {
-        //TODO register necessary serializers
+        byte[] idB = new byte[]{0};
+        ByteBuffer id = ByteBuffer.wrap(idB);
+        schema = new SchemaData.SingleSchema(null, "test", ImmutableMap.of("db", "memory"));
     }
 
     @Before
@@ -283,9 +287,9 @@ public class LauncherTest {
                 @Override
                 public void handle(Start event) {
                     System.out.println("Started (" + netAddr + ").");
-                    trigger(new StartVNode(netAddr, netAddr, virtAddr1.getId()), net);
+                    trigger(new StartVNode(netAddr, netAddr, virtAddr1.getId(), schema), net);
                     if (spawn2) {
-                        trigger(new StartVNode(netAddr, netAddr, virtAddr2.getId()), net);
+                        trigger(new StartVNode(netAddr, netAddr, virtAddr2.getId(), schema), net);
                     }
                     TestUtil.submit(SPAWN_SENT);
                 }
@@ -311,7 +315,7 @@ public class LauncherTest {
                     byte id = self.getId()[0];
                     byte newId = (byte) (id + 1);
                     if (newId < NUM_SPAWNS) {
-                        trigger(new StartVNode(self, netAddr, new byte[]{newId}), net);
+                        trigger(new StartVNode(self, netAddr, new byte[]{newId}, schema), net);
                         TestUtil.submit(SPAWN_SENT);
                     }
                     trigger(new StopVNode(self, self), net);

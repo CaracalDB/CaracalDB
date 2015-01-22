@@ -20,6 +20,13 @@
  */
 package se.sics.caracaldb.simulation;
 
+import java.security.NoSuchAlgorithmException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import se.sics.caracaldb.Key;
+import se.sics.caracaldb.global.LookupTable;
+import se.sics.caracaldb.utils.HashIdGenerator;
+
 /**
  *
  * @author Alex Ormenisan <aaor@sics.se>
@@ -27,8 +34,18 @@ package se.sics.caracaldb.simulation;
 public class SimulationHelper {
 
     private static ValidationStore validator;
+    private static HashIdGenerator idGen;
+    static {
+        try {
+            idGen = new HashIdGenerator("MD5");
+        } catch (NoSuchAlgorithmException ex) {
+            System.err.println("Couldn't get algorithm: \n" + ex.getMessage());
+            System.exit(1);
+        }
+    }
     public static ValidationStore2 resultValidator;
     public static ExpType type;
+    public static Key schemaPrefix;
     
     
     public static void reset() {
@@ -48,6 +65,11 @@ public class SimulationHelper {
      */
     public static void setValidator(ValidationStore aValidator) {
         validator = aValidator;
+    }
+    
+    public static Key keyForSchemaName(String name) {
+        byte[] schemaId = idGen.idForNameDontStartWith(name, LookupTable.RESERVED_PREFIX.getArray());
+        return new Key(schemaId);
     }
     
     public static enum ExpType {

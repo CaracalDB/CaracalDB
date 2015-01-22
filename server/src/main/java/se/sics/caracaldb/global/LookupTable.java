@@ -21,14 +21,18 @@
 package se.sics.caracaldb.global;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.common.primitives.UnsignedInteger;
+import com.google.common.primitives.UnsignedInts;
+import com.google.common.primitives.UnsignedLong;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,7 +51,11 @@ import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
+import se.sics.caracaldb.bootstrap.BootstrapServer;
+import se.sics.caracaldb.system.Configuration;
+import se.sics.caracaldb.utils.J6;
 import se.sics.kompics.address.Address;
+import se.sics.kompics.address.IdUtils;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
@@ -56,7 +64,6 @@ import se.sics.kompics.network.netty.serialization.SpecialSerializers;
  */
 public class LookupTable {
 
-    public static final int INIT_REP_FACTOR = 3;
     public static final int NUM_VIRT_GROUPS = 256;
     public static final Key RESERVED_PREFIX = new Key(0); // (00 00 00 00)
     public static final Key RESERVED_START = Key.ZERO_KEY; // (00)
@@ -64,18 +71,34 @@ public class LookupTable {
     public static final Key RESERVED_HEARTBEATS = RESERVED_PREFIX.append(new byte[]{0, 0, 0, 1}).get(); // (00 00 00 00 00 00 00 01)
     public static final Key RESERVED_LUTUPDATES = RESERVED_PREFIX.append(new byte[]{0, 0, 0, 2}).get(); // (00 00 00 00 00 00 00 02)
     private static final String EMPTY_TXT = "<EMPTY>";
-    private static final Random RAND = new Random();
+    static final Random RAND = new Random();
     private static LookupTable INSTANCE = null; // Don't tell anyone about this! (static fields and simulations oO)
+    private SchemaData schemas;
     private ArrayList<Address> hosts;
     private ArrayList<Integer[]> replicationSets;
     private ArrayList<Integer> replicationSetVersions;
     private LookupGroup[] virtualHostGroups;
     private Long[] virtualHostGroupVersions;
     long versionId = 0;
+    private int scatterWidth = -1; // don't forget to set this properly from the config!
+    private int masterRepSize = -1; // set from schema information for heartbeats
 
     private LookupTable() {
+        schemas = new SchemaData();
         virtualHostGroups = new LookupGroup[NUM_VIRT_GROUPS];
         virtualHostGroupVersions = new Long[NUM_VIRT_GROUPS];
+        Arrays.fill(virtualHostGroupVersions, 0l);
+        for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
+            virtualHostGroups[i] = new LookupGroup(Ints.toByteArray(i)[3]);
+        }
+    }
+
+    public int getScatterWidth() {
+        return this.scatterWidth;
+    }
+
+    public int getMasterReplicationGroupSize() {
+        return this.masterRepSize;
     }
 
     public int numHosts() {
@@ -102,7 +125,7 @@ public class LookupTable {
         return hostAddrs;
     }
 
-    public Address[] getResponsibles(Key k) {
+    public Address[] getResponsibles(Key k) throws NoSuchSchemaException {
         Pair<Key, Integer> rg = virtualHostsGetResponsible(k);
         Integer rgId = rg.getValue1();
         if (rgId == null) {
@@ -114,8 +137,11 @@ public class LookupTable {
         return group;
     }
 
-    public Integer[] getResponsibleIds(Key k) {
+    public Integer[] getResponsibleIds(Key k) throws NoSuchSchemaException {
         Pair<Key, Integer> rg = virtualHostsGetResponsible(k);
+        if (rg == null) {
+            return null;
+        }
         Integer rgId = rg.getValue1();
         if (rgId == null) {
             return null;
@@ -131,7 +157,7 @@ public class LookupTable {
      * emptyRange else it should contain at least one replicationGroup
      * @throws se.sics.caracaldb.global.LookupTable.BrokenLut
      */
-    public NavigableMap<KeyRange, Address[]> getAllResponsibles(KeyRange range) throws BrokenLut {
+    public NavigableMap<KeyRange, Address[]> getAllResponsibles(KeyRange range) throws BrokenLut, NoSuchSchemaException {
         TreeMap<KeyRange, Address[]> result = new TreeMap<KeyRange, Address[]>();
         if (range.equals(KeyRange.EMPTY)) {
             return result;
@@ -176,7 +202,7 @@ public class LookupTable {
         return result;
     }
 
-    public Pair<KeyRange, Address[]> getFirstResponsibles(KeyRange range) throws BrokenLut {
+    public Pair<KeyRange, Address[]> getFirstResponsibles(KeyRange range) throws BrokenLut, NoSuchSchemaException {
         if (range.equals(KeyRange.EMPTY)) {
             return null;
         }
@@ -225,13 +251,24 @@ public class LookupTable {
         return group;
     }
 
-    public KeyRange getResponsibility(Key nodeId) {
+    public KeyRange getResponsibility(Key nodeId) throws NoSuchSchemaException {
         Key succ = virtualHostsGetSuccessor(nodeId);
+        //System.out.println("For node " + nodeId + " the successor is " + succ);
         if (succ == null) {
-            return KeyRange.closed(nodeId).open(Key.INF);
+            ByteBuffer schemaId = getSchemaId(nodeId);
+            Key schemaKey = new Key(schemaId);
+            return KeyRange.closed(nodeId).open(schemaKey.inc()); // until the end of the schema
         }
         KeyRange range = KeyRange.closed(nodeId).open(succ);
         return range;
+    }
+
+    public SchemaData.SingleSchema getSchema(Key k) throws NoSuchSchemaException {
+        ByteBuffer schemaId = getSchemaId(k);
+        if (schemaId != null) {
+            return new SchemaData.SingleSchema(schemaId, schemas.schemaNames.get(schemaId), schemas.metaData.get(schemaId));
+        }
+        return null;
     }
 
     /**
@@ -303,6 +340,16 @@ public class LookupTable {
         return nodeSet;
     }
 
+    public Set<Key> getVirtualNodesInSchema(Key schemaId) {
+        Set<Key> nodeSet = new TreeSet<Key>();
+        for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
+            if (!virtualHostGroups[i].isEmpty()) {
+                nodeSet.addAll(virtualHostGroups[i].getVirtualNodesInSchema(schemaId));
+            }
+        }
+        return nodeSet;
+    }
+
     /**
      * Builds a readable format of the LUT.
      * <p>
@@ -315,6 +362,17 @@ public class LookupTable {
         sb.append("### LookupTable (v");
         sb.append(versionId);
         sb.append(") ### \n \n");
+
+        sb.append("## Schemas ## \n");
+        for (Entry<String, ByteBuffer> e : schemas.schemaIDs.entrySet()) {
+            String name = e.getKey();
+            byte[] id = e.getValue().array();
+            sb.append(IdUtils.printFormat(id));
+            sb.append(" : ");
+            sb.append(schemas.schemaInfo(name));
+            sb.append('\n');
+        }
+        sb.append('\n');
 
         sb.append("## Hosts ## \n");
         for (ListIterator<Address> it = hosts.listIterator(); it.hasNext();) {
@@ -382,6 +440,10 @@ public class LookupTable {
         ByteBuf buf = Unpooled.buffer();
 
         buf.writeLong(versionId);
+        buf.writeInt(scatterWidth);
+
+        // schemas
+        schemas.serialise(buf);
 
         // hosts
         buf.writeInt(hosts.size());
@@ -420,6 +482,10 @@ public class LookupTable {
         INSTANCE = new LookupTable();
 
         INSTANCE.versionId = buf.readLong();
+        INSTANCE.scatterWidth = buf.readInt();
+
+        // schemas
+        INSTANCE.schemas = SchemaData.deserialise(buf);
 
         // hosts
         int numHosts = buf.readInt();
@@ -470,11 +536,27 @@ public class LookupTable {
         return Pair.with(version, group);
     }
 
-    public static LookupTable generateInitial(Set<Address> hosts, int vNodesPerHost, Key vnodePrefix) {
+    public static LookupTable generateInitial(Set<Address> hosts, Configuration config, Address self) {
         LookupTable lut = new LookupTable();
+        lut.scatterWidth = config.getInt("caracal.scatterWidth");
         lut.generateHosts(hosts);
-        lut.generateReplicationSets(hosts);
-        lut.generateInitialVirtuals(vNodesPerHost, vnodePrefix);
+        lut.loadSchemas(config);
+        // Generate initial replication sets for all requested sizes
+        Set<Integer> rfSizes = lut.findReplicationSetSizes();
+        lut.replicationSets = new ArrayList<Integer[]>();
+        for (Integer rf : rfSizes) {
+            ArrayList<Integer[]> rss = lut.generateReplicationSetsOfSize(hosts, rf);
+            lut.replicationSets.addAll(rss);
+        }
+        lut.fixRepSetsToIncludeBootstrapNodeInMasterGroup(self); // This is optional but a simple optimisation
+        // Set all versions to 0
+        lut.replicationSetVersions = new ArrayList<Integer>(lut.replicationSets.size());
+        for (int i = 0; i < lut.replicationSets.size(); i++) {
+            lut.replicationSetVersions.add(i, 0);
+        }
+        for (ByteBuffer schemaId : lut.schemas.metaData.keySet()) {
+            lut.generateInitialVirtuals(schemaId);
+        }
 
         INSTANCE = lut;
 
@@ -485,59 +567,233 @@ public class LookupTable {
         this.hosts = new ArrayList<Address>(hosts);
     }
 
-    private void generateReplicationSets(Set<Address> hosts) {
-        ArrayList<Integer> dup1, dup2, dup3;
-        List<Integer> nats = naturals(hosts.size());
-        dup1 = new ArrayList<Integer>(nats);
-        dup2 = new ArrayList<Integer>(nats);
-        dup3 = new ArrayList<Integer>(nats);
+    private void loadSchemas(Configuration config) {
+        schemas = SchemaReader.importSchemas(config);
+    }
 
-        replicationSets = new ArrayList<Integer[]>(INIT_REP_FACTOR * hosts.size());
-        replicationSetVersions = new ArrayList<Integer>(INIT_REP_FACTOR * hosts.size());
-
-        for (int n = 0; n < INIT_REP_FACTOR; n++) {
-            Collections.shuffle(dup1, RAND);
-            Collections.shuffle(dup2, RAND);
-            Collections.shuffle(dup3, RAND);
-            for (int i = 0; i < hosts.size(); i++) {
-                int h1, h2, h3;
-                h1 = dup1.get(i);
-                h2 = dup2.get(i);
-                h3 = dup3.get(i);
-                while (h2 == h1) {
-                    h2 = RAND.nextInt(hosts.size());
-                }
-                while ((h3 == h1) || (h3 == h2)) {
-                    h3 = RAND.nextInt(hosts.size());
-                }
-                Integer[] group = new Integer[]{h1, h2, h3};
-                int pos = n * hosts.size() + i;
-                replicationSets.add(pos, group);
-                replicationSetVersions.add(pos, 0);
+    private Set<Integer> findReplicationSetSizes() {
+        Set<Integer> sizes = new TreeSet<Integer>();
+        for (Entry<ByteBuffer, ImmutableMap<String, String>> e : schemas.metaData.entrySet()) {
+            ByteBuffer id = e.getKey();
+            ImmutableMap<String, String> meta = e.getValue();
+            String rfS = J6.orDefault(meta.get("rfactor"), "3");
+            Integer rf = Integer.parseInt(rfS);
+            String forceMasterS = J6.orDefault(meta.get("forceMaster"), "false");
+            boolean forceMaster = Boolean.parseBoolean(forceMasterS);
+            if (forceMaster) { // they better all have the same rfactor or weird things are going to happen^^
+                masterRepSize = rf;
             }
+            sizes.add(rf);
+            if (UnsignedInts.remainder(rf, 2) == 0) {
+                BootstrapServer.LOG.warn("Schema {} uses a replication factor of {}. "
+                        + "It is recommended to use uneven factors.",
+                        schemas.schemaNames.get(id), rf);
+            }
+            if (rf < 3) {
+                throw new RuntimeException("Replication factor for any schema must be >=3!");
+            }
+            if (rf > hosts.size()) {
+                throw new RuntimeException("Replication factor for any schema can't be larger than the initial number of hosts!"
+                        + "If you think you have enough hosts for rf=" + rf + " consider incrementing the value of caraca.bootThreshold.");
+            }
+
+        }
+        if (masterRepSize < 0) { // in case there are no forceMaster schemata
+            masterRepSize = 3;
+        }
+        return sizes;
+    }
+
+    public ArrayList<Integer[]> generateReplicationSetsOfSize(Set<Address> hosts, int rfactor) {
+        /*
+         For an explanation of the algorithm used here see:
+         "Copysets: Reducing the Frequency of Data Loss in Cloud Storage"
+         */
+        int numberOfPermutations = (int) Math.ceil((double) scatterWidth / (double) (rfactor - 1));
+        if (numberOfPermutations < 1) {
+            numberOfPermutations = 1;
+            System.out.println("WARNING: The Number of Permutations should not be below 1! Something is weird with your scatterWidth!");
+        }
+        System.out.println("INFO: Using " + numberOfPermutations + " permutations to generate initial replication sets.");
+        List<Integer> nats = naturals(hosts.size());
+        HashSet<TreeSet<Integer>> copysets = new HashSet<TreeSet<Integer>>();
+        int p = 0;
+        while (p < numberOfPermutations) {
+            List<Integer> perm = new ArrayList<Integer>(nats);
+            Collections.shuffle(perm, RAND);
+            // split permutation into sets of size rfactor
+            List<TreeSet<Integer>> permSets = new ArrayList<TreeSet<Integer>>(perm.size() / rfactor);
+            boolean invalidPerm = false;
+            for (int i = 0; i <= perm.size() - rfactor; i += rfactor) {
+                TreeSet<Integer> set = new TreeSet<Integer>();
+                for (int j = 0; j < rfactor; j++) {
+                    set.add(perm.get(i + j));
+                }
+                if (copysets.contains(set)) { // if we create duplicate sets we need to generate another permutation
+                    invalidPerm = true;
+                    break;
+                }
+                permSets.add(set);
+            }
+            if (invalidPerm) {
+                continue; // see above
+            }
+            copysets.addAll(permSets);
+            p++;
+        }
+        ArrayList<Integer[]> res = new ArrayList<Integer[]>();
+        for (TreeSet<Integer> copyset : copysets) {
+            Integer[] set = new Integer[copyset.size()];
+            copyset.toArray(set);
+            res.add(set);
+        }
+        return res;
+        /*
+         Old code below
+         */
+//        ArrayList<Integer> dup1, dup2, dup3;
+//        List<Integer> nats = naturals(hosts.size());
+//        dup1 = new ArrayList<Integer>(nats);
+//        dup2 = new ArrayList<Integer>(nats);
+//        dup3 = new ArrayList<Integer>(nats);
+//
+//        replicationSets = new ArrayList<Integer[]>(INIT_REP_FACTOR * hosts.size());
+//        replicationSetVersions = new ArrayList<Integer>(INIT_REP_FACTOR * hosts.size());
+//
+//        for (int n = 0; n < INIT_REP_FACTOR; n++) {
+//            Collections.shuffle(dup1, RAND);
+//            Collections.shuffle(dup2, RAND);
+//            Collections.shuffle(dup3, RAND);
+//            for (int i = 0; i < hosts.size(); i++) {
+//                int h1, h2, h3;
+//                h1 = dup1.get(i);
+//                h2 = dup2.get(i);
+//                h3 = dup3.get(i);
+//                while (h2 == h1) {
+//                    h2 = RAND.nextInt(hosts.size());
+//                }
+//                while ((h3 == h1) || (h3 == h2)) {
+//                    h3 = RAND.nextInt(hosts.size());
+//                }
+//                Integer[] group = new Integer[]{h1, h2, h3};
+//                int pos = n * hosts.size() + i;
+//                replicationSets.add(pos, group);
+//                replicationSetVersions.add(pos, 0);
+//            }
+//        }
+    }
+
+    private void generateInitialVirtuals(ByteBuffer schemaId) {
+        ImmutableMap<String, String> meta = schemas.metaData.get(schemaId);
+        //String rfactorS = meta.getOrDefault("rfactor", "3");
+        String rfactorS = J6.orDefault(meta.get("rfactor"), "3");
+        Integer rfactor = Integer.parseInt(rfactorS);
+        //String vnodesS = meta.getOrDefault("vnodes", "1");
+        String vnodesS = J6.orDefault(meta.get("vnodes"), "1");
+        long vnodes = Long.parseLong(vnodesS);
+        //String forceMasterS = meta.getOrDefault("forceMaster", "false");
+        String forceMasterS = J6.orDefault(meta.get("forceMaster"), "false"); // it would look so nice in Java8 -.-
+        boolean forceMaster = Boolean.parseBoolean(forceMasterS);
+
+        // boundary nodes
+        Key start = new Key(schemaId);
+        //Key end = start.inc();
+        Integer rset = forceMaster ? 0 : findReplicationSetOfSize(rfactor);
+        virtualHostsPut(start, rset);
+        //virtualHostsPut(end, rset); // this mind end up being override by the next schema, but that's ok since we only need it if there is no next schema
+        if (vnodes == 1) { // single vnode needed
+            return;
+        }
+        vnodes--; // account for the initial vnode already created (the end-nodes doesn't count)
+        Set<Key> subkeys = new TreeSet<Key>();
+        if (vnodes <= UnsignedBytes.MAX_VALUE) { // another byte for subkeys needed
+            int incr = (int) UnsignedBytes.MAX_VALUE / (int) vnodes;
+            int last = 0;
+            int ceiling = (int) UnsignedBytes.MAX_VALUE - incr;
+            while (last < ceiling) {
+                last = last + incr;
+                Key k = start.append(new byte[]{UnsignedBytes.saturatedCast(last)}).get();
+                subkeys.add(k);
+            }
+        } else if (vnodes <= UnsignedInteger.MAX_VALUE.longValue()) { // another 4 bytes for subkeys needed
+            long incr = UnsignedInteger.MAX_VALUE.longValue() / vnodes;
+            long last = 0;
+            long ceiling = UnsignedInteger.MAX_VALUE.longValue() - incr;
+            while (last < ceiling) {
+                last = last + incr;
+                Key k = start.append(new Key(UnsignedInteger.valueOf(last).intValue())).get();
+                subkeys.add(k);
+            }
+        } else { // another 8 bytes for subkeys needed (don't support more!)
+            UnsignedLong incr = UnsignedLong.MAX_VALUE.dividedBy(UnsignedLong.valueOf(vnodes));
+            UnsignedLong last = UnsignedLong.ZERO;
+            UnsignedLong ceiling = UnsignedLong.MAX_VALUE.minus(incr);
+            while (last.compareTo(ceiling) <= 0) {
+                last = last.plus(incr);
+                Key k = start.append(new Key(last.intValue())).get();
+                subkeys.add(k);
+            }
+        }
+        for (Key subkey : subkeys) {
+            virtualHostsPut(subkey, forceMaster ? 0 : findReplicationSetOfSize(rfactor));
         }
     }
 
-    private void generateInitialVirtuals(int vNodesPerHost, Key vnodePrefix) {
-        Arrays.fill(virtualHostGroupVersions, 0l);
-        for (int i = 0; i < NUM_VIRT_GROUPS; i++) {
-            virtualHostGroups[i] = new LookupGroup(Ints.toByteArray(i)[3]);
+    private Integer findReplicationSetOfSize(int rfactor) {
+        int bound = replicationSets.size() * 3; // just trying to avoid endless loops...if it takes longer than this to find one something is probably wrong
+        int it = 0;
+        while (it < bound) {
+            int id = RAND.nextInt(replicationSets.size());
+            Integer[] rset = replicationSets.get(id);
+            if ((rset != null) && (rset.length == rfactor)) {
+                return id;
+            }
+            it++;
         }
+        System.out.println("ERROR: Couldn't find a replication set of the correct size in a realistic time frame.");
+        return -1; // this will end up with an index out of bounds exception...not sure if that's the best way to handle things
+    }
 
-        // Reserved range from (00) to (00 00 00 01)
-        virtualHostsPut(RESERVED_START, 0);
-        // Place as many virtual nodes as there are hosts in the system
-        // for random (non-schema-aligned) writes (more or less evenly distributed)
-        virtualHostsPut(RESERVED_END, RAND.nextInt(replicationSets.size()));
-        int numVNodes = hosts.size() * vNodesPerHost;
-        UnsignedInteger incr = (UnsignedInteger.MAX_VALUE.minus(UnsignedInteger.ONE)).dividedBy(UnsignedInteger.fromIntBits(numVNodes));
-        UnsignedInteger last = UnsignedInteger.ONE;
-        UnsignedInteger ceiling = UnsignedInteger.MAX_VALUE.minus(incr);
-        while (last.compareTo(ceiling) <= 0) {
-            last = last.plus(incr);
-            Key vnodeKey = new Key(last.intValue()).prepend(vnodePrefix).get();
-            virtualHostsPut(vnodeKey, RAND.nextInt(replicationSets.size()));
+    private void fixRepSetsToIncludeBootstrapNodeInMasterGroup(Address self) {
+        int index = 0;
+        int selfId = -1;
+        for (Address addr : hosts) {
+            if (addr.equals(self)) {
+                selfId = index;
+                break;
+            }
+            index++;
         }
+        assert (selfId >= 0);
+
+        int target = -1;
+        index = 0;
+        for (Integer[] rs : replicationSets) {
+            if ((rs.length == masterRepSize) && (positionInSet(rs, selfId) >= 0)) {
+                target = index;
+                break;
+            }
+            index++;
+        }
+        if (target < 0) { // bootstrap node doesn't occur in any group of the right size (this can happen depending on the values for scatterWidth and the number of nodes)
+            // find any group of the right size instead
+            index = 0;
+            for (Integer[] rs : replicationSets) {
+                if ((rs.length == masterRepSize)) {
+                    target = index;
+                    break;
+                }
+                index++;
+            }
+            assert (target >= 0); // the MUST be any group of the right size
+            // simply pick a node from that group and replace it
+            Integer[] rs = replicationSets.get(target);
+            rs[0] = selfId;
+        }
+        // and switch the target with pos 0
+        Integer[] tmp = replicationSets.get(target);
+        replicationSets.set(0, replicationSets.get(0));
+        replicationSets.set(0, tmp);
     }
 
     Iterator<Address> hostIterator() {
@@ -554,10 +810,31 @@ public class LookupTable {
         LookupGroup group = virtualHostGroups[key.getFirstByte()];
         return group.get(key);
     }
+
+    Address findDest(Key k, Address self, Random rand) throws NoResponsibleForKeyException, NoSuchSchemaException {
+        Address[] repGroup = getResponsibles(k);
+        if (repGroup == null) {
+            throw new NoResponsibleForKeyException(k);
+        }
+        // Try to deliver locally
+        for (Address adr : repGroup) {
+            if (adr.sameHostAs(self)) {
+                return adr;
+            }
+        }
+        // Otherwise just pick at random
+        int nodePos = RAND.nextInt(repGroup.length);
+        Address dest = repGroup[nodePos];
+        return dest;
+    }
+
     /*
      * Expose internal variable for updates via LUTUpdate. Don't use this for
      * anything else!
      */
+    SchemaData schemas() {
+        return this.schemas;
+    }
 
     ArrayList<Address> hosts() {
         return this.hosts;
@@ -575,13 +852,18 @@ public class LookupTable {
      * @param key
      * @return <hostGroupId, <replicationGroupKey, replicationGroupId>>
      */
-    private Pair<Integer, Pair<Key, Integer>> virtualHostsGetResponsibleWithGid(Key key) {
+    private Pair<Integer, Pair<Key, Integer>> virtualHostsGetResponsibleWithGid(Key key) throws NoSuchSchemaException {
         int groupId = key.getFirstByte();
         LookupGroup keyGroup = virtualHostGroups[groupId];
+        ByteBuffer schemaId = getSchemaId(key);
         while (true) {
             try {
                 Pair<Key, Integer> i = keyGroup.getResponsible(key);
-                return Pair.with(groupId, i);
+                if (i.getValue0().hasPrefix(schemaId)) {
+                    return Pair.with(groupId, i);
+                } else {
+                    return Pair.with(groupId, null); // the node that should be responsible for key is not in the same schema
+                }
             } catch (NoResponsibleInGroup e) {
                 groupId--;
                 if (groupId < 0) {
@@ -596,21 +878,28 @@ public class LookupTable {
      * @param key
      * @return <replicationGroupKey, replicationGroupId>
      */
-    Pair<Key, Integer> virtualHostsGetResponsible(Key key) {
+    Pair<Key, Integer> virtualHostsGetResponsible(Key key) throws NoSuchSchemaException {
         Pair<Integer, Pair<Key, Integer>> result = virtualHostsGetResponsibleWithGid(key);
         return result == null ? null : result.getValue1();
     }
 
-    Key virtualHostsGetSuccessor(Key vnodeKey) {
+    Key virtualHostsGetSuccessor(Key vnodeKey) throws NoSuchSchemaException {
         int groupId = vnodeKey.getFirstByte();
         LookupGroup keyGroup = virtualHostGroups[groupId];
+        ByteBuffer schemaId = getSchemaId(vnodeKey);
         while (true) {
             try {
                 Key k = keyGroup.getSuccessor(vnodeKey);
-                return k;
+                if (k.hasPrefix(schemaId)) {
+                    return k;
+                } else {
+                    //System.out.println("Node " + k + " doesn't have prefix " + schemaId + " of node " + vnodeKey);
+                    return null; // the node's at the schema's end
+                }
             } catch (NoResponsibleInGroup e) {
                 groupId++;
                 if (groupId >= virtualHostGroups.length) {
+                    //System.out.println("End of vHostGroups for key " + vnodeKey);
                     return null;
                 }
                 keyGroup = virtualHostGroups[groupId];
@@ -634,12 +923,31 @@ public class LookupTable {
         return m;
     }
 
+    public ByteBuffer getSchemaId(Key k) throws NoSuchSchemaException {
+        for (ByteBuffer schemaId : schemas.schemaNames.keySet()) {
+            if (k.hasPrefix(schemaId)) {
+                return schemaId;
+            }
+        }
+        throw new NoSuchSchemaException(k);
+    }
+
     private static List<Integer> naturals(int upTo) {
         ArrayList<Integer> nats = new ArrayList<Integer>(upTo);
         for (int i = 0; i < upTo; i++) {
             nats.add(i);
         }
         return nats;
+    }
+
+    public Integer[] getReplicationGroup(Key key) {
+        int groupId = key.getFirstByte();
+        LookupGroup keyGroup = virtualHostGroups[groupId];
+        Integer rgId = keyGroup.get(key);
+        if (rgId == null) {
+            return null;
+        }
+        return replicationSets.get(rgId);
     }
 
     public static class NoResponsibleInGroup extends Throwable {
@@ -663,29 +971,32 @@ public class LookupTable {
         return -1;
     }
 
-    public void findGroupOrAddNew(Key k, Integer[] newRepGroup, ArrayList<LUTUpdate.Action> rebalanceActions) {
-        int index = 0;
-        int lastNullIndex = -1;
-        int curKeyVersion = replicationSetVersions.get(virtualHostsGet(k));
-        for (Integer[] repGroup : replicationSets) {
-            if (repGroup == null) {
-                lastNullIndex = index;
-            } else if (Arrays.equals(repGroup, newRepGroup)) {
-                Integer repGroupVersion = Math.max(curKeyVersion, replicationSetVersions.get(index));
-                rebalanceActions.add(new LUTUpdate.PutReplicationSet(index, repGroupVersion + 1, newRepGroup));
-                rebalanceActions.add(new LUTUpdate.PutReplicationGroup(k, index));
-                return;
-            }
-            index++;
+    public static class NoResponsibleForKeyException extends Exception {
+
+        public final Key key;
+
+        public NoResponsibleForKeyException(Key k) {
+            key = k;
         }
-        if (lastNullIndex >= 0) {
-            Integer repGroupVersion = Math.max(curKeyVersion, replicationSetVersions.get(lastNullIndex));
-            rebalanceActions.add(new LUTUpdate.PutReplicationSet(lastNullIndex, repGroupVersion + 1, newRepGroup));
-            rebalanceActions.add(new LUTUpdate.PutReplicationGroup(k, lastNullIndex));
-        } else {
-            Integer repGroupVersion = Math.max(curKeyVersion, replicationSetVersions.get(lastNullIndex));
-            rebalanceActions.add(new LUTUpdate.PutReplicationSet(index, repGroupVersion + 1, newRepGroup));
-            rebalanceActions.add(new LUTUpdate.PutReplicationGroup(k, index));
+
+        @Override
+        public String getMessage() {
+            return "No Node found reponsible for key " + key;
+        }
+
+    }
+
+    public static class NoSuchSchemaException extends Exception {
+
+        public final Key key;
+
+        public NoSuchSchemaException(Key k) {
+            this.key = k;
+        }
+
+        @Override
+        public String getMessage() {
+            return "No Schema found that contains key " + key;
         }
     }
 }

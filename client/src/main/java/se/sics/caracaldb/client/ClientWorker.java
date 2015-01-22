@@ -20,6 +20,9 @@
  */
 package se.sics.caracaldb.client;
 
+import com.google.common.collect.ImmutableSortedSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -27,13 +30,18 @@ import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.global.ForwardMessage;
 import se.sics.caracaldb.global.Sample;
 import se.sics.caracaldb.global.SampleRequest;
+import se.sics.caracaldb.global.Schema;
+import se.sics.caracaldb.global.SchemaData;
 import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
+import se.sics.caracaldb.operations.MultiOpRequest;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.operations.RangeResponse;
@@ -66,7 +74,10 @@ public class ClientWorker extends ComponentDefinition {
     private final int sampleSize;
     private UUID currentRequestId = new UUID(-1, -1);
     private RangeQuery.SeqCollector col;
-    private boolean connectionEstablished = false;
+    private final Map<String, CaracalFuture<Schema.Response>> ongoingSchemaRequests
+            = new HashMap<String, CaracalFuture<Schema.Response>>();
+    private volatile boolean connectionEstablished = false;
+    private volatile SchemaData schemas;
 
     public ClientWorker(ClientWorkerInit init) {
         responseQ = init.q;
@@ -78,16 +89,20 @@ public class ClientWorker extends ComponentDefinition {
         // Subscriptions
         subscribe(startHandler, control);
         subscribe(sampleHandler, net);
+        subscribe(schemaCreateHandler, client);
+        subscribe(schemaDropHandler, client);
+        subscribe(multiOpHandler, client);
         subscribe(putHandler, client);
         subscribe(getHandler, client);
         subscribe(rqHandler, client);
         subscribe(responseHandler, net);
+        subscribe(schemaResponseHandler, net);
     }
     Handler<Start> startHandler = new Handler<Start>() {
         @Override
         public void handle(Start event) {
             LOG.debug("Starting new worker {}", self);
-            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize);
+            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
             trigger(req, net);
         }
     };
@@ -96,7 +111,57 @@ public class ClientWorker extends ComponentDefinition {
         public void handle(Sample event) {
             LOG.debug("Got Sample {}", event);
             knownNodes.addAll(event.nodes);
+            schemas = SchemaData.deserialise(event.schemaData);
             connectionEstablished = true;
+        }
+    };
+    Handler<CreateSchema> schemaCreateHandler = new Handler<CreateSchema>() {
+
+        @Override
+        public void handle(CreateSchema event) {
+            if (!connectionEstablished) {
+                event.future.set(new Schema.Response(null, null, event.name, null, false, "No Connection to Cluster!"));
+                return;
+            }
+            byte[] id = schemas.getId(event.name);
+            if (id != null) {
+                event.future.set(new Schema.Response(null, null, event.name, id, false, "Schema exists!"));
+                return;
+            }
+            Schema.CreateReq req = new Schema.CreateReq(self, bootstrapServer, event.name, event.metaData);
+            trigger(req, net);
+            ongoingSchemaRequests.put(event.name, event.future);
+        }
+    };
+    Handler<DropSchema> schemaDropHandler = new Handler<DropSchema>() {
+
+        @Override
+        public void handle(DropSchema event) {
+            if (!connectionEstablished) {
+                event.future.set(new Schema.Response(null, null, event.name, null, false, "No Connection to Cluster!"));
+                return;
+            }
+            byte[] id = schemas.getId(event.name);
+            if (id == null) {
+                event.future.set(new Schema.Response(null, null, event.name, null, false, "Schema does not exists!"));
+                return;
+            }
+            Schema.DropReq req = new Schema.DropReq(self, bootstrapServer, event.name);
+            trigger(req, net);
+            ongoingSchemaRequests.put(event.name, event.future);
+        }
+    };
+    Handler<MultiOpRequest> multiOpHandler = new Handler<MultiOpRequest>() {
+
+        @Override
+        public void handle(MultiOpRequest event) {
+            LOG.debug("Handling MultiOp");
+            currentRequestId = event.id;
+            Address target = randomNode();
+            CaracalMsg msg = new CaracalMsg(self, target, event);
+            ForwardMessage fmsg = new ForwardMessage(self, target, event.anyKey(), msg);
+            trigger(fmsg, net);
+            LOG.debug("MSG: {}", fmsg);
         }
     };
     Handler<PutRequest> putHandler = new Handler<PutRequest>() {
@@ -155,7 +220,8 @@ public class ClientWorker extends ComponentDefinition {
                         return;
                     }
                     if (resp.code != ResponseCode.SUCCESS) {
-                        trigger(resp, client);
+                        enqueue(resp); // abort the query
+                        return;
                     }
                     RangeQuery.Response rresp = (RangeQuery.Response) resp;
                     col.processResponse(rresp);
@@ -173,13 +239,61 @@ public class ClientWorker extends ComponentDefinition {
             LOG.error("Sending requests to clients is doing it wrong! {}", event);
         }
     };
+    Handler<Schema.Response> schemaResponseHandler = new Handler<Schema.Response>() {
+
+        @Override
+        public void handle(Schema.Response event) {
+            CaracalFuture<Schema.Response> f = ongoingSchemaRequests.remove(event.name);
+            if (f != null) {
+                if (event.success) { // request a new sample to update schemas
+                    SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
+                    trigger(req, net);
+                }
+                f.set(event);
+            } else {
+                LOG.info("No future stored for schema response {}. Dropping...", event);
+            }
+        }
+    };
 
     public void triggerOnSelf(CaracalOp op) {
         trigger(op, client.getPair());
     }
 
+    public void triggerOnSelf(SchemaOp op) {
+        trigger(op, client.getPair());
+    }
+
     public boolean test() {
         return connectionEstablished;
+    }
+
+    public Key resolveSchema(String schema, Key k) {
+        if (connectionEstablished) {
+            byte[] schemaId = schemas.getId(schema);
+            if (schemaId != null) {
+                return k.prepend(schemaId).get();
+            } else { // try to update the schema data (might want to rate-limit this a bit)
+                SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
+                trigger(req, net);
+            }
+        }
+        return null;
+    }
+
+    public KeyRange resolveSchema(String schema, KeyRange k) {
+        if (connectionEstablished) {
+            byte[] schemaId = schemas.getId(schema);
+            if (schemaId != null) {
+                Key startK = k.begin.prepend(schemaId).get();
+                Key endK = k.end.prepend(schemaId).get();
+                return k.replaceKeys(startK, endK);
+            } else { // try to update the schema data (might want to rate-limit this a bit)
+                SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
+                trigger(req, net);
+            }
+        }
+        return null;
     }
 
     private Address randomNode() {
@@ -200,6 +314,20 @@ public class ClientWorker extends ComponentDefinition {
         if (responseQ != null && !responseQ.offer(resp)) {
             LOG.warn("Could not insert {} into responseQ. It's overflowing. Clean up this mess!");
         }
+    }
+
+    public ImmutableSortedSet<String> listSchemas() {
+        if (connectionEstablished) {
+            return schemas.schemas();
+        }
+        return ImmutableSortedSet.of();
+    }
+
+    String getSchemaInfo(String schemaName) {
+        if (connectionEstablished) {
+            return schemas.schemaInfo(schemaName);
+        }
+        return "No connection!";
     }
 
 }

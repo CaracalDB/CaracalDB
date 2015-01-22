@@ -29,15 +29,21 @@ import se.sics.kompics.network.Transport;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class SampleRequest extends Message {
-    
-    public int n;
-    
-    public SampleRequest(Address src, Address dest, int n) {
+
+    public final int n;
+    public final boolean schema;
+
+    public SampleRequest(Address src, Address dest, int n, boolean schema) {
         super(src, dest, src, Transport.TCP);
         this.n = n;
+        this.schema = schema;
     }
-    
-    public Sample reply(ImmutableSet<Address> nodes) {
-        return new Sample(this.getDestination(), this.getSource(), nodes);
+
+    public Sample reply(ImmutableSet<Address> nodes, SchemaData schemaData) {
+        if (schema) {
+            return new Sample(this.getDestination(), this.getSource(), nodes, schemaData.serialise());
+        } else {
+            return new Sample(this.getDestination(), this.getSource(), nodes, null);
+        }
     }
 }

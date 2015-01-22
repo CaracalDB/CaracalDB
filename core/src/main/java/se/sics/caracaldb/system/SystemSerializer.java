@@ -25,6 +25,8 @@ import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
+import se.sics.caracaldb.global.SchemaData;
+import se.sics.caracaldb.global.SchemaData.SingleSchema;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
@@ -57,6 +59,7 @@ public class SystemSerializer implements Serializer {
             StartVNode s = (StartVNode) msg;
             buf.writeInt(s.nodeId.length);
             buf.writeBytes(s.nodeId);
+            SchemaData.serialiseSchema(buf, s.schema);
             return;
         }
         if (msg instanceof StopVNode) {
@@ -73,7 +76,8 @@ public class SystemSerializer implements Serializer {
             int size = buf.readInt();
             byte[] nodeId = new byte[size];
             buf.readBytes(nodeId);
-            return new StartVNode(fields.src, fields.dst, nodeId);
+            SingleSchema schema = SchemaData.deserialiseSchema(buf);
+            return new StartVNode(fields.src, fields.dst, nodeId, schema);
         }
         if (fields.flag1 == STOP) {
             return new StopVNode(fields.src, fields.dst);

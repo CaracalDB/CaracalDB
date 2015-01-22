@@ -5,12 +5,12 @@
   <parent>
     <groupId>se.sics.caracaldb</groupId>
     <artifactId>caracaldb-parent-pom</artifactId>
-    <version>0.0.5-SNAPSHOT</version>
+    <version>0.0.6-SNAPSHOT</version>
   </parent>
   
   <artifactId>DataModelClient</artifactId>
   <name>DataModelClient</name>
-  <version>0.0.5-SNAPSHOT</version>
+  <version>0.0.6-SNAPSHOT</version>
   <packaging>jar</packaging>
   
   <dependencies>
@@ -24,14 +24,14 @@
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>caracaldb-client</artifactId>
-            <version>0.0.5-SNAPSHOT</version>
+            <version>0.0.6-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>DataModelCore</artifactId>
-            <version>0.0.5-SNAPSHOT</version>
+            <version>0.0.6-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         

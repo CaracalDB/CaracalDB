@@ -30,7 +30,6 @@ import se.sics.caracaldb.Key;
 import se.sics.caracaldb.store.MultiOp.Condition;
 import se.sics.caracaldb.store.MultiOp.EqualCondition;
 //import se.sics.caracaldb.store.MultiOp.FunctionalCondition;
-import se.sics.caracaldb.utils.ByteArrayRef;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
@@ -118,6 +117,7 @@ public class ConditionSerializer implements Serializer {
                 return new EqualCondition(k, null);
             }
         }
+        LOG.warn("Couldn't deserialize buffer with flags: {}.", flags);
         return null;
     }
 

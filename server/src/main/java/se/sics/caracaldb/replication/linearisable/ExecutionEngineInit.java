@@ -34,12 +34,10 @@ public class ExecutionEngineInit extends Init<ExecutionEngine> {
     public final Address self;
     public final KeyRange range;
     public final long keepAlivePeriod;
-    public final int dataMessageSize;
-    public ExecutionEngineInit(View v, Address self, KeyRange range, long keepAlivePeriod, int dataMessageSize) {
+    public ExecutionEngineInit(View v, Address self, KeyRange range, long keepAlivePeriod) {
         this.view = v;
         this.self = self;
         this.range = range;
         this.keepAlivePeriod = keepAlivePeriod;
-        this.dataMessageSize = dataMessageSize;
     }
 }

@@ -21,9 +21,11 @@
 package se.sics.caracaldb.simulation;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,7 @@ import se.sics.caracaldb.persistence.Database;
 import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.persistence.memory.InMemoryDB;
 import se.sics.caracaldb.store.Limit;
+import se.sics.caracaldb.system.Launcher;
 import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
@@ -53,7 +56,7 @@ public class ValidationStore2 {
     private boolean end = false;
 
     public ValidationStore2() {
-        this.store = new InMemoryDB();
+        this.store = new InMemoryDB(Launcher.getConfig().core());
     }
 
     public Validator startOp(CaracalOp op) {
@@ -136,21 +139,22 @@ public class ValidationStore2 {
         public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
             LOG.trace("Got response {}", resp);
             if (!resp.id.equals(req.id)) {
-                LOG.debug("was not expecting resp {}", resp);
+                LOG.warn("was not expecting resp {}", resp);
                 return false;
             } else if (resp instanceof GetResponse) {
                 GetResponse getResp = (GetResponse) resp;
                 if (!getResp.code.equals(ResponseCode.SUCCESS)) {
-                    LOG.debug("operation {} failed with resp {}", new Object[]{req, resp.code});
+                    LOG.error("operation {} failed with resp {}", new Object[]{req, resp.code});
                     throw new ValidatorException();
                 } else if (expectedResult.equals(getResp.data)) {
+                    LOG.info("Got response {} success", resp);
                     return true;
                 } else {
-                    LOG.debug("operation {} returned wrong value", req);
+                    LOG.error("operation {} returned wrong value", req);
                     throw new ValidatorException();
                 }
             } else {
-                LOG.debug("operation {} received wrong response type {}", new Object[]{req, resp});
+                LOG.error("operation {} received wrong response type {}", new Object[]{req, resp});
                 throw new ValidatorException();
             }
         }
@@ -168,18 +172,19 @@ public class ValidationStore2 {
         public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
             LOG.trace("Got response {}", resp);
             if (!resp.id.equals(req.id)) {
-                LOG.debug("was not expecting resp {}", resp);
+                LOG.warn("was not expecting resp {}", resp);
                 return false;
             } else if (resp instanceof PutResponse) {
                 PutResponse putResp = (PutResponse) resp;
                 if (!putResp.code.equals(ResponseCode.SUCCESS)) {
-                    LOG.debug("operation {} failed with resp {}", new Object[]{req, resp.code});
+                    LOG.error("operation {} failed with resp {}", new Object[]{req, resp.code});
                     throw new ValidatorException();
                 } else {
+                    LOG.info("Got response {}", resp);
                     return true;
                 }
             } else {
-                LOG.debug("operation {} received wrong response type {}", new Object[]{req, resp});
+                LOG.error("operation {} received wrong response type {}", new Object[]{req, resp});
                 throw new ValidatorException();
             }
         }
@@ -201,25 +206,42 @@ public class ValidationStore2 {
         public boolean validateAndContinue(CaracalResponse resp) throws ValidatorException {
             LOG.trace("Got response {}", resp);
             if (!resp.id.equals(req.id)) {
-                LOG.debug("was not expecting resp {}", resp);
+                LOG.warn("was not expecting resp {}", resp);
                 return false;
             } else if (resp instanceof RangeQuery.Response) {
                 RangeQuery.Response rqResp = (RangeQuery.Response) resp;
                 if (!rqResp.code.equals(ResponseCode.SUCCESS)) {
-                    LOG.debug("operation {} failed with resp {}", new Object[]{req, resp.code});
+                    LOG.error("operation {} failed with resp {}", new Object[]{req, resp.code});
                     throw new ValidatorException();
                 }
+                LOG.info("operation {} successfull with {} results", new Object[]{req, rqResp.data.size()});
                 col.processResponse(rqResp);
                 if (col.isDone()) {
                     TreeMap<Key, byte[]> result = col.getResult().getValue1();
                     if (result.size() != expectedResult.size()) {
-                        LOG.debug("operation {} failed with different number of returned elements");
+                        LOG.error("operation {} failed with different number of returned elements, expected:{} found:{}", req, expectedResult.size(), result.size());
+                        Iterator<Key> it1 = expectedResult.keySet().iterator();
+                        Iterator<Key> it2 = result.keySet().iterator();
+                        while(it1.hasNext() && it2.hasNext()) {
+                            if(it1.next().equals(it2.next())) {
+                                continue;
+                            }
+                            LOG.debug("wrong ordered keys");
+                            throw new ValidatorException();
+                        }
+                        TreeSet<Key> aux = new TreeSet<Key>();
+                        for (Key k : expectedResult.keySet()) {
+                            if(!result.containsKey(k)) {
+                                aux.add(k);
+                            }
+                        }
+                        LOG.error("last key:{} first missing key{}", result.lastKey(), aux.first());
                         throw new ValidatorException();
                     }
                     for (Entry<Key, byte[]> e : result.entrySet()) {
                         ByteArrayRef expectedData = expectedResult.get(e.getKey());
                         if (!expectedData.equals(e.getValue())) {
-                            LOG.debug("operation {} returned wrong value", req);
+                            LOG.error("operation {} returned wrong value for key:{}", req, e.getKey());
                             throw new ValidatorException();
                         }
                     }

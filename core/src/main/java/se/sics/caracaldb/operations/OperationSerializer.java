@@ -34,7 +34,6 @@ import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.store.Limit;
-import se.sics.caracaldb.store.MultiOp;
 import se.sics.caracaldb.store.MultiOp.Condition;
 import se.sics.caracaldb.store.RangeAction;
 import se.sics.caracaldb.store.TransformationFilter;
@@ -129,8 +128,12 @@ public class OperationSerializer implements Serializer {
             flags.write(PUT); // 2 3 4
             PutRequest op = (PutRequest) caracalOp;
             CustomSerialisers.serialiseKey(op.key, buf);
-            buf.writeInt(op.data.length);
-            buf.writeBytes(op.data);
+            if (op.data != null) {
+                buf.writeInt(op.data.length);
+                buf.writeBytes(op.data);
+            } else {
+                buf.writeInt(-1);
+            }
             return;
         }
         if (caracalOp instanceof RangeQuery.Request) {
@@ -206,8 +209,12 @@ public class OperationSerializer implements Serializer {
                     Key k = e.getKey();
                     byte[] v = e.getValue();
                     CustomSerialisers.serialiseKey(k, buf);
-                    buf.writeInt(v.length);
-                    buf.writeBytes(v);
+                    if (v != null) {
+                        buf.writeInt(v.length);
+                        buf.writeBytes(v);
+                    } else {
+                        buf.writeInt(-1);
+                    }
                 }
             }
             flags.write(op.readLimit); // 6
@@ -255,8 +262,11 @@ public class OperationSerializer implements Serializer {
         if (matches(flags, PUT)) {
             Key key = CustomSerialisers.deserialiseKey(buf);
             int length = buf.readInt();
-            byte[] data = new byte[length];
-            buf.readBytes(data);
+            byte[] data = null;
+            if (length >= 0) {
+                data = new byte[length];
+                buf.readBytes(data);
+            }
             return new PutRequest(id, key, data);
         }
         if (matches(flags, RANGE)) {
@@ -334,7 +344,7 @@ public class OperationSerializer implements Serializer {
                 for (int i = 0; i < size; i++) {
                     Key k = CustomSerialisers.deserialiseKey(buf);
                     int length = buf.readInt();
-                    if (length > 0) {
+                    if (length >= 0) {
                         byte[] data = new byte[length];
                         buf.readBytes(data);
                         result.put(k, data);

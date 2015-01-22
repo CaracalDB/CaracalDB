@@ -20,9 +20,15 @@
  */
 package se.sics.caracaldb.system;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.global.LookupService;
 import se.sics.caracaldb.global.MaintenanceService;
+import se.sics.caracaldb.global.SchemaData.SingleSchema;
+import se.sics.caracaldb.persistence.Database;
 import se.sics.caracaldb.store.Store;
 import se.sics.kompics.Component;
 import se.sics.kompics.Positive;
@@ -37,14 +43,17 @@ import se.sics.kompics.timer.Timer;
  */
 public class VirtualSharedComponents extends ServiceRegistry {
 
-    public VirtualSharedComponents(byte[] id) {
+    public VirtualSharedComponents(byte[] id, SingleSchema schema) {
         this.id = id;
+        this.schema = schema;
     }
     /*
      * Address
      */
     private byte[] id;
     private Address self;
+    private SingleSchema schema;
+    private Class<? extends Database> dbType = null;
 
     void setSelf(Address self) {
         this.self = self;
@@ -57,6 +66,34 @@ public class VirtualSharedComponents extends ServiceRegistry {
     public byte[] getId() {
         return id;
     }
+    
+    public SingleSchema getSchema() {
+        return this.schema;
+    }
+    
+    public Class<? extends Database> getDbType(Configuration config) throws ClassNotFoundException {
+        if (dbType != null) {
+            return dbType;
+        }
+        String dbName = schema.meta.get("db");
+        if (dbName == null) {
+            dbName = "leveldb"; // default value
+        }
+        dbType = config.getDBMan().getType(dbName);
+        return dbType;
+    }
+    
+    public Database.Level getDbLevel(Configuration config) throws ClassNotFoundException {
+        Class<? extends Database> dbtype = getDbType(config);
+        try {
+            Method m = dbtype.getMethod("level");
+            return (Database.Level) m.invoke(null);
+        } catch (Exception ex) {
+            HostManager.LOG.error("Could not find level information for database {}. Error was: \n{}", dbtype, ex);
+            throw new ClassNotFoundException(ex.getMessage());
+        }
+    }
+    
     /*
      * Core Services
      */

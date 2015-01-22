@@ -20,24 +20,38 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
+import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import junit.framework.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.system.Configuration;
+import se.sics.caracaldb.system.Launcher;
+import se.sics.caracaldb.utils.HashIdGenerator;
 import se.sics.kompics.address.Address;
 
 /**
@@ -50,39 +64,93 @@ public class LUTTest {
     private static final Random RAND = new Random(1);
     private static final int MAX_PORT = 2 ^ 16;
 
+    @Before
+    public void setUp() {
+        Launcher.reset();
+    }
+
     @Test
     public void generationTest() {
-        Set<Address> addrs = generateAddresses(5);
-        LookupTable lut = LookupTable.generateInitial(addrs, 2, Key.fromHex(""));
+        TreeSet<Address> addrs = generateAddresses(6);
+        Configuration conf = Launcher.config().setValue("caracal.scatterWidth", 3).finalise();
+        LookupTable lut = LookupTable.generateInitial(addrs, conf, addrs.first());
+
+        System.out.println("%%%%%%% Generated LUT: %%%%%%%%\n");
+        StringBuilder sb = new StringBuilder();
+        lut.printFormat(sb);
+        System.out.println(sb);
 
         assertEquals(addrs.size(), lut.numHosts());
-        assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationSets());
+        //assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationSets());
 
-        for (int i = 0; i < 5; i++) {
-            assertNotNull("Should find responsible for any Key", lut.virtualHostsGetResponsible(randomKey(4)));
+        for (int i = 0; i < 6; i++) {
+            try {
+                assertNotNull("Should find responsible for any Key", lut.virtualHostsGetResponsible(randomKey(4, lut.schemas().schemaNames.keySet())));
+            } catch (LookupTable.NoSuchSchemaException ex) {
+                Assert.fail(ex.getMessage());
+            }
         }
+
+    }
+
+    @Test
+    public void bigGenerationTest() {
+        TreeSet<Address> addrs = generateAddresses(500);
+        Configuration conf = Launcher.config().setValue("caracal.scatterWidth", 20).finalise();
+        LookupTable lut = LookupTable.generateInitial(addrs, conf, addrs.first());
+
+        assertEquals(addrs.size(), lut.numHosts());
+        //assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationSets());
+
+        for (int i = 0; i < 600; i++) {
+            try {
+                assertNotNull("Should find responsible for any Key", lut.virtualHostsGetResponsible(randomKey(4, lut.schemas().schemaNames.keySet())));
+            } catch (LookupTable.NoSuchSchemaException ex) {
+                Assert.fail(ex.getMessage());
+            }
+        }
+
+        System.out.println("%%%%%%% Generated LUT: %%%%%%%%\n");
+        StringBuilder sb = new StringBuilder();
+        lut.printFormat(sb);
+        System.out.println(sb);
     }
 
     @Test
     public void localNodesTest() {
-        Set<Address> addrs = generateAddresses(3);
-        LookupTable lut = LookupTable.generateInitial(addrs, 1, Key.fromHex(""));
+        TreeSet<Address> addrs = generateAddresses(3);
+        Configuration conf = Launcher.config().finalise();
+        LookupTable lut = LookupTable.generateInitial(addrs, conf, addrs.first());
 
         StringBuilder sb = new StringBuilder();
         lut.printFormat(sb);
         System.out.println(sb.toString());
-
-        ImmutableSet<Key> expected = ImmutableSet.of(Key.fromHex("00"),
-                Key.fromHex("00 00 00 01"),
-                Key.fromHex("55 55 55 55"),
-                Key.fromHex("AA AA AA A9"),
-                Key.fromHex("FF FF FF FD"));
+        ImmutableSortedSet<Key> expected = ImmutableSortedSet.of(Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F6"),
+                Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F6 3F FF FF FF"),
+                Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F6 7F FF FF FE"),
+                Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F6 BF FF FF FD"),
+                Key.fromHex("09 8F 6B CD 46 21 D3 73 CA DE 4E 83 26 27 B4 F6 FF FF FF FC"));
 
         for (Address adr : addrs) {
             Set<Key> localNodes = lut.getVirtualNodesAt(adr);
+            localNodes.remove(Key.fromHex("00 00 00 00 00 00 00 01"));
+            localNodes.remove(Key.fromHex("00 00 00 00 00 00 00 02"));
             System.out.println("Nodes for " + adr + " are " + localNodes);
             System.out.println("Expected: " + expected);
             assertTrue(Sets.symmetricDifference(localNodes, expected).isEmpty());
+            for (Key nodeId : localNodes) {
+                try {
+                    Key succ = expected.higher(nodeId);
+                    if (succ == null) {
+                        succ = expected.first().inc();
+                    }
+                    KeyRange resp = lut.getResponsibility(nodeId);
+                    KeyRange expResp = KeyRange.closed(nodeId).open(succ);
+                    assertEquals(expResp, resp);
+                } catch (LookupTable.NoSuchSchemaException ex) {
+                    Assert.fail(ex.getMessage());
+                }
+            }
         }
     }
 
@@ -90,18 +158,19 @@ public class LUTTest {
     public void lutSerialisationTest() {
         try {
             final int n = 5;
-            Set<Address> addrs = generateAddresses(n);
-            LookupTable lut = LookupTable.generateInitial(addrs, 2, Key.fromHex(""));
+            TreeSet<Address> addrs = generateAddresses(n);
+            Configuration conf = Launcher.config().finalise();
+            LookupTable lut = LookupTable.generateInitial(addrs, conf, addrs.first());
 
             byte[] lutbytes = lut.serialise();
 
             LookupTable lut2 = LookupTable.deserialise(lutbytes);
 
             assertEquals(addrs.size(), lut2.numHosts());
-            assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut2.numReplicationSets());
+            //assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut2.numReplicationSets());
 
             for (int i = 0; i < n; i++) {
-                assertNotNull("Should find responsible for any Key", lut2.virtualHostsGetResponsible(randomKey(4)));
+                assertNotNull("Should find responsible for any Key", lut2.virtualHostsGetResponsible(randomKey(4, lut.schemas().schemaNames.keySet())));
             }
 
         } catch (Exception ex) {
@@ -117,7 +186,7 @@ public class LUTTest {
             final int n = 100;
             HashSet<Key> keyset = new HashSet<Key>();
             for (int i = 0; i < n; i++) {
-                Key k = randomKey(-1);
+                Key k = randomKeySuffix(-1);
                 keyset.add(k);
                 lg.put(k, i);
             }
@@ -148,9 +217,48 @@ public class LUTTest {
         k = Key.fromHex("FF FF FF FD");
         assertEquals("FF FF FF FD", k.toString());
     }
-    
-    private Set<Address> generateAddresses(int n) {
-        Set<Address> addresses = new HashSet<Address>(n);
+
+    @Test
+    public void schemaReaderTest() {
+        SchemaData sd = new SchemaData();
+        System.out.println("Putting...");
+        ByteBuffer core = ByteBuffer.wrap(new byte[]{0, 0, 0, 0, 0, 0, 0, 0});
+        sd.schemaIDs.put("core", core);
+        sd.schemaNames.put(core, "core");
+        sd.metaData.put(core, ImmutableMap.of("testvalue1", "1", "testvalue2", "2"));
+
+        ByteBuffer extent = ByteBuffer.wrap(new byte[]{0, 0, 0, 0, 0, 0, 0, 1});
+        sd.schemaIDs.put("extent", extent);
+        sd.schemaNames.put(extent, "extent");
+        sd.metaData.put(extent, ImmutableMap.of("testvalue3", "3", "testvalue4", "4"));
+        System.out.println("Exporting...");
+
+        Assert.assertFalse(core.equals(extent));
+
+        String json = "";
+        try {
+            json = SchemaReader.exportSchemas(sd, null);
+        } catch (FileNotFoundException ex) {
+            Assert.fail(ex.getMessage());
+        } catch (UnsupportedEncodingException ex) {
+            Assert.fail(ex.getMessage());
+        }
+
+        System.out.println("Importing...");
+
+        SchemaData sd2 = null;
+        try {
+            sd2 = SchemaReader.importSchemas(ImmutableList.of(json), new HashIdGenerator("MD5"));
+        } catch (NoSuchAlgorithmException ex) {
+            Assert.fail(ex.getMessage());
+        }
+
+        Assert.assertNotNull(sd2.getId("core"));
+        Assert.assertNotNull(sd2.getId("extent"));
+    }
+
+    private TreeSet<Address> generateAddresses(int n) {
+        TreeSet<Address> addresses = new TreeSet<Address>();
         while (addresses.size() < n) {
             try {
                 int port = RAND.nextInt(MAX_PORT);
@@ -165,13 +273,29 @@ public class LUTTest {
         return addresses;
     }
 
-    private Key randomKey(int size) {
+    private Key randomKeySuffix(int size) {
         int s = size;
         if (size == -1) {
             s = Math.abs(RAND.nextInt(1000));
         }
-        byte[] bytes = new byte[s+1];
+        byte[] bytes = new byte[s + 1];
         RAND.nextBytes(bytes);
         return new Key(bytes);
+    }
+
+    private Key randomKey(int size, Set<ByteBuffer> schemaIds) {
+        ByteBuffer schemaId = null;
+        int index = 0;
+        int rpos = RAND.nextInt(schemaIds.size());
+        for (ByteBuffer id : schemaIds) {
+            if (index == rpos) {
+                schemaId = id;
+                break;
+            }
+            index++;
+        }
+        Key schemaKey = new Key(schemaId);
+        Key suffix = randomKeySuffix(size);
+        return schemaKey.append(suffix).get();
     }
 }

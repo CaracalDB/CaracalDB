@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.operations;
 
+import java.util.UUID;
 import se.sics.caracaldb.global.Forwardable;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Msg;
@@ -93,5 +94,10 @@ public class CaracalMsg implements Msg, Forwardable<CaracalMsg> {
     @Override
     public Transport getProtocol() {
         return protocol;
+    }
+
+    @Override
+    public UUID getId() {
+        return op.id;
     }
 }

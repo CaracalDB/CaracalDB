@@ -29,11 +29,11 @@ import se.sics.caracaldb.utils.ByteArrayRef;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class Put extends StorageRequest {
-    
+
     public final Key key;
     public final byte[] value;
     public final int versionId;
-    
+
     public Put(Key k, byte[] v, int versionId) {
         key = k;
         value = v;
@@ -43,18 +43,28 @@ public class Put extends StorageRequest {
     @Override
     public StorageResponse execute(Persistence store) {
         ByteArrayRef oldValue = store.get(key.getArray());
-        store.put(key.getArray(), value, versionId);
+
         Diff diff = null;
-        if (oldValue == null) {
-            diff = new Diff(value.length+key.getKeySize(), 1);
+        if (value == null) { // this is actually the delete branch
+            store.delete(key.getArray(), versionId);
+            if (oldValue == null) {
+                diff = new Diff(0, 0);
+            } else {
+                diff = new Diff(-(oldValue.length + key.getKeySize()), -1);
+            }
         } else {
-            diff = new Diff(value.length - oldValue.length, 0);
+            store.put(key.getArray(), value, versionId);
+            if (oldValue == null) {
+                diff = new Diff(value.length + key.getKeySize(), 1);
+            } else {
+                diff = new Diff(value.length - oldValue.length, 0);
+            }
         }
         return new PutResp(this, diff);
     }
-    
+
     @Override
     public String toString() {
-        return "PutReq("+key+", "+value+")";
+        return "PutReq(" + key + ", " + value + ")";
     }
 }

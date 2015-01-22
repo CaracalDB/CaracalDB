@@ -78,7 +78,7 @@ public class ClientWorker extends ComponentDefinition {
         @Override
         public void handle(Start event) {
             LOG.debug("Starting new worker {}", self);
-            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize);
+            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
             trigger(req, net);
         }
     };

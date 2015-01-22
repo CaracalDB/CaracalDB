@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.client;
 
+import se.sics.caracaldb.global.Schema;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.kompics.PortType;
@@ -31,6 +32,9 @@ import se.sics.kompics.PortType;
 public class ClientPort extends PortType {
     {
         request(CaracalOp.class);
+        request(CreateSchema.class);
+        request(DropSchema.class);
         indication(CaracalResponse.class);
+        indication(Schema.Response.class);
     }
 }

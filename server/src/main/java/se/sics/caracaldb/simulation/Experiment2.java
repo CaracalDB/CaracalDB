@@ -32,10 +32,12 @@ import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.RangeQuery;
+import se.sics.caracaldb.simulation.ValidationStore2.RangeQueryValidator;
 import se.sics.caracaldb.simulation.ValidationStore2.Validator;
+import se.sics.caracaldb.simulation.command.CustomRQCmd;
 import se.sics.caracaldb.simulation.command.OpCmd;
 import se.sics.caracaldb.simulation.command.PutCmd;
-import se.sics.caracaldb.simulation.command.RQCmd;
+import se.sics.caracaldb.simulation.command.RandomRQCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;
 import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
@@ -82,7 +84,7 @@ public class Experiment2 extends ComponentDefinition {
         public void handle(OpCmd op) {
             LOG.debug("received {}", op);
             if (idle) {
-                LOG.debug("performing command {}", op);
+                LOG.info("performing command {}", op);
                 doOp(op);
             } else {
                 LOG.debug("waiting on another command");
@@ -127,6 +129,7 @@ public class Experiment2 extends ComponentDefinition {
             idle = false;
             
             UUID id = TimestampIdFactory.get().newId();
+            
             Key k = randomKey(8);
             Key val = randomKey(32);
             PutRequest put = new PutRequest(id, k, val.getArray());
@@ -134,7 +137,7 @@ public class Experiment2 extends ComponentDefinition {
             LOG.debug("performing {}", put);
             validator = resultValidator.startOp(put);
             trigger(put, expExecutor);
-        } else if (op instanceof RQCmd) {
+        } else if (op instanceof RandomRQCmd) {
             idle = false;
             UUID id = TimestampIdFactory.get().newId();
             Key key1 = randomKey(8);
@@ -150,6 +153,13 @@ public class Experiment2 extends ComponentDefinition {
             LOG.debug("performing {}", rq);
             validator = resultValidator.startOp(rq);
             trigger(rq, expExecutor);
+        } else if (op instanceof CustomRQCmd) {
+            idle = false;
+            UUID id = TimestampIdFactory.get().newId();
+            RangeQuery.Request rq = new RangeQuery.Request(id, ((CustomRQCmd)op).range, Limit.noLimit(), TFFactory.noTF(), ActionFactory.noop(), RangeQuery.Type.SEQUENTIAL);
+            LOG.debug("performing {}", rq);
+            validator = resultValidator.startOp(rq);
+            trigger(rq, expExecutor);
         }
     }
 
@@ -160,11 +170,6 @@ public class Experiment2 extends ComponentDefinition {
         }
         byte[] bytes = new byte[s];
         RAND.nextBytes(bytes);
-        // don't write in the 00 XX... key range
-        // it's reserved
-        if (bytes[0] == 0) {
-            bytes[0] = 1;
-        }
-        return new Key(bytes);
+        return SimulationHelper.schemaPrefix.append(bytes).get();
     }
 }

@@ -27,6 +27,10 @@ import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.SortedMapDifference;
 import com.google.common.collect.TreeMultimap;
+import com.google.common.primitives.UnsignedBytes;
+import com.google.common.primitives.UnsignedInteger;
+import com.google.common.primitives.UnsignedLong;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -40,11 +44,9 @@ import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.global.LUTUpdate.Action;
-import se.sics.caracaldb.global.LUTUpdate.PutHost;
-import se.sics.caracaldb.global.LUTUpdate.PutReplicationSet;
 import se.sics.caracaldb.system.Stats;
 import se.sics.caracaldb.utils.ExtremeKMap;
+import se.sics.caracaldb.utils.HashIdGenerator;
 import se.sics.kompics.address.Address;
 
 /**
@@ -61,18 +63,18 @@ public class DefaultPolicy implements MaintenancePolicy {
     private static final double THRESHOLD = 0.35;
     private static final int MAX_ACTIONS = 5;
 
-    private LookupTable lut;
+    private HashIdGenerator idGen;
     private double memoryAvg = 0.0;
     private double cpuAvg = 0.0;
     private long averageHostSize = 0;
 
     @Override
-    public void init(LookupTable lut) {
-        this.lut = lut;
+    public void init(HashIdGenerator idGen) {
+        this.idGen = idGen;
     }
 
     @Override
-    public LUTUpdate rebalance(ImmutableSet<Address> joins, ImmutableSet<Address> fails, ImmutableMap<Address, Stats.Report> stats) {
+    public void rebalance(LUTWorkingBuffer lut, ImmutableSet<Address> joins, ImmutableSet<Address> fails, ImmutableMap<Address, Stats.Report> stats, ImmutableSet<Schema.Req> schemaChanges) {
         Pair<ExtremeKMap<Double, Address>, ExtremeKMap<Double, Address>> xKs = updateAverages(stats);
         ExtremeKMap<Double, Address> xKMemory = xKs.getValue0();
         ExtremeKMap<Double, Address> xKCpu = xKs.getValue1();
@@ -82,37 +84,42 @@ public class DefaultPolicy implements MaintenancePolicy {
         double upperMemoryLimit = memoryAvg + memoryAvg * THRESHOLD;
         double lowerMemoryLimit = memoryAvg - memoryAvg * THRESHOLD;
 
-        ImmutableSortedMap<Integer, Address> failIds = getIdsForFails(fails);
-        ImmutableSortedMap<Integer, Address> joinIds = getIdsForJoins(joins, failIds);
+        ImmutableSortedMap<Integer, Address> failIds = getIdsForFails(lut, fails);
+        ImmutableSortedMap<Integer, Address> joinIds = getIdsForJoins(lut, joins, failIds);
 
-        ArrayList<Action> hostActions = getHostActions(failIds, joinIds);
+        getHostActions(lut, failIds, joinIds);
 
-        ArrayList<Action> relocActions = replaceFailedNodes(failIds, joinIds, xKMemory, xKCpu, stats);
+        replaceFailedNodes(lut, failIds, joinIds, xKMemory, xKCpu, stats);
 
-        if (relocActions.size() > MAX_ACTIONS) {
+        getSchemaActions(lut, schemaChanges);
+
+        if (lut.numberOfActions() > MAX_ACTIONS) {
             // Don't try any more balancing...there'll already be enough data movement
-            return assembleUpdate(ImmutableList.of((List<Action>) hostActions, (List<Action>) relocActions));
+            return;
         }
 
+	// TODO don't load balance for now...this needs to be tested
+	return;
+	/*
         // VERY conservative balacer
-        ArrayList<Action> rebalanceActions = new ArrayList<Action>();
         // TODO make better^^
         Entry<Double, Address> topMemory = xKMemory.top().ceilingEntry();
         Entry<Double, Address> bottomMemory = xKMemory.bottom().ceilingEntry();
         if ((topMemory.getKey() > upperMemoryLimit) && (bottomMemory.getKey() < lowerMemoryLimit)) {
-            switchSizeBalance(topMemory.getValue(), bottomMemory.getValue(), rebalanceActions, stats);
+            switchSizeBalance(lut, topMemory.getValue(), bottomMemory.getValue(), stats);
         }
-        if (relocActions.size() + rebalanceActions.size() > MAX_ACTIONS) {
+        if (lut.numberOfActions() > MAX_ACTIONS) {
             // Don't try any more balancing...there'll already be enough data movement
-            return assembleUpdate(ImmutableList.of((List<Action>) hostActions, (List<Action>) relocActions, (List<Action>) rebalanceActions));
+            return;
         }
         Entry<Double, Address> topCpu = xKCpu.top().ceilingEntry();
         Entry<Double, Address> bottomCpu = xKCpu.bottom().ceilingEntry();
         if ((topCpu.getKey() > upperCpuLimit) && (bottomCpu.getKey() < lowerCpuLimit)) {
-            switchOperationBalance(topCpu.getValue(), bottomCpu.getValue(), rebalanceActions, stats);
+            switchOperationBalance(lut, topCpu.getValue(), bottomCpu.getValue(), stats);
         }
 
-        return assembleUpdate(ImmutableList.of((List<Action>) hostActions, (List<Action>) relocActions, (List<Action>) rebalanceActions));
+        return;
+	*/
     }
 
     private Pair<ExtremeKMap<Double, Address>, ExtremeKMap<Double, Address>> updateAverages(ImmutableMap<Address, Stats.Report> stats) {
@@ -135,11 +142,11 @@ public class DefaultPolicy implements MaintenancePolicy {
         // Exponential moving average with coefficient ALPHA
         memoryAvg = ALPHA * newMemAvg + MINUS_ALPHA * memoryAvg;
         cpuAvg = ALPHA * newCpuAvg + MINUS_ALPHA * cpuAvg;
-        LOG.info("{}: Current cluster stats: Memory: {}%, CPU: {}% -- Moving: Memory: {}%, CPU: {}%", newMemAvg, newCpuAvg, memoryAvg, cpuAvg);
+        LOG.info("Current cluster stats: Memory: {}%, CPU: {}% -- Moving: Memory: {}%, CPU: {}%", newMemAvg, newCpuAvg, memoryAvg, cpuAvg);
         return Pair.with(xKMemory, xKCpu);
     }
 
-    private ImmutableSortedMap<Integer, Address> getIdsForJoins(ImmutableSet<Address> joins, ImmutableSortedMap<Integer, Address> failIds) {
+    private ImmutableSortedMap<Integer, Address> getIdsForJoins(LUTWorkingBuffer lut, ImmutableSet<Address> joins, ImmutableSortedMap<Integer, Address> failIds) {
         TreeSet<Address> remaining = new TreeSet<Address>(joins);
         ImmutableSortedMap.Builder<Integer, Address> ids = ImmutableSortedMap.naturalOrder();
         TreeSet<Integer> usedIds = new TreeSet<Integer>();
@@ -166,9 +173,8 @@ public class DefaultPolicy implements MaintenancePolicy {
             }
         }
         // Look for other empty slots in the LUT
-        ArrayList<Address> hosts = lut.hosts();
         int index = 0;
-        for (Address addr : hosts) {
+        for (Address addr : lut.hosts()) {
             if (remaining.isEmpty()) {
                 return ids.build();
             }
@@ -187,15 +193,14 @@ public class DefaultPolicy implements MaintenancePolicy {
         return ids.build();
     }
 
-    private ImmutableSortedMap<Integer, Address> getIdsForFails(ImmutableSet<Address> fails) {
+    private ImmutableSortedMap<Integer, Address> getIdsForFails(LUTWorkingBuffer lut, ImmutableSet<Address> fails) {
         Set<Address> remaining = new HashSet<Address>(fails);
         ImmutableSortedMap.Builder<Integer, Address> ids = ImmutableSortedMap.naturalOrder();
         if (remaining.isEmpty()) {
             return ids.build();
         }
-        ArrayList<Address> hosts = lut.hosts();
         int index = 0;
-        for (Address addr : hosts) {
+        for (Address addr : lut.hosts()) {
             if (remaining.remove(addr)) {
                 ids.put(index, addr);
                 if (remaining.isEmpty()) {
@@ -207,20 +212,18 @@ public class DefaultPolicy implements MaintenancePolicy {
         return ids.build();
     }
 
-    private ArrayList<Action> getHostActions(ImmutableSortedMap<Integer, Address> failIds, ImmutableSortedMap<Integer, Address> joinIds) {
+    private void getHostActions(LUTWorkingBuffer lut, ImmutableSortedMap<Integer, Address> failIds, ImmutableSortedMap<Integer, Address> joinIds) {
         SortedMapDifference<Integer, Address> idDiff = Maps.difference(failIds, joinIds);
         SortedMap<Integer, Address> nullableIds = idDiff.entriesOnlyOnLeft();
-        ArrayList<Action> actions = new ArrayList<Action>();
         for (Entry<Integer, Address> e : nullableIds.entrySet()) {
-            actions.add(new PutHost(e.getKey(), null));
+            lut.removeHost(e.getKey());
         }
         for (Entry<Integer, Address> e : joinIds.entrySet()) {
-            actions.add(new PutHost(e.getKey(), e.getValue()));
+            lut.putHost(e.getKey(), e.getValue());
         }
-        return actions;
     }
 
-    private ArrayList<Action> replaceFailedNodes(ImmutableSortedMap<Integer, Address> failIds,
+    private void replaceFailedNodes(LUTWorkingBuffer lut, ImmutableSortedMap<Integer, Address> failIds,
             ImmutableSortedMap<Integer, Address> joinIds, ExtremeKMap<Double, Address> xKMemory,
             ExtremeKMap<Double, Address> xKCpu, ImmutableMap<Address, Stats.Report> stats) {
 
@@ -229,7 +232,7 @@ public class DefaultPolicy implements MaintenancePolicy {
         // If a node fails and rejoins immediately, assign the same id and don't touch 
         // its replicationSets, since it may still have data from before the failure
         for (Entry<Integer, Address> e : joinIds.entrySet()) {
-            Address curNode = lut.getHost(e.getKey());
+            Address curNode = lut.lut.getHost(e.getKey());
             if (curNode.equals(e.getValue())) {
                 idsToDealWith.remove(e.getKey());
                 candidates.put(0l, e.getKey());
@@ -239,7 +242,7 @@ public class DefaultPolicy implements MaintenancePolicy {
         ImmutableSet.Builder<Address> candidateAddrs = ImmutableSet.builder(); // still need to look up their ids
         candidateAddrs.addAll(xKMemory.bottom().values())
                 .addAll(xKCpu.bottom().values()).build();
-        Map<Address, Integer> candidateIds = lut.getIdsForAddresses(candidateAddrs.build());
+        Map<Address, Integer> candidateIds = lut.lut.getIdsForAddresses(candidateAddrs.build());
         for (Entry<Address, Integer> e : candidateIds.entrySet()) {
             Address addr = e.getKey();
             Integer id = e.getValue();
@@ -247,8 +250,6 @@ public class DefaultPolicy implements MaintenancePolicy {
             long curSize = rep.averageSize * rep.numberOfVNodes;
             candidates.put(curSize, id);
         }
-
-        ArrayList<Action> actions = new ArrayList<Action>();
         // Replace nodes in affected sets
         int index = 0;
         for (Integer[] member : lut.replicationSets()) {
@@ -257,7 +258,7 @@ public class DefaultPolicy implements MaintenancePolicy {
                 if (idsToDealWith.contains(member[pos])) {
                     long lowestSize = candidates.keySet().first();
                     if (lowestSize > averageHostSize) {
-                        addMoreCandidates(candidates, stats);
+                        addMoreCandidates(lut, candidates, stats);
                     }
                     // pick the first (lowestSize) host not in the replicationSet
                     long curSize = -1;
@@ -266,7 +267,7 @@ public class DefaultPolicy implements MaintenancePolicy {
                         if (LookupTable.positionInSet(newRepSet, e.getValue()) < 0) {
                             newRepSet[pos] = e.getValue();
                             curSize = e.getKey();
-                            addedSize = guessAddedSize(member, stats);
+                            addedSize = guessAddedSize(lut, member, stats);
                             break;
                         }
                     }
@@ -280,21 +281,20 @@ public class DefaultPolicy implements MaintenancePolicy {
                 }
             }
             if (!Arrays.equals(member, newRepSet)) {
-                actions.add(new PutReplicationSet(index, lut.replicationSetVersions().get(index) + 1, newRepSet));
+                lut.putRepSet(index, newRepSet);
             }
             index++;
         }
-        return actions;
     }
 
-    private void addMoreCandidates(TreeMultimap<Long, Integer> candidates, ImmutableMap<Address, Stats.Report> stats) {
+    private void addMoreCandidates(LUTWorkingBuffer lut, TreeMultimap<Long, Integer> candidates, ImmutableMap<Address, Stats.Report> stats) {
         if (candidates.values().size() >= stats.size()) {
             return; // Already everyone a candidate...nothing to do
         }
         int index = 0;
         for (Address addr : lut.hosts()) {
             if (!candidates.containsValue(index)) {
-                Stats.Report rep = stats.get(index);
+                Stats.Report rep = stats.get(addr);
                 if (rep != null) {
                     long curSize = rep.averageSize * rep.numberOfVNodes;
                     candidates.put(curSize, index);
@@ -304,7 +304,7 @@ public class DefaultPolicy implements MaintenancePolicy {
         }
     }
 
-    private long guessAddedSize(Integer[] member, ImmutableMap<Address, Stats.Report> stats) {
+    private long guessAddedSize(LUTWorkingBuffer lut, Integer[] member, ImmutableMap<Address, Stats.Report> stats) {
         // Use the average of the average node size of all live members to guess the size for this group
         ArrayList<Long> avgSizes = new ArrayList<Long>(member.length);
         for (Integer id : member) {
@@ -321,67 +321,135 @@ public class DefaultPolicy implements MaintenancePolicy {
         return Stats.floorDiv(sum, avgSizes.size());
     }
 
-    private LUTUpdate assembleUpdate(ImmutableList<List<Action>> actions) {
-        int totalActions = 0;
-        for (List<Action> actionsL : actions) {
-            totalActions += actionsL.size();
-        }
-        if (totalActions == 0) {
-            return null; // nothing to do, no reason to update
-        }
-        Action[] acts = new Action[totalActions];
-        int index = 0;
-        for (List<Action> actionsL : actions) {
-            for (Action a : actionsL) {
-                acts[index] = a;
-                index++;
-            }
-        }
-        return new LUTUpdate(lut.versionId, lut.versionId + 1, acts);
-    }
-
-    private void switchSizeBalance(Address topAddr, Address bottomAddr, ArrayList<Action> rebalanceActions, ImmutableMap<Address, Stats.Report> stats) {
+    private void switchSizeBalance(LUTWorkingBuffer lut, Address topAddr, Address bottomAddr, ImmutableMap<Address, Stats.Report> stats) {
         Stats.Report topRep = stats.get(topAddr);
         Stats.Report bottomRep = stats.get(bottomAddr);
-        Map<Address, Integer> ids = lut.getIdsForAddresses(ImmutableSet.of(topAddr, bottomAddr));
+        Map<Address, Integer> ids = lut.lut.getIdsForAddresses(ImmutableSet.of(topAddr, bottomAddr));
         for (Key k : topRep.topKSize) {
-            Integer repGroupId = lut.virtualHostsGet(k);
+            Integer repGroupId = lut.getRepGroup(k);
             if (repGroupId == null) {
                 continue;
             }
-            Integer[] repGroup = lut.replicationSets().get(repGroupId);
+            Integer[] repGroup = lut.getRepSet(repGroupId);
             int topPos = LookupTable.positionInSet(repGroup, ids.get(topAddr));
             int bottomPos = LookupTable.positionInSet(repGroup, ids.get(bottomAddr));
             if (bottomPos < 0) { // new address is not already part of the replication group
                 Integer[] newRepGroup = Arrays.copyOf(repGroup, repGroup.length);
                 newRepGroup[topPos] = ids.get(bottomAddr);
-                lut.findGroupOrAddNew(k, newRepGroup, rebalanceActions);
+                lut.findGroupOrAddNew(k, newRepGroup);
                 return;
             }
         }
         // if all of the topKSize vNodes already share a group with the bottomAddr there's nothing we can do
     }
 
-    private void switchOperationBalance(Address topAddr, Address bottomAddr, ArrayList<Action> rebalanceActions, ImmutableMap<Address, Stats.Report> stats) {
+    private void switchOperationBalance(LUTWorkingBuffer lut, Address topAddr, Address bottomAddr, ImmutableMap<Address, Stats.Report> stats) {
         Stats.Report topRep = stats.get(topAddr);
         //Stats.Report bottomRep = stats.get(bottomAddr);
-        Map<Address, Integer> ids = lut.getIdsForAddresses(ImmutableSet.of(topAddr, bottomAddr));
+        Map<Address, Integer> ids = lut.lut.getIdsForAddresses(ImmutableSet.of(topAddr, bottomAddr));
         for (Key k : topRep.topKOps) {
-            Integer repGroupId = lut.virtualHostsGet(k);
+            Integer repGroupId = lut.getRepGroup(k);
             if (repGroupId == null) {
                 continue;
             }
-            Integer[] repGroup = lut.replicationSets().get(repGroupId);
+            Integer[] repGroup = lut.getRepSet(repGroupId);
             int topPos = LookupTable.positionInSet(repGroup, ids.get(topAddr));
             int bottomPos = LookupTable.positionInSet(repGroup, ids.get(bottomAddr));
             if (bottomPos < 0) { // new address is not already part of the replication group
                 Integer[] newRepGroup = Arrays.copyOf(repGroup, repGroup.length);
                 newRepGroup[topPos] = ids.get(bottomAddr);
-                lut.findGroupOrAddNew(k, newRepGroup, rebalanceActions);
+                lut.findGroupOrAddNew(k, newRepGroup);
                 return;
             }
         }
         // if all of the topKOps vNodes already share a group with the bottomAddr there's nothing we can do
+    }
+
+    private void getSchemaActions(LUTWorkingBuffer lut, ImmutableSet<Schema.Req> schemaChanges) {
+        for (Schema.Req req : schemaChanges) {
+            if (req instanceof Schema.CreateReq) {
+                Schema.CreateReq creq = (Schema.CreateReq) req;
+                byte[] schemaId = idGen.idForNameDontStartWith(creq.name, LookupTable.RESERVED_PREFIX.getArray());
+                SchemaData.SingleSchema schema = new SchemaData.SingleSchema(ByteBuffer.wrap(schemaId), creq.name, creq.metaData);
+                lut.addSchema(schema);
+                // also assign initial vnodes
+                int vnodes = 1; //default
+                int rfactor = 3; //default
+                String vnodeS = creq.metaData.get("vnodes");
+                if (vnodeS != null) {
+                    vnodes = Integer.parseInt(vnodeS);
+                }
+                String rfactorS = creq.metaData.get("rfactor");
+                if (rfactorS != null) {
+                    rfactor = Integer.parseInt(rfactorS);
+                }
+                // find right size repsets
+                ArrayList<Integer> replicationSets = new ArrayList<Integer>();
+                int index = 0;
+                for (Integer[] repset : lut.replicationSets()) {
+                    if (repset.length == rfactor) {
+                        replicationSets.add(index);
+                    }
+                    index++;
+                }
+                if (replicationSets.isEmpty()) {
+                    replicationSets = lut.createRepSets(rfactor);
+                }
+                Set<Key> keys = generateVNodes(schemaId, vnodes);
+                index = 0;
+                for (Key k : keys) {
+                    lut.putRepGroup(k, replicationSets.get(index));
+                    index++;
+                    index = index % replicationSets.size();
+                }
+            } else if (req instanceof Schema.DropReq) {
+                Schema.DropReq dreq = (Schema.DropReq) req;
+                lut.removeSchema(dreq.name);
+            } else {
+                LOG.error("Unkown type of schema request: {}", req);
+            }
+        }
+    }
+
+    private Set<Key> generateVNodes(byte[] schemaId, int num) {
+        Set<Key> keys = new TreeSet<Key>();
+        // boundary nodes
+        Key start = new Key(schemaId);
+        keys.add(start);
+        //virtualHostsPut(end, rset); // this mind end up being override by the next schema, but that's ok since we only need it if there is no next schema
+        if (num == 1) { // single vnode needed
+            return keys;
+        }
+        num--; // account for the initial vnode already created (the end-nodes doesn't count)
+        if (num <= UnsignedBytes.MAX_VALUE) { // another byte for subkeys needed
+            int incr = (int) UnsignedBytes.MAX_VALUE / (int) num;
+            int last = 0;
+            int ceiling = (int) UnsignedBytes.MAX_VALUE - incr;
+            while (last < ceiling) {
+                last = last + incr;
+                Key k = start.append(new byte[]{UnsignedBytes.saturatedCast(last)}).get();
+                keys.add(k);
+            }
+        } else if (num <= UnsignedInteger.MAX_VALUE.longValue()) { // another 4 bytes for subkeys needed
+            long incr = UnsignedInteger.MAX_VALUE.longValue() / num;
+            long last = 0;
+            long ceiling = UnsignedInteger.MAX_VALUE.longValue() - incr;
+            while (last < ceiling) {
+                last = last + incr;
+                Key k = start.append(new Key(UnsignedInteger.valueOf(last).intValue())).get();
+                keys.add(k);
+            }
+        } else { // another 8 bytes for subkeys needed (don't support more!)
+            UnsignedLong incr = UnsignedLong.MAX_VALUE.dividedBy(UnsignedLong.valueOf(num));
+            UnsignedLong last = UnsignedLong.ZERO;
+            UnsignedLong ceiling = UnsignedLong.MAX_VALUE.minus(incr);
+            while (last.compareTo(ceiling) <= 0) {
+                last = last.plus(incr);
+                Key k = start.append(new Key(last.intValue())).get();
+                keys.add(k);
+            }
+        }
+        return keys;
     }
 
 }

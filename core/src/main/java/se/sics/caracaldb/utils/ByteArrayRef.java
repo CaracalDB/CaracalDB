@@ -139,6 +139,9 @@ public class ByteArrayRef implements Comparable<ByteArrayRef> {
     }
 
     public int compareTo(byte[] that) {
+        if (that == null) {
+            return length;
+        }
         if (this.length != that.length) {
             return this.length - that.length;
         }
@@ -174,4 +177,15 @@ public class ByteArrayRef implements Comparable<ByteArrayRef> {
         return hash;
     }
 
+    public static boolean rangeEquals(byte[] a, int startA, byte[] b, int startB, int length) {
+        if ((a.length - startA < length) || (b.length - startB < length)) {
+            return false;
+        }
+        for (int offset = 0; offset < length; offset++) {
+            if (a[startA + offset] != b[startB + offset]) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

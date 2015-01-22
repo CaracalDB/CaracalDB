@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.persistence.memory;
 
+import com.typesafe.config.Config;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,9 +29,9 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Batch;
-import se.sics.caracaldb.persistence.Database;
 import se.sics.caracaldb.persistence.MultiVersionUtil;
 import se.sics.caracaldb.persistence.StoreIterator;
+import se.sics.caracaldb.persistence.VNodeLevelDB;
 import se.sics.caracaldb.utils.ByteArrayRef;
 
 /**
@@ -40,11 +41,12 @@ import se.sics.caracaldb.utils.ByteArrayRef;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class InMemoryDB implements Database {
+public class InMemoryDB extends VNodeLevelDB {
 
     private TreeMap<byte[], byte[]> store;
 
-    public InMemoryDB() {
+    public InMemoryDB(Config conf) {
+        super(conf);
         store = new TreeMap<byte[], byte[]>(Key.COMP);
     }
 

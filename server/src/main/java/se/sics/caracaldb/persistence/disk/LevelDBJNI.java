@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.persistence.disk;
 
+import com.typesafe.config.Config;
 import java.io.File;
 import java.io.IOException;
 import java.util.SortedMap;
@@ -30,7 +31,7 @@ import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
 import se.sics.caracaldb.persistence.Batch;
-import se.sics.caracaldb.persistence.Database;
+import se.sics.caracaldb.persistence.HostLevelDB;
 import se.sics.caracaldb.persistence.MultiVersionUtil;
 import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.utils.ByteArrayRef;
@@ -38,20 +39,20 @@ import se.sics.caracaldb.utils.ByteArrayRef;
 /**
  * @author Alex Ormenisan <aaor@sics.se>
  */
-public class LevelDBJNI implements Database {
+public class LevelDBJNI extends HostLevelDB {
 
     private DB db;
     private final String dbPath;
-    private final int cacheSize;
+    private final long cacheSize;
 
     /**
-     * @param dbPath
-     * @param cacheSize in megabytes
+     * @param config
      * @throws IOException
      */
-    public LevelDBJNI(String dbPath, int cacheSize) throws IOException {
-        this.dbPath = dbPath;
-        this.cacheSize = cacheSize;
+    public LevelDBJNI(Config config) throws IOException {
+        super(config);
+        this.dbPath = config.getString("leveldb.path");
+        this.cacheSize = config.getBytes("leveldb.cache");
         File dbDir = new File(dbPath);
         if (!dbDir.exists()) {
             if (!dbDir.mkdirs()) {
@@ -61,7 +62,7 @@ public class LevelDBJNI implements Database {
 
         Options options = new Options();
         options.createIfMissing(true);
-        options.cacheSize(cacheSize * 1048576);         // In MB
+        options.cacheSize(cacheSize);
         options.compressionType(CompressionType.NONE);	// No compression
 
         db = JniDBFactory.factory.open(dbDir, options);

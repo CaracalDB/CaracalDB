@@ -1,0 +1,29 @@
+ [
+  {
+    "name": "heartbeats",
+    "meta": {
+      "id": "00 00 00 00 00 00 00 01",
+      "algo": "paxos",
+      "db": "master",
+      "vnodes": "1",
+      "rfactor": "3",
+      "forceMaster": "true"
+    }
+  },
+  {
+    "name": "lutupdates",
+    "meta": {
+      "id": "00 00 00 00 00 00 00 02",
+      "algo": "paxos",
+      "db": "leveldb",
+      "vnodes": "1",
+      "rfactor": "3"
+    }
+  },
+  {
+      "name": "test",
+      "meta": {
+          "vnodes": "5"
+      }
+  }
+]

@@ -21,6 +21,7 @@
 package se.sics.caracaldb.system;
 
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -28,9 +29,9 @@ import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueFactory;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -39,9 +40,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.global.DefaultPolicy;
 import se.sics.caracaldb.global.MaintenancePolicy;
-import se.sics.caracaldb.persistence.Database;
-import se.sics.caracaldb.persistence.disk.LevelDBJNI;
-import se.sics.caracaldb.persistence.memory.InMemoryDB;
+import se.sics.caracaldb.persistence.DatabaseManager;
+import se.sics.caracaldb.utils.HashIdGenerator;
 import se.sics.kompics.address.Address;
 
 /**
@@ -88,13 +88,23 @@ public class Configuration {
     /*
      * NO COPY
      */
-    // Store
-    private Database db;
+    // Store Manager
+    private DatabaseManager dbMan;
 
     /*
      * Prevent instantiation outside Factory
      */
     private Configuration() {
+    }
+    
+    /**
+     * Probably not so smart to expose this, but oh well...
+     * Don't depend on it too much plz.
+     * 
+     * @return 
+     */
+    public Config core() {
+        return config;
     }
 
     /*
@@ -132,11 +142,8 @@ public class Configuration {
         return config.getInt("server.address.port");
     }
 
-    /**
-     * @return the db
-     */
-    public Database getDB() {
-        return db;
+    public DatabaseManager getDBMan() {
+        return dbMan;
     }
 
     public MaintenancePolicy getMaintenancePolicy() {
@@ -159,6 +166,25 @@ public class Configuration {
             LOG.warn("Could not find MaintenancePolicy '{}'! Loading default policy instead. Exception was: {}", policy, ex);
             return new DefaultPolicy();
         }
+    }
+
+    public HashIdGenerator getIdGenerator() {
+        String hashAlg = config.getString("caracal.schemaIdAlgo");
+        try {
+            return new HashIdGenerator(hashAlg);
+        } catch (NoSuchAlgorithmException ex) {
+            LOG.error("Could not find specified algorithm: {} - \n {}", hashAlg, ex);
+            throw new RuntimeException(ex);
+        }
+    }
+    
+    public ImmutableSet<String> getSchemaFiles() {
+        ImmutableSet.Builder<String> paths = ImmutableSet.builder();
+        paths.add("core.schemas.json");
+        for (String path : config.getStringList("caracal.schemaFiles")) {
+            paths.add(path);
+        }
+        return paths.build();
     }
 
     /*
@@ -310,54 +336,64 @@ public class Configuration {
             c.bootstrapServer = bootstrapServer;
             c.ip = localIp;
 
-            //persistence layer config
-            String dbType = config.getString("caracal.database.type");
-            String dbPath = config.getString("caracal.database.path");
-            int dbCache = config.getInt("caracal.database.cache");
-            if (dbType.equals("memory")) {
-                c.db = new InMemoryDB();
-            } else if (dbType.equals("leveldb")) {
-                try {
-                    c.db = new LevelDBJNI(dbPath, dbCache);
-                } catch (IOException e) {
-                    //TODO Alex RuntimeException?
-                    throw new RuntimeException(e);
-                }
-            } else {
-                //TODO Alex RuntimeException?
-                throw new RuntimeException("wrong database type");
-            }
+            
+            c.dbMan = new DatabaseManager(config);
+            /*
+            Don't do this anymore...DB config is now done on request not on setup
+            */
+//            //persistence layer config
+//            String dbType = config.getString("caracal.database.type");
+//            String dbPath = config.getString("caracal.database.path");
+//            int dbCache = config.getInt("caracal.database.cache");
+//            if (dbType.equals("memory")) {
+//                c.db = new InMemoryDB();
+//            } else if (dbType.equals("leveldb")) {
+//                try {
+//                    c.db = new LevelDBJNI(dbPath, dbCache);
+//                } catch (IOException e) {
+//                    //TODO Alex RuntimeException?
+//                    throw new RuntimeException(e);
+//                }
+//            } else {
+//                //TODO Alex RuntimeException?
+//                throw new RuntimeException("wrong database type");
+//            }
 
             return new Builder(c);
         }
 
         public static Builder modify(Configuration conf) {
             Builder b = new Builder(conf.copy());
-            b.setDB(conf.db);
+            b.setDBMan(conf.dbMan);
             return b;
         }
 
         public static Builder modifyWithOtherDB(Configuration conf, String pathSuffix) {
             Builder b = new Builder(conf.copy());
-            Config config = b.conf.config;
-            //persistence layer config
-            String dbType = config.getString("caracal.database.type");
-            String dbPath = config.getString("caracal.database.path") + pathSuffix;
-            int dbCache = config.getInt("caracal.database.cache");
-            if (dbType.equals("memory")) {
-                b.setDB(new InMemoryDB());
-            } else if (dbType.equals("leveldb")) {
-                try {
-                    b.setDB(new LevelDBJNI(dbPath, dbCache));
-                } catch (IOException e) {
-                    //TODO Alex RuntimeException?
-                    throw new RuntimeException(e);
-                }
-            } else {
-                //TODO Alex RuntimeException?
-                throw new RuntimeException("wrong database type");
-            }
-            return b;
+            String dbPath = conf.getString("caracal.database.pathHead") + pathSuffix;
+            b.setDBMan(new DatabaseManager(b.conf.config));
+            return b.setValue("caracal.database.pathHead", dbPath);
+            /*
+            Again don't do this anymore...changing the path prefix is enough
+            */
+//            //persistence layer config
+//            String dbType = config.getString("caracal.database.type");
+//            String dbPath = config.getString("caracal.database.path") + pathSuffix;
+//            int dbCache = config.getInt("caracal.database.cache");
+//            if (dbType.equals("memory")) {
+//                b.setDB(new InMemoryDB());
+//            } else if (dbType.equals("leveldb")) {
+//                try {
+//                    b.setDB(new LevelDBJNI(dbPath, dbCache));
+//                } catch (IOException e) {
+//                    //TODO Alex RuntimeException?
+//                    throw new RuntimeException(e);
+//                }
+//            } else {
+//                //TODO Alex RuntimeException?
+//                throw new RuntimeException("wrong database type");
+//            }
+//            return b;
         }
 
         public static Configuration copy(Configuration conf) {
@@ -422,11 +458,8 @@ public class Configuration {
             return setValue("server.address.port", port);
         }
 
-        /**
-         * @param db the db to set
-         */
-        public Builder setDB(Database db) {
-            conf.db = db;
+        public Builder setDBMan(DatabaseManager dbMan) {
+            conf.dbMan = dbMan;
             return this;
         }
     }

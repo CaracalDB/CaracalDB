@@ -34,7 +34,9 @@ public enum ResponseCode {
     CLIENT_TIMEOUT(5),
     RANGEQUERY_TIMEOUT(6),
     SUCCESS_INTERRUPTED(7),
-    UNSUPPORTED_OP(8);
+    UNSUPPORTED_OP(8),
+    NOT_READY(9),
+    NOT_COLLOCATED(10);
     
     public final byte id; // Could use ordinal() but I feel explicit assignment is safer, though slower
 

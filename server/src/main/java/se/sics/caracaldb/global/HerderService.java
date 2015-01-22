@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of the CaracalDB distributed storage system.
  *
  * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
@@ -20,26 +20,12 @@
  */
 package se.sics.caracaldb.global;
 
-import java.util.Set;
-import se.sics.caracaldb.bootstrap.Bootstrapped;
-import se.sics.caracaldb.system.Configuration;
-import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
+import se.sics.kompics.PortType;
 
 /**
  *
- * @author Lars Kroll <lkroll@sics.se>
+ * @author lkroll
  */
-public class CatHerderInit extends Init<CatHerder> {
-    
-    public final Bootstrapped bootEvent;
-    public final Address self;
-    public final Configuration conf;
-    
-    public CatHerderInit(Bootstrapped bootr, Address self, Configuration conf) {
-        bootEvent = bootr;
-        this.self = self;
-        this.conf = conf;
-    }
-
-}
+public class HerderService extends PortType {{
+    request(AppliedUpdate.class);
+}}

@@ -20,6 +20,8 @@
  */
 package se.sics.caracaldb.system;
 
+import java.util.HashSet;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
@@ -39,10 +41,14 @@ import se.sics.kompics.network.Network;
 public class DeadLetterBox extends ComponentDefinition {
     
     private static final Logger LOG = LoggerFactory.getLogger(DeadLetterBox.class);
+    private static final int MAX_RECENTS = 10;
     
     Positive<Network> net = requires(Network.class);
     
     private final Address self;
+    // Forward the same message only twice to avoid endless local loops
+    private HashSet<UUID> recentForwardsFirstGen = new HashSet<UUID>();
+    private HashSet<UUID> recentForwardsSecondGen = new HashSet<UUID>();
     
     public DeadLetterBox(DeadLetterBoxInit init) {
         self = init.self;
@@ -54,9 +60,24 @@ public class DeadLetterBox extends ComponentDefinition {
         @Override
         public void handle(Msg event) {
             if (event instanceof Forwardable) {
+                if (recentForwardsFirstGen.size() > MAX_RECENTS) {
+                    recentForwardsFirstGen.clear();
+                }
+                if (recentForwardsSecondGen.size() > MAX_RECENTS) {
+                    recentForwardsSecondGen.clear();
+                }
                 Forwardable f = (Forwardable) event;
+                if (recentForwardsSecondGen.contains(f.getId())) {
+                    LOG.warn("{}: Not forwarding message anymore, due do possible endless loop: {}", self, event);
+                    return;
+                }
+                if (recentForwardsFirstGen.contains(f.getId())) {
+                    recentForwardsSecondGen.add(f.getId());
+                }
+                recentForwardsFirstGen.add(f.getId());
                 Key dest = new Key(event.getDestination().getId());
                 trigger(new ForwardMessage(self, self, event.getOrigin(), event.getProtocol(), dest, f), net);
+                LOG.trace("{}: Forwarded message to LUTManager: {}", self, event);
                 return;
             }
             LOG.debug("{}: Dropping mis-addressed message: {}", self, event);

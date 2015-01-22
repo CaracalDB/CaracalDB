@@ -34,10 +34,13 @@ import se.sics.caracaldb.operations.Meth;
 import se.sics.caracaldb.operations.MethCat;
 import se.sics.caracaldb.paxos.Paxos;
 import se.sics.caracaldb.paxos.PaxosInit;
+import se.sics.caracaldb.persistence.Database;
 import se.sics.caracaldb.replication.linearisable.ExecutionEngine;
 import se.sics.caracaldb.replication.linearisable.ExecutionEngineInit;
 import se.sics.caracaldb.replication.linearisable.Replication;
 import se.sics.caracaldb.replication.log.ReplicatedLog;
+import se.sics.caracaldb.store.PersistentStore;
+import se.sics.caracaldb.store.PersistentStoreInit;
 import se.sics.caracaldb.store.Store;
 import se.sics.caracaldb.system.Configuration.NodePhase;
 import se.sics.kompics.Channel;
@@ -47,14 +50,12 @@ import se.sics.kompics.ControlPort;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Init.None;
-import se.sics.kompics.Kill;
 import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
-import se.sics.kompics.Stop;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.Timer;
@@ -118,7 +119,7 @@ public class NodeManager extends ComponentDefinition {
         }
     };
 
-    public NodeManager(NodeManagerInit init) {
+    public NodeManager(NodeManagerInit init) throws ClassNotFoundException, InstantiationException {
         networkPort = requires(Network.class);
         maintenancePort = requires(MaintenanceService.class);
 
@@ -130,6 +131,12 @@ public class NodeManager extends ComponentDefinition {
         self = vsc.getSelf();
 
         LOG.debug("Setting up VNode: " + self);
+
+        // Create stores on vnode level so they get started and stopped with the vnode itself
+        if (vsc.getDbLevel(config) == Database.Level.VNODE) {
+            Component store = create(PersistentStore.class, new PersistentStoreInit(config.getDBMan().getInstance(vsc.getDbType(config))));
+            vsc.setStore(store.getPositive(Store.class));
+        }
 
         for (VirtualComponentHook hook : config.getVirtualHooks(NodePhase.INIT)) {
             hook.setUp(vsc, proxy);
@@ -167,8 +174,7 @@ public class NodeManager extends ComponentDefinition {
                 Component replication = create(ExecutionEngine.class,
                         new ExecutionEngineInit(repView, self,
                                 join.responsibility,
-                                config.getMilliseconds("caracal.network.keepAlivePeriod"),
-                                config.getBytes("caracal.network.dataMessageSize").intValue()));
+                                config.getMilliseconds("caracal.network.keepAlivePeriod")));
                 Component paxos = create(Paxos.class,
                         new PaxosInit(repView, join.quorum,
                                 config.getMilliseconds("caracal.network.keepAlivePeriod"), self));

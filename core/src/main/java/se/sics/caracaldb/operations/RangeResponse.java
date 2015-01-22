@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.operations;
 
+import com.google.common.base.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
 import se.sics.caracaldb.Key;
@@ -41,6 +42,16 @@ public class RangeResponse extends CaracalResponse {
         this.initRange = initRange;
         this.coveredRange = coveredRange;
         this.results = results;
+    }
+    
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                .add("id", this.id)
+                .add("code", this.code)
+                .add("initRange", this.initRange)
+                .add("coveredRange", this.coveredRange)
+                .add("#results", results.size()).toString();
     }
 
 }

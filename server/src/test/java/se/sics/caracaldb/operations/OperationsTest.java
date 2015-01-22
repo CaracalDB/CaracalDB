@@ -41,7 +41,7 @@ public class OperationsTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(BootTest.class);
     private static final int BOOT_NUM = 6;
-    private static final int OP_NUM = 200;
+    private static final int OP_NUM = 20;
 
     @Before
     public void setUp() {
@@ -51,8 +51,9 @@ public class OperationsTest {
     @Test
     public void basic() {
         SimulationHelper.type = SimulationHelper.ExpType.NO_RESULT;
+        SimulationHelper.schemaPrefix = SimulationHelper.keyForSchemaName("test");
         SimulationScenario opScen = SimulationGen.putGet(BOOT_NUM, OP_NUM);
-        
+
         Launcher.simulate(opScen);
 
         ValidationStore store = SimulationHelper.getValidator();
@@ -60,14 +61,15 @@ public class OperationsTest {
         store.print();
         store.validate();
     }
-    
+
     @Test
     public void rangeQueryTest() {
         SimulationHelper.type = SimulationHelper.ExpType.WITH_RESULT;
-        SimulationScenario opScen = SimulationGen.rangeQuery(BOOT_NUM, 10*OP_NUM, OP_NUM/10);
-     
+        SimulationHelper.schemaPrefix = SimulationHelper.keyForSchemaName("test");
+        SimulationScenario opScen = SimulationGen.rangeQuery(BOOT_NUM, 10 * OP_NUM, OP_NUM / 5);
+
         Launcher.simulate(opScen);
-        
+
         assertNotNull(SimulationHelper.resultValidator);
         assertTrue(SimulationHelper.resultValidator.experimentEnded());
     }

@@ -20,10 +20,12 @@
  */
 package se.sics.caracaldb.simulation;
 
+import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.simulation.command.BootCmd;
+import se.sics.caracaldb.simulation.command.CustomRQCmd;
 import se.sics.caracaldb.simulation.command.GetCmd;
 import se.sics.caracaldb.simulation.command.PutCmd;
-import se.sics.caracaldb.simulation.command.RQCmd;
+import se.sics.caracaldb.simulation.command.RandomRQCmd;
 import se.sics.caracaldb.simulation.command.TerminateCmd;
 import se.sics.caracaldb.simulation.command.ValidateCmd;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
@@ -124,15 +126,22 @@ public class SimulationGen {
 
                 StochasticProcess opPutProc = new SimulationScenario.StochasticProcess() {
                     {
-                        eventInterArrivalTime(uniform(200, 500));
+                        eventInterArrivalTime(constant(500));
                         raise(putOps, opPut());
                     }
                 };
 
                 StochasticProcess opRQProc = new SimulationScenario.StochasticProcess() {
                     {
-                        eventInterArrivalTime(uniform(200, 500 * putOps / rqOps));
-                        raise(putOps, opRQ());
+                        eventInterArrivalTime(constant(500*Math.max(putOps/rqOps, 1)));
+                        raise(rqOps, opRQ());
+                    }
+                };
+                
+                StochasticProcess opFullSchemaRQProc = new SimulationScenario.StochasticProcess() {
+                    {
+                        eventInterArrivalTime(constant(500));
+                        raise(1, opFullSchemaRQ());
                     }
                 };
 
@@ -145,9 +154,10 @@ public class SimulationGen {
 
                 bootProc.start();
                 opPutProc.startAfterTerminationOf(10000, bootProc);
-                opRQProc.startAfterTerminationOf(10000, bootProc);
-                validateProc.startAfterStartOf(60000, opPutProc);
-                terminateAfterTerminationOf(putOps * 50000, opPutProc);
+                opRQProc.startAfterTerminationOf(11200, bootProc);
+                opFullSchemaRQProc.startAfterTerminationOf(10000, opPutProc);
+                validateProc.startAfterTerminationOf((Math.max(putOps, rqOps) + 1) * 500 + 60000, opFullSchemaRQProc);
+                terminateAfterTerminationOf(50000, validateProc);
             }
         };
 
@@ -185,12 +195,22 @@ public class SimulationGen {
         };
     }
 
-    public static Operation<RQCmd> opRQ() {
-        return new Operation<RQCmd>() {
+    public static Operation<RandomRQCmd> opRQ() {
+        return new Operation<RandomRQCmd>() {
 
             @Override
-            public RQCmd generate() {
-                return new RQCmd();
+            public RandomRQCmd generate() {
+                return new RandomRQCmd();
+            }
+        };
+    }
+    
+    public static Operation<CustomRQCmd> opFullSchemaRQ() {
+        return new Operation<CustomRQCmd>() {
+
+            @Override
+            public CustomRQCmd generate() {
+                return new CustomRQCmd(KeyRange.prefix(SimulationHelper.schemaPrefix));
             }
         };
     }

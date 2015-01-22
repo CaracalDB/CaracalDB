@@ -24,6 +24,7 @@ package se.sics.caracaldb.global;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import se.sics.caracaldb.system.Stats;
+import se.sics.caracaldb.utils.HashIdGenerator;
 import se.sics.kompics.address.Address;
 
 /**
@@ -33,18 +34,19 @@ import se.sics.kompics.address.Address;
 public interface MaintenancePolicy {
     /**
      * Initialise the policy.
-     * @param lut Reference to the LookupTable to work with. READ ONLY!
+     * @param idGen An instance of HashIdGenerator to deal with new schema creation
      */
-    public void init(LookupTable lut);
+    public void init(HashIdGenerator idGen);
     /**
      * Calculate and return the updates to improve the state of the system.
      * 
      * Return null if no update is to be performed.
      * 
+     * @param lut Buffered access to the lut to transparently handle changes. 
      * @param joins Nodes that want to join
      * @param fails Nodes that failed
      * @param stats Current system statistics from all alive nodes
-     * @return 
+     * @param schemaChanges Changes that have been requested to be made to the current schemas 
      */
-    public LUTUpdate rebalance(ImmutableSet<Address> joins, ImmutableSet<Address> fails, ImmutableMap<Address, Stats.Report> stats);
+    public void rebalance(LUTWorkingBuffer lut, ImmutableSet<Address> joins, ImmutableSet<Address> fails, ImmutableMap<Address, Stats.Report> stats, ImmutableSet<Schema.Req> schemaChanges);
 }

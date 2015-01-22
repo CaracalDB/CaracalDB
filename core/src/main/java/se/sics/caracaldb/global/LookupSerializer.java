@@ -23,15 +23,19 @@ package se.sics.caracaldb.global;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import io.netty.buffer.ByteBuf;
+import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.global.SchemaData.SingleSchema;
+import static se.sics.caracaldb.global.SchemaData.deserialiseSchema;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.address.Address;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
 
 /**
@@ -43,8 +47,13 @@ public class LookupSerializer implements Serializer {
     private static final Logger LOG = LoggerFactory.getLogger(LookupSerializer.class);
 
     private static final Boolean[] FORWARD = new Boolean[]{false, false};
+    private static final Boolean[] SCHEMA = new Boolean[]{false, true};
     private static final Boolean[] REQUEST = new Boolean[]{true, false};
     private static final Boolean[] SAMPLE = new Boolean[]{true, true};
+    // SCHEMA-
+    private static final Boolean[] CREATE = new Boolean[]{false, false};
+    private static final Boolean[] DROP = new Boolean[]{false, true};
+    private static final Boolean[] RESP = new Boolean[]{true, false};
 
     @Override
     public int identifier() {
@@ -64,6 +73,7 @@ public class LookupSerializer implements Serializer {
             SampleRequest msg = (SampleRequest) o;
             SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, REQUEST[0], REQUEST[1]);
             buf.writeInt(msg.n);
+            buf.writeBoolean(msg.schema);
             return;
         }
         if (o instanceof Sample) {
@@ -72,6 +82,57 @@ public class LookupSerializer implements Serializer {
             buf.writeInt(msg.nodes.size());
             for (Address addr : msg.nodes) {
                 SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
+            }
+            if (msg.schemaData == null) {
+                buf.writeInt(-1);
+                return;
+            }
+            buf.writeInt(msg.schemaData.length);
+            buf.writeBytes(msg.schemaData);
+            return;
+        }
+        if (o instanceof Schema.CreateReq) {
+            Schema.CreateReq msg = (Schema.CreateReq) o;
+            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
+            BitBuffer flags = BitBuffer.create(CREATE);
+            byte[] flagsB = flags.finalise();
+            buf.writeBytes(flagsB);
+            SchemaData.serialiseSchema(buf, ByteBuffer.wrap(new byte[0]), msg.name, msg.metaData);
+            return;
+        }
+        if (o instanceof Schema.DropReq) {
+            Schema.DropReq msg = (Schema.DropReq) o;
+            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
+            BitBuffer flags = BitBuffer.create(DROP);
+            byte[] flagsB = flags.finalise();
+            buf.writeBytes(flagsB);
+            byte[] nameB = msg.name.getBytes(SchemaData.CHARSET);
+            buf.writeInt(nameB.length);
+            buf.writeBytes(nameB);
+            return;
+        }
+        if (o instanceof Schema.Response) {
+            Schema.Response msg = (Schema.Response) o;
+            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
+            BitBuffer flags = BitBuffer.create(RESP);
+            flags.write(msg.success);
+            byte[] flagsB = flags.finalise();
+            buf.writeBytes(flagsB);
+            byte[] nameB = msg.name.getBytes(SchemaData.CHARSET);
+            buf.writeInt(nameB.length);
+            buf.writeBytes(nameB);
+            if (msg.id == null) {
+                buf.writeInt(-1);
+            } else {
+                buf.writeInt(msg.id.length);
+                buf.writeBytes(msg.id);
+            }
+            if (msg.msg == null) {
+                buf.writeInt(-1);
+            } else {
+                byte[] msgB = msg.msg.getBytes(SchemaData.CHARSET);
+                buf.writeInt(msgB.length);
+                buf.writeBytes(msgB);
             }
             return;
         }
@@ -88,7 +149,8 @@ public class LookupSerializer implements Serializer {
         }
         if (matches(fields, REQUEST)) {
             int n = buf.readInt();
-            return new SampleRequest(fields.src, fields.dst, n);
+            boolean schema = buf.readBoolean();
+            return new SampleRequest(fields.src, fields.dst, n, schema);
         }
         if (matches(fields, SAMPLE)) {
             int size = buf.readInt();
@@ -97,14 +159,60 @@ public class LookupSerializer implements Serializer {
                 Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
                 builder.add(addr);
             }
-            return new Sample(fields.src, fields.dst, builder.build());
+            int schemaL = buf.readInt();
+            if (schemaL < 0) {
+                return new Sample(fields.src, fields.dst, builder.build(), null);
+            }
+            byte[] schemaData = new byte[schemaL];
+            buf.readBytes(schemaData);
+            return new Sample(fields.src, fields.dst, builder.build(), schemaData);
+        }
+        if (matches(fields, SCHEMA)) {
+            byte[] flagsB = new byte[1];
+            buf.readBytes(flagsB);
+            boolean[] flags = BitBuffer.extract(8, flagsB);
+            if (matches(flags, CREATE)) {
+                SingleSchema schema = deserialiseSchema(buf);
+                return new Schema.CreateReq(fields.src, fields.dst, fields.orig, schema.name, schema.meta);
+            }
+            if (matches(flags, DROP)) {
+                int nameL = buf.readInt();
+                byte[] nameB = new byte[nameL];
+                buf.readBytes(nameB);
+                String name = new String(nameB, SchemaData.CHARSET);
+                return new Schema.DropReq(fields.src, fields.dst, fields.orig, name);
+            }
+            if (matches(flags, RESP)) {
+                int nameL = buf.readInt();
+                byte[] nameB = new byte[nameL];
+                buf.readBytes(nameB);
+                String name = new String(nameB, SchemaData.CHARSET);
+                int idL = buf.readInt();
+                byte[] id = null;
+                if (idL >= 0) {
+                    id = new byte[idL];
+                    buf.readBytes(id);
+                }
+                int msgL = buf.readInt();
+                String msg = null;
+                if (msgL >= 0) {
+                    byte[] msgB = new byte[msgL];
+                    buf.readBytes(msgB);
+                    msg = new String(msgB, SchemaData.CHARSET);
+                }
+                return new Schema.Response(fields.src, fields.dst, name, id, flags[2], msg);
+            }
         }
         LOG.warn("Don't know how to deserialise fields: {}", fields);
         return null;
     }
-    
+
     private boolean matches(MessageFields fields, Boolean[] type) {
         return (fields.flag1 == type[0]) && (fields.flag2 == type[1]);
+    }
+
+    private boolean matches(boolean[] flags, Boolean[] type) {
+        return (flags[0] == type[0]) && (flags[1] == type[1]);
     }
 
 }

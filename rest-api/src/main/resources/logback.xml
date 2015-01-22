@@ -16,7 +16,7 @@
         </encoder>
     </appender> -->
 
-    <logger name="akka" level="INFO" />
+    <logger name="akka" level="DEBUG" />
     <logger name="spray" level="INFO" />
     <logger name="se.sics.caracaldb.simulation.Experiment2" level="DEBUG"/>
     <logger name="org.mortbay.log" level="OFF"/>

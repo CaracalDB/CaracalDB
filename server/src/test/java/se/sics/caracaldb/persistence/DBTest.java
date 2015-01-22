@@ -21,6 +21,7 @@
 package se.sics.caracaldb.persistence;
 
 import com.google.common.io.Closer;
+import com.typesafe.config.Config;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -56,56 +57,18 @@ public class DBTest {
 
     @Test
     public void memoryDBTest() throws IOException {
-        dbTest(new InMemoryDB());
+        Launcher.reset();
+        Configuration config = Launcher.config().finalise();
+        Launcher.cleanUp(config.getString("caracal.database.pathHead"));
+        dbTest(new InMemoryDB(config.core()));
     }
 
     @Test
     public void levelDBTest() throws IOException {
         Launcher.reset();
-        Configuration conf = Launcher.config().finalise();
-        String dbPath = conf.getString("caracal.database.path");
-        int dbCache = 100;
-        dbTest(new LevelDBJNI(dbPath, dbCache));
-        cleanUp(conf.getString("caracal.database.pathHead"));
-    }
-
-    private void cleanUp(String dbPath) {
-        File dbDir = new File(dbPath);
-        if (dbDir.exists() && dbDir.isDirectory()) {
-            if (!removeDirectory(dbDir)) {
-                throw new RuntimeException("Unable to clean DB directory");
-            }
-        }
-    }
-
-    //TODO Alex - not symlink safe, replace with java implementation once we move to java 7+
-    public static boolean removeDirectory(File dbDir) {
-        if (dbDir == null) {
-            return false;
-        }
-        if (!dbDir.exists()) {
-            return false;
-        }
-        if (!dbDir.isDirectory()) {
-            return false;
-        }
-
-        File[] childrenFiles = dbDir.listFiles();
-        if (childrenFiles == null) {
-            return false;
-        }
-        for (File file : childrenFiles) {
-            if (file.isDirectory()) {
-                if (!removeDirectory(file)) {
-                    return false;
-                }
-            } else {
-                if (!file.delete()) {
-                    return false;
-                }
-            }
-        }
-        return dbDir.delete();
+        Configuration config = Launcher.config().finalise();
+        Launcher.cleanUp(config.getString("caracal.database.pathHead"));
+        dbTest(new LevelDBJNI(config.core()));
     }
 
     private void dbTest(Database db) throws IOException {
@@ -204,11 +167,9 @@ public class DBTest {
     @Test
     public void leveldbMessageTest() throws IOException {
         Launcher.reset();
-        Configuration conf = Launcher.config().finalise();
-        String dbPath = conf.getString("caracal.database.path");
-        int dbCache = 100;
-        rangeQueryTest(new LevelDBJNI(dbPath, dbCache));
-        cleanUp(conf.getString("caracal.database.pathHead"));
+        Configuration config = Launcher.config().finalise();
+        Launcher.cleanUp(config.getString("caracal.database.pathHead"));
+        rangeQueryTest(new LevelDBJNI(config.core()));
     }
 
     private void rangeQueryTest(Database db) throws IOException {

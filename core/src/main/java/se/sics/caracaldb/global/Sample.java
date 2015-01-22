@@ -31,9 +31,11 @@ import se.sics.kompics.network.Transport;
 public class Sample extends Message {
     
     public final ImmutableSet<Address> nodes;
+    public final byte[] schemaData;
     
-    public Sample(Address src, Address dest, ImmutableSet<Address> nodes) {
+    public Sample(Address src, Address dest, ImmutableSet<Address> nodes, byte[] schemaData) {
         super(src, dest, src, Transport.TCP);
         this.nodes = nodes;
+        this.schemaData = schemaData;
     }
 }

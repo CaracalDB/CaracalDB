@@ -53,7 +53,7 @@ public class CaracalDB extends DB {
     @Override
     public int read(String table, String key, Set<String> fields, HashMap<String, ByteIterator> result) {
         Key k = new Key(key);
-        GetResponse resp = client.get(k);
+        GetResponse resp = client.get(table, k);
         if (resp.code != ResponseCode.SUCCESS) {
             return 2;
         }
@@ -65,19 +65,9 @@ public class CaracalDB extends DB {
     }
 
     @Override
-    public int scan(String lower, String upper, int limit, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
-        Key k1 = new Key(lower);
-        Key k2 = new Key(upper);
-        Key lowerK, upperK;
-        if (k1.leq(k2)) {
-            lowerK = k1;
-            upperK = k2;
-        } else {
-            lowerK = k2;
-            upperK = k1;
-        }
-        KeyRange range = KeyRange.closed(lowerK).closed(upperK);
-        RangeResponse resp = client.rangeRequest(range, Limit.toItems(limit));
+    public int scan(String table, String startkey, int limit, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
+        KeyRange range = KeyRange.closed(new Key(startkey)).open(Key.INF);
+        RangeResponse resp = client.rangeRequest(table, range, Limit.toItems(limit));
         if (resp.code != ResponseCode.SUCCESS) {
             return 2;
         }
@@ -97,26 +87,26 @@ public class CaracalDB extends DB {
 
     @Override
     public int update(String table, String key, HashMap<String, ByteIterator> values) {
-        return put(key, values);
+        return put(table, key, values);
     }
 
     @Override
     public int insert(String table, String key, HashMap<String, ByteIterator> values) {
-        return put(key, values);
+        return put(table, key, values);
     }
 
     @Override
     public int delete(String table, String key) {
-        return put(key, null);
+        return put(table, key, null);
     }
 
-    private int put(String key, HashMap<String, ByteIterator> values) {
+    private int put(String schema, String key, HashMap<String, ByteIterator> values) {
         Key k = new Key(key);
         byte[] val = null;
         if (values != null) {
             val = values.values().iterator().next().toArray();
         }
-        ResponseCode resp = client.put(k, val);
+        ResponseCode resp = client.put(schema, k, val);
         if (resp != ResponseCode.SUCCESS) {
             return 2;
         }

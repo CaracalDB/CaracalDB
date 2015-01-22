@@ -44,6 +44,7 @@ import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.GetRequest;
 import se.sics.caracaldb.operations.GetResponse;
 import se.sics.caracaldb.operations.MultiOpRequest;
+import se.sics.caracaldb.operations.MultiOpResponse;
 import se.sics.caracaldb.operations.PutRequest;
 import se.sics.caracaldb.operations.PutResponse;
 import se.sics.caracaldb.operations.RangeQuery;
@@ -167,6 +168,13 @@ public class ExecutionEngine extends ComponentDefinition {
         @Override
         public void handle(GetResp event) {
             trigger(new GetResponse(event.getId(), event.key, event.value), rep);
+        }
+    };
+    Handler<MultiOp.Resp> mopHandler = new Handler<MultiOp.Resp>() {
+
+        @Override
+        public void handle(MultiOp.Resp event) {
+            trigger(new MultiOpResponse(event.getId(), ResponseCode.SUCCESS, event.success), rep);
         }
     };
     Handler<RangeResp> rangeHandler = new Handler<RangeResp>() {
@@ -355,8 +363,8 @@ public class ExecutionEngine extends ComponentDefinition {
         subscribe(opHandler, rep);
         subscribe(getHandler, store);
         subscribe(rangeHandler, store);
+        subscribe(mopHandler, store);
         subscribe(snapshotHandler, store);
-        subscribe(rangeHandler, store); //TODO @Alex was not subscribed before. Did you just forget?
         subscribe(diffHandler, store);
         subscribe(infoHandler, rep);
     }

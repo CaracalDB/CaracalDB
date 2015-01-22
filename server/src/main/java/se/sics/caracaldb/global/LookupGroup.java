@@ -22,13 +22,13 @@ package se.sics.caracaldb.global;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
@@ -53,6 +53,10 @@ public class LookupGroup {
     }
 
     public void put(Key key, Integer value) {
+        if (value == null) {
+            virtualHosts.remove(key);
+            return;
+        }
         virtualHosts.put(key, value);
     }
 
@@ -104,13 +108,13 @@ public class LookupGroup {
     }
 
     public Key getSuccessor(Key key) throws LookupTable.NoResponsibleInGroup {
-        Key succ = virtualHosts.ceilingKey(key);
+        Key succ = virtualHosts.higherKey(key);
         if (succ == null) {
             throw LookupTable.NoResponsibleInGroup.exception;
         }
-        if (succ.equals(key)) {
-            throw LookupTable.NoResponsibleInGroup.exception;
-        }
+//        if (succ.equals(key)) {
+//            throw LookupTable.NoResponsibleInGroup.exception;
+//        }
         return succ;
     }
 
@@ -118,6 +122,16 @@ public class LookupGroup {
         Set<Key> nodeSet = new HashSet<Key>();
         for (Entry<Key, Integer> e : virtualHosts.entrySet()) {
             if (e.getValue().equals(replicationGroup)) {
+                nodeSet.add(e.getKey());
+            }
+        }
+        return nodeSet;
+    }
+    
+    public Set<Key>getVirtualNodesInSchema(Key schemaId) {
+        Set<Key> nodeSet = new TreeSet<Key>();
+        for (Entry<Key, Integer> e : virtualHosts.entrySet()) {
+            if (e.getKey().hasPrefix(schemaId)) {
                 nodeSet.add(e.getKey());
             }
         }

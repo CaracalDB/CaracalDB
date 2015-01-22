@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.system;
 
+import se.sics.caracaldb.global.SchemaData.SingleSchema;
 import se.sics.kompics.address.Address;
 
 /**
@@ -29,11 +30,13 @@ import se.sics.kompics.address.Address;
 public class StartVNode extends SystemMsg {
     
     public final byte[] nodeId;
+    public final SingleSchema schema;
     
-    public StartVNode(Address from, Address to, byte[] nodeId) {
+    public StartVNode(Address from, Address to, byte[] nodeId, SingleSchema schema) {
         super(from, to);
         
         this.nodeId = nodeId;
+        this.schema = schema;
     }
     
 }

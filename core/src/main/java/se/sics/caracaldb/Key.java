@@ -41,7 +41,7 @@ public class Key implements Comparable<Key> {
     public static final Comparator<byte[]> COMP = UnsignedBytes.lexicographicalComparator();
     private static final byte ZERO = 0;
     public static final Key NULL_KEY = new Key(new byte[0]);
-    public static final Key ZERO_KEY = new Key(new byte[] {ZERO});
+    public static final Key ZERO_KEY = new Key(new byte[]{ZERO});
     public static final Key INF = new Inf();
     private static final Charset charset = Charset.forName("UTF-8");
     private final byte[] data; // Don't write into it either! 
@@ -80,27 +80,33 @@ public class Key implements Comparable<Key> {
     public ByteBuffer getWrapper() {
         return ByteBuffer.wrap(data);
     }
-    
+
     public KeyBuilder append(Key k) {
-        if(k.equals(Key.NULL_KEY)) {
+        if (k.equals(Key.NULL_KEY)) {
             return new KeyBuilder(data);
+        }
+        if (k.equals(Key.INF)) {
+            return new KeyBuilder(true);
         }
         return append(k.data);
     }
-    
+
     public KeyBuilder append(byte[] k) {
         KeyBuilder kb = new KeyBuilder(data);
         kb.append(k);
         return kb;
     }
-    
+
     public KeyBuilder prepend(Key k) {
-        if(k.equals(Key.NULL_KEY)) {
+        if (k.equals(Key.NULL_KEY)) {
             return new KeyBuilder(data);
+        }
+        if (k.equals(Key.INF)) {
+            return new KeyBuilder(true);
         }
         return prepend(k.data);
     }
-    
+
     public KeyBuilder prepend(byte[] k) {
         KeyBuilder kb = new KeyBuilder(data);
         kb.prepend(k);
@@ -126,28 +132,28 @@ public class Key implements Comparable<Key> {
     public boolean isByteLength() {
         return data.length <= BYTE_KEY_SIZE;
     }
-    
+
     /**
      * Does constant key length increment.
-     * 
+     *
      * That is (00 00 00 00).inc() = (00 00 00 01) and so on.
-     * 
-     * Exceptions: 
-     *      (FF FF FF FF).inc() = Inf for any key length.
-     *      ( ).inc() = (00)
-     * 
-     * @return The key that is an increment of the current one with constant length.
+     *
+     * Exceptions: (FF FF FF FF).inc() = Inf for any key length. ( ).inc() =
+     * (00)
+     *
+     * @return The key that is an increment of the current one with constant
+     * length.
      */
     public Key inc() {
         if (data.length == 0) {
-            return new Key((byte)0);
+            return new Key((byte) 0);
         }
-        byte[] newData  = Arrays.copyOf(data, data.length);
-        for (int i = newData.length-1; i >= 0; i--) {
+        byte[] newData = Arrays.copyOf(data, data.length);
+        for (int i = newData.length - 1; i >= 0; i--) {
             int oldVal = UnsignedBytes.toInt(newData[i]);
             //System.out.println(oldVal + " != " + UnsignedBytes.MAX_VALUE);
             if (oldVal != BYTE_KEY_SIZE) {
-                newData[i] = UnsignedBytes.checkedCast(oldVal+1);
+                newData[i] = UnsignedBytes.checkedCast(oldVal + 1);
                 return new Key(newData);
             } else {
                 newData[i] = 0;
@@ -175,7 +181,7 @@ public class Key implements Comparable<Key> {
         if (key2 == null) {
             return Integer.MAX_VALUE;
         }
-        
+
         return COMP.compare(key1, key2);
     }
 
@@ -189,7 +195,7 @@ public class Key implements Comparable<Key> {
             return this.compareTo(k) == 0;
         } else if (that instanceof byte[]) {
             byte[] k = (byte[]) that;
-            return COMP.compare(k,this.getArray()) == 0;
+            return COMP.compare(k, this.getArray()) == 0;
         }
         return false;
 
@@ -208,13 +214,12 @@ public class Key implements Comparable<Key> {
     public String toString() {
         return IdUtils.printFormat(data);
     }
-    
 
     // wtb operator overrides in Java -.-
     public boolean leq(Key k) {
         return compareTo(k) <= 0;
     }
-    
+
     public boolean leq(byte[] k) {
         return COMP.compare(data, k) <= 0;
     }
@@ -222,7 +227,7 @@ public class Key implements Comparable<Key> {
     public boolean less(Key k) {
         return compareTo(k) < 0;
     }
-    
+
     public boolean less(byte[] k) {
         return COMP.compare(data, k) < 0;
     }
@@ -230,7 +235,7 @@ public class Key implements Comparable<Key> {
     public boolean geq(Key k) {
         return compareTo(k) >= 0;
     }
-    
+
     public boolean geq(byte[] k) {
         return COMP.compare(data, k) >= 0;
     }
@@ -238,9 +243,9 @@ public class Key implements Comparable<Key> {
     public boolean greater(Key k) {
         return compareTo(k) > 0;
     }
-    
+
     public boolean greater(byte[] k) {
-        return COMP.compare(data,k) > 0;
+        return COMP.compare(data, k) > 0;
     }
 
     public static boolean leq(byte[] k1, byte[] k2) {
@@ -260,7 +265,7 @@ public class Key implements Comparable<Key> {
     }
 
     public static Key fromHex(String hex) {
-        if(hex.equals("")) {
+        if (hex.equals("")) {
             return Key.NULL_KEY;
         }
         String[] byteBlocks = hex.split("\\s");
@@ -271,12 +276,52 @@ public class Key implements Comparable<Key> {
         return new Key(bytes);
     }
 
+    public boolean hasPrefix(ByteBuffer prefix) {
+        return hasPrefix(prefix.array());
+    }
+
+    public boolean hasPrefix(Key prefix) {
+        return hasPrefix(prefix.data);
+    }
+
+    public boolean hasPrefix(byte[] prefix) {
+        if (prefix.length > data.length) {
+            return false; // a prefix is never longer^^
+        }
+        for (int i = 0; i < prefix.length; i++) {
+            if (prefix[i] != data[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static class Inf extends Key {
 
         private Inf() {
             super((byte[]) null);
         }
-        
+
+        @Override
+        public KeyBuilder append(Key k) {
+            return new KeyBuilder(true);
+        }
+
+        @Override
+        public KeyBuilder append(byte[] k) {
+            return new KeyBuilder(true);
+        }
+
+        @Override
+        public KeyBuilder prepend(Key k) {
+            return new KeyBuilder(k.inc().data); // A::INF = B not INF, because B is the supremum of A::INF
+        }
+
+        @Override
+        public KeyBuilder prepend(byte[] k) {
+            return new KeyBuilder((new Key(k)).inc().data); // A::INF = B not INF, because B is the supremum of A::INF
+        }
+
         @Override
         public Key inc() {
             return this; // Inf++ == Inf
@@ -289,45 +334,70 @@ public class Key implements Comparable<Key> {
             }
             return Integer.MAX_VALUE;
         }
-        
+
         @Override
         public String toString() {
             return "∞";
         }
     }
-    
+
     public static class KeyBuilder {
+
         private int numBytes;
         private LinkedList<byte[]> bytes;
-        
+        private boolean inf = false;
+
         public KeyBuilder(byte[] start) {
-            assert(start.length > 0);
+            assert (start.length > 0);
             bytes = new LinkedList<byte[]>();
             bytes.push(start);
             numBytes = start.length;
         }
-        
+
+        KeyBuilder(boolean inf) {
+            if (inf) {
+                this.inf = true;
+            }
+        }
+
         public KeyBuilder append(byte[] k) {
+            if (inf) {
+                return this;
+            }
             bytes.add(k);
             numBytes += k.length;
             return this;
         }
-        
+
         public KeyBuilder append(Key k) {
+            if (k instanceof Key.Inf) {
+                inf = true;
+                return this;
+            }
             return append(k.data);
         }
-        
+
         public KeyBuilder prepend(byte[] k) {
+            if (inf) {
+                return this;
+            }
             bytes.push(k);
             numBytes += k.length;
             return this;
         }
-        
+
         public KeyBuilder prepend(Key k) {
+            if (k instanceof Key.Inf) {
+                inf = true;
+                return this;
+            }
             return prepend(k.data);
         }
-        
+
         public Key get() {
+            if (inf) {
+                return Key.INF;
+            }
             byte[] data = new byte[numBytes];
             int pointer = 0;
             while (!bytes.isEmpty()) {

@@ -23,7 +23,6 @@ package se.sics.caracaldb.bootstrap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -54,7 +53,7 @@ public class BootstrapServer extends ComponentDefinition {
         COLLECTING, SEEDING, DONE;
     }
     // static
-    private static final Logger log = LoggerFactory.getLogger(BootstrapServer.class);
+    public static final Logger LOG = LoggerFactory.getLogger(BootstrapServer.class);
     // ports
     private final Negative<Bootstrap> bootstrap = provides(Bootstrap.class);
     private final Positive<Timer> timer = requires(Timer.class);
@@ -88,7 +87,7 @@ public class BootstrapServer extends ComponentDefinition {
 
         @Override
         public void handle(Start event) {
-            log.info("Starting up bootstrap server on {}, waiting for {} nodes",
+            LOG.info("Starting up bootstrap server on {}, waiting for {} nodes",
                     self, config.getInt("caracal.bootThreshold"));
 
             long keepAliveTimeout = config.getMilliseconds("caracal.network.keepAlivePeriod") * 2;
@@ -106,7 +105,7 @@ public class BootstrapServer extends ComponentDefinition {
             if (state != State.DONE) {
                 fresh.add(e.getSource());
                 if (!active.contains(e.getSource())) {
-                    log.debug("Got BootstrapRequest from {}", e.getSource());
+                    LOG.debug("Got BootstrapRequest from {}", e.getSource());
                 }
             }
             if (state == State.SEEDING) {
@@ -137,7 +136,7 @@ public class BootstrapServer extends ComponentDefinition {
                 active.addAll(fresh);
                 fresh.clear();
                 active.add(self);
-                log.debug("Cleaning up. {} hosts in the active set.", active.size());
+                LOG.debug("Cleaning up. {} hosts in the active set.", active.size());
                 if (active.size() >= config.getInt("caracal.bootThreshold")) {
                     bootUp();
                 }
@@ -159,11 +158,10 @@ public class BootstrapServer extends ComponentDefinition {
     };
 
     private void bootUp() {
-        log.info("Threshold reached. Seeding LUT.");
+        LOG.info("Threshold reached. Seeding LUT.");
         bootSet = ImmutableSet.copyOf(active);
         waitSet = ImmutableSet.copyOf(active);
-        Key vnodePrefix = Key.fromHex(config.getString("caracal.vnodePrefix"));
-        lut = LookupTable.generateInitial(bootSet, config.getInt("caracal.bootVNodes"), vnodePrefix);
+        lut = LookupTable.generateInitial(bootSet, config, self);
         StringBuilder sb = new StringBuilder();
         lut.printFormat(sb);
         System.out.println(sb.toString());
@@ -180,7 +178,7 @@ public class BootstrapServer extends ComponentDefinition {
     }
 
     private void startUp() {
-        log.info("Everyone of consequence is ready. Booting Up.");
+        LOG.info("Everyone of consequence is ready. Booting Up.");
         for (Address adr : active) {
             if (!adr.equals(self)) {
 

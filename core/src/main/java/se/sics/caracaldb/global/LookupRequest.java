@@ -22,7 +22,6 @@ package se.sics.caracaldb.global;
 
 import se.sics.caracaldb.Key;
 import se.sics.kompics.Request;
-import se.sics.kompics.network.Message;
 
 /**
  *

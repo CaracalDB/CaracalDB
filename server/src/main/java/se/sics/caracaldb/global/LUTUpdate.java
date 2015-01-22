@@ -23,12 +23,16 @@ package se.sics.caracaldb.global;
 import com.google.common.base.Optional;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.logging.Level;
+import org.javatuples.Triplet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
@@ -72,7 +76,7 @@ public class LUTUpdate implements Maintenance {
     public long dependsOn() {
         return previousVersion;
     }
-    
+
     ImmutableSet<Address> joiners() {
         ImmutableSet.Builder<Address> joiners = ImmutableSet.builder();
         for (Action a : diff) {
@@ -144,6 +148,9 @@ public class LUTUpdate implements Maintenance {
 
             types.put((byte) 1, PutHost.class);
             types.put((byte) 2, PutReplicationSet.class);
+            types.put((byte) 3, PutReplicationGroup.class);
+            types.put((byte) 4, CreateSchema.class);
+            types.put((byte) 5, DropSchema.class);
 
             TYPES = ImmutableBiMap.copyOf(types);
         }
@@ -165,6 +172,82 @@ public class LUTUpdate implements Maintenance {
             a.fill(buf);
             return a;
         }
+    }
+
+    public static class CreateSchema extends Action {
+
+        private SchemaData.SingleSchema schema;
+
+        CreateSchema() {
+        }
+
+        public CreateSchema(byte[] id, String name, ImmutableMap<String, String> metaData) {
+            schema = new SchemaData.SingleSchema(ByteBuffer.wrap(id), name, metaData);
+        }
+
+        public CreateSchema(SchemaData.SingleSchema schema) {
+            this.schema = schema;
+        }
+
+        @Override
+        public void apply(LookupTable lut, Callbacks call) {
+            lut.schemas().schemaNames.put(schema.id, schema.name);
+            lut.schemas().schemaIDs.put(schema.name, schema.id);
+            lut.schemas().metaData.put(schema.id, schema.meta);
+        }
+
+        @Override
+        public void serialise(ByteBuf buf) {
+            buf.writeByte(code());
+            SchemaData.serialiseSchema(buf, schema.id, schema.name, schema.meta);
+        }
+
+        @Override
+        public void fill(ByteBuf buf) {
+            schema = SchemaData.deserialiseSchema(buf);
+        }
+    }
+
+    public static class DropSchema extends Action {
+
+        private ByteBuffer id;
+        
+        DropSchema() {
+            
+        }
+
+        DropSchema(byte[] id) {
+            this(ByteBuffer.wrap(id));
+        }
+
+        DropSchema(ByteBuffer id) {
+            this.id = id;
+        }
+
+        @Override
+        public void apply(LookupTable lut, Callbacks call) {
+            String name = lut.schemas().schemaNames.remove(id);
+            if (name != null) {
+                lut.schemas().schemaIDs.remove(name);
+                lut.schemas().metaData.remove(id);
+            }
+        }
+
+        @Override
+        public void serialise(ByteBuf buf) {
+            buf.writeByte(code());
+            buf.writeInt(buf.array().length);
+            buf.writeBytes(buf.array());
+        }
+
+        @Override
+        public void fill(ByteBuf buf) {
+            int l = buf.readInt();
+            byte[] idB = new byte[l];
+            buf.readBytes(idB);
+            this.id = ByteBuffer.wrap(idB);
+        }
+
     }
 
     public static class PutHost extends Action {
@@ -261,7 +344,11 @@ public class LUTUpdate implements Maintenance {
                 Set<Key> vNodes = lut.getVirtualNodesFor(id);
                 for (Key k : vNodes) {
                     View v = new View(ImmutableSortedSet.copyOf(lut.getHosts(id)), version);
-                    call.reconf(k, new ViewChange(v, v.members.size() / 2 + 1, lut.getResponsibility(k)));
+                    try {
+                        call.reconf(k, new ViewChange(v, v.members.size() / 2 + 1, lut.getResponsibility(k)));
+                    } catch (LookupTable.NoSuchSchemaException ex) {
+                        LOG.error("Could not find responsible nodes in a schema for key {}! Not reconfiguring...", k);
+                    }
                 }
             }
         }
@@ -293,33 +380,47 @@ public class LUTUpdate implements Maintenance {
     public static class PutReplicationGroup extends Action {
 
         private Key key;
-        private int replicationSet;
+        private Integer replicationSet;
 
         PutReplicationGroup() {
 
         }
 
-        public PutReplicationGroup(Key key, int replicationSet) {
+        public PutReplicationGroup(Key key, Integer replicationSet) {
             this.key = key;
             this.replicationSet = replicationSet;
         }
 
         @Override
         public void apply(LookupTable lut, Callbacks call) {
-            Integer[] oldHosts = lut.getResponsibleIds(key);
-            int posOld = LookupTable.positionInSet(oldHosts, call.getAddressId());
+            Integer[] oldHosts = lut.getReplicationGroup(key);
+
             lut.virtualHostsPut(key, replicationSet);
-            Integer[] newHosts = lut.replicationSets().get(replicationSet);
-            int posNew = LookupTable.positionInSet(newHosts, call.getAddressId());
-            if ((posNew >= 0) && (posOld < 0)) { // new in the set                
-                call.startVNode(key);
-            }
-            if ((posNew < 0) && (posOld >= 0)) { // removed from set                
-                call.killVNode(key);
-            }
-            if ((posNew >= 0) && (posOld >= 0)) { // no change for me, but set membership changed
-                View v = new View(ImmutableSortedSet.copyOf(lut.getResponsibles(key)), lut.replicationSetVersions().get(replicationSet));
-                call.reconf(key, new ViewChange(v, v.members.size() / 2 + 1, lut.getResponsibility(key)));
+
+            if (oldHosts == null) {
+                call.startVNode(key); // newly added
+            } else {
+                int posOld = LookupTable.positionInSet(oldHosts, call.getAddressId());
+                if ((replicationSet == null) && (posOld >= 0)) {
+                    call.killVNode(key); // totally removed vnode
+                } else {
+                    Integer[] newHosts = lut.replicationSets().get(replicationSet);
+                    int posNew = LookupTable.positionInSet(newHosts, call.getAddressId());
+                    if ((posNew >= 0) && (posOld < 0)) { // new in the set                
+                        call.startVNode(key);
+                    }
+                    if ((posNew < 0) && (posOld >= 0)) { // removed from set                
+                        call.killVNode(key);
+                    }
+                    if ((posNew >= 0) && (posOld >= 0)) { // no change for me, but set membership changed
+                        try {
+                            View v = new View(ImmutableSortedSet.copyOf(lut.getResponsibles(key)), lut.replicationSetVersions().get(replicationSet));
+                            call.reconf(key, new ViewChange(v, v.members.size() / 2 + 1, lut.getResponsibility(key)));
+                        } catch (LookupTable.NoSuchSchemaException ex) {
+                            LOG.error("Could not find responsible nodes in a schema for key {}! Not reconfiguring...", key);
+                        }
+                    }
+                }
             }
         }
 
@@ -327,13 +428,22 @@ public class LUTUpdate implements Maintenance {
         public void serialise(ByteBuf buf) {
             buf.writeByte(code());
             CustomSerialisers.serialiseKey(key, buf);
-            buf.writeInt(replicationSet);
+            if (replicationSet == null) {
+                buf.writeBoolean(false);
+            } else {
+                buf.writeBoolean(true);
+                buf.writeInt(replicationSet);
+            }
         }
 
         @Override
         public void fill(ByteBuf buf) {
             key = CustomSerialisers.deserialiseKey(buf);
-            replicationSet = buf.readInt();
+            if (buf.readBoolean()) {
+                replicationSet = buf.readInt();
+            } else {
+                replicationSet = null;
+            }
         }
     }
 

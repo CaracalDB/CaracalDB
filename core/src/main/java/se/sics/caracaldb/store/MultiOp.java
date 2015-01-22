@@ -20,11 +20,12 @@
  */
 package se.sics.caracaldb.store;
 
+import com.google.common.base.Objects;
+import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Map.Entry;
 //import java.util.function.Predicate;
 import se.sics.caracaldb.Key;
@@ -117,7 +118,7 @@ public class MultiOp {
 
     }
 
-    public static interface Condition extends Serializable {
+    public static interface Condition extends Serializable, Comparable<Condition> {
 
         public Key on();
 
@@ -125,12 +126,10 @@ public class MultiOp {
     }
 
     // public static abstract class ConditionFactory {
-
     //     public static Condition check(Key k, Predicate<ByteArrayRef> pred) {
     //         return new FunctionalCondition(k, pred);
     //     }
     // }
-
     public static abstract class SingleKeyCondition implements Condition {
 
         public final Key k;
@@ -146,20 +145,16 @@ public class MultiOp {
     }
 
     // public static class FunctionalCondition extends SingleKeyCondition {
-
     //     public final Predicate<ByteArrayRef> pred;
-
     //     public FunctionalCondition(Key k, Predicate<ByteArrayRef> pred) {
     //         super(k);
     //         this.pred = pred;
     //     }
-
     //     @Override
     //     public boolean holds(ByteArrayRef value) {
     //         return pred.test(value);
     //     }
     // }
-
     public static class EqualCondition extends SingleKeyCondition {
 
         public final byte[] oldValue;
@@ -171,7 +166,38 @@ public class MultiOp {
 
         @Override
         public boolean holds(ByteArrayRef value) {
+            if (value == null) {
+                return oldValue == null;
+            }
             return value.compareTo(oldValue) == 0;
+        }
+
+        @Override
+        public int compareTo(Condition o) {
+            if (o instanceof EqualCondition) {
+                EqualCondition that = (EqualCondition) o;
+
+                return ComparisonChain.start()
+                        .compare(this.k, that.k)
+                        .compare(this.oldValue, that.oldValue, Key.COMP)
+                        .result();
+            } else {
+                return this.getClass().getName().compareTo(o.getClass().getName());
+            }
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o instanceof Condition) {
+                return this.compareTo((Condition) o) == 0;
+            } else {
+                return false;
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(k, oldValue);
         }
 
     }

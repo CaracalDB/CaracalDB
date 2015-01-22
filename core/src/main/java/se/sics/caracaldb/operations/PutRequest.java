@@ -22,6 +22,7 @@ package se.sics.caracaldb.operations;
 
 import java.util.UUID;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.utils.ByteArrayFormatter;
 
 /**
  *
@@ -40,7 +41,7 @@ public final class PutRequest extends CaracalOp {
 
     @Override
     public String toString() {
-        return "PutRequest(" + id + ", " + key + ", " + (new Key(data)).toString() + ")";
+        return "PutRequest(" + id + ", " + key + ", " + ByteArrayFormatter.toHexString(data) + ")";
     }
 
     @Override

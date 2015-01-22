@@ -67,6 +67,20 @@ public class MultiOpRequest extends CaracalOp {
     public boolean writesTo(Key k) {
         return successPuts.keySet().contains(k) || failurePuts.keySet().contains(k);
     }
+    
+    public Key anyKey() {
+        if (!conditions.isEmpty()) {
+            MultiOp.Condition c = conditions.iterator().next();
+            return c.on();
+        }
+        if (!successPuts.isEmpty()) {
+            return successPuts.keySet().iterator().next();
+        }
+        if (!failurePuts.isEmpty()) {
+            return failurePuts.keySet().iterator().next();
+        }
+        return null;
+    }
 
     @Override
     public boolean affectedBy(CaracalOp op) {
