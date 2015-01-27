@@ -66,7 +66,9 @@ trait ServiceRouter extends HttpService with CORSDirectives {
 
     val primaryRoute: Route = {
         corsFilter(corsExp) {
-            path("schema" / Segment) { schema =>
+            options {
+                complete("This is an OPTIONS request.")
+            } ~ path("schema" / Segment) { schema =>
                 get {
                     detachAndRespond { ctx =>
                         ctx.complete {

@@ -20,6 +20,13 @@ case class `Access-Control-Allow-Origin`(origin: String) extends HttpHeader {
   def value = origin
   def render[R <: Rendering](r: R): r.type = r ~~ name ~~ ':' ~~ ' ' ~~ value
 }
+
+case class `Access-Control-Allow-Methods`(methods: String) extends HttpHeader {
+  def name = "Access-Control-Allow-Methods"
+  def lowercaseName = "access-control-allow-methods"
+  def value = methods
+  def render[R <: Rendering](r: R): r.type = r ~~ name ~~ ':' ~~ ' ' ~~ value
+}
  
 case class `Access-Control-Allow-Credentials`(allowed: Boolean) extends HttpHeader {
   def name = "Access-Control-Allow-Credentials"
@@ -32,7 +39,8 @@ trait CORSDirectives { this: HttpService =>
   def respondWithCORSHeaders(origin: String) =
     respondWithHeaders(
       `Access-Control-Allow-Origin`(origin),
-      `Access-Control-Allow-Credentials`(true))
+      `Access-Control-Allow-Credentials`(true),
+      `Access-Control-Allow-Methods`("GET, PUT, POST, DELETE"))
  
   def corsFilter(origin: String)(route: Route) =
     if(origin == "*")
