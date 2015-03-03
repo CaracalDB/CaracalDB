@@ -18,29 +18,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.utils;
+package se.sics.kompics.network;
+
+import se.sics.kompics.Component;
+import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.Init;
+import se.sics.kompics.network.netty.NettyInit;
+import se.sics.kompics.network.netty.NettyNetwork;
 
 /**
- * Utility class with workarounds for functionality from Java8 that is missing
- * in Java6
  *
  * @author lkroll
  */
-public abstract class J6 {
-
-    public static <T> T orDefault(T obj, T defaultValue) {
-        if (obj == null) {
-            return defaultValue;
-        } else {
-            return obj;
-        }
-    }
-
-    public static long roundUp(long num, long divisor) {
-        return (num + divisor - 1) / divisor;
-    }
-    
-    public static int roundUp(int num, int divisor) {
-        return (num + divisor - 1) / divisor;
+public class Parent extends ComponentDefinition {
+    public Parent() {
+        Component sender = create(Sender.class, Init.NONE);
+        Component receiver = create(Receiver.class, Init.NONE);
+        Component senderNetty = create(NettyNetwork.class, new NettyInit(MsgSizeTest.senderAddr));
+        Component receiverNetty = create(NettyNetwork.class, new NettyInit(MsgSizeTest.receiverAddr));
+        connect(sender.getNegative(Network.class), senderNetty.getPositive(Network.class));
+        connect(receiver.getNegative(Network.class), receiverNetty.getPositive(Network.class));
     }
 }

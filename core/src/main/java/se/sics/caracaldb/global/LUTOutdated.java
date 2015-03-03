@@ -18,29 +18,22 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.utils;
+package se.sics.caracaldb.global;
+
+import se.sics.kompics.address.Address;
+import se.sics.kompics.network.Transport;
 
 /**
- * Utility class with workarounds for functionality from Java8 that is missing
- * in Java6
  *
  * @author lkroll
  */
-public abstract class J6 {
+public class LUTOutdated extends Message {
+    
+    public final long newerlutversion;
 
-    public static <T> T orDefault(T obj, T defaultValue) {
-        if (obj == null) {
-            return defaultValue;
-        } else {
-            return obj;
-        }
-    }
-
-    public static long roundUp(long num, long divisor) {
-        return (num + divisor - 1) / divisor;
+    public LUTOutdated(Address src, Address dst, Address orig, long lutversion) {
+        super(src, dst, orig, Transport.TCP);
+        this.newerlutversion = lutversion;
     }
     
-    public static int roundUp(int num, int divisor) {
-        return (num + divisor - 1) / divisor;
-    }
 }

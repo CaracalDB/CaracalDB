@@ -38,7 +38,6 @@ import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.bootstrap.BootUp;
 import se.sics.caracaldb.bootstrap.BootstrapRequest;
-import se.sics.caracaldb.bootstrap.BootstrapResponse;
 import se.sics.caracaldb.bootstrap.Ready;
 import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.MultiOpRequest;
@@ -228,7 +227,7 @@ public class CatHerder extends ComponentDefinition {
                 }
                 if (mor.code == ResponseCode.SUCCESS && mor.success == true) {
                     LOG.info("{}: My new LUT version {} got accepted. Broadcasting!", self, update.version);
-                    broadcast(update);
+                    broadcast(new LUTUpdated(update));
                 }
                 return;
             }
@@ -335,8 +334,9 @@ public class CatHerder extends ComponentDefinition {
         }
         byte[] lutS = lut.serialise();
         for (Address addr : joiners) {
-            BootstrapResponse br = new BootstrapResponse(self, addr, lutS);
-            trigger(br, net);
+            for (LUTPart part : LUTPart.split(self, addr, lutS)) {
+                trigger(part, net);
+            }
             outstandingJoins.remove(addr);
         }
     }

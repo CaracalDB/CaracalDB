@@ -23,6 +23,7 @@ package se.sics.caracaldb.bootstrap;
 import java.io.IOException;
 import java.util.UUID;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.global.LUTPart;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.ComponentDefinition;
@@ -45,7 +46,7 @@ public class BootstrapClient extends ComponentDefinition {
 
     public static enum State {
 
-        WAITING, READY, STARTED;
+        WAITING, RECEIVING, READY, STARTED;
     }
     // static
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(BootstrapClient.class);
@@ -59,6 +60,7 @@ public class BootstrapClient extends ComponentDefinition {
     private RequestTimeout timeoutEvent;
     private State state;
     private LookupTable lut;
+    private LUTPart.Collector lutcoll;
 
     private UUID timeoutId;
 
@@ -110,15 +112,22 @@ public class BootstrapClient extends ComponentDefinition {
             }
         }
     };
-    Handler<BootstrapResponse> brspHandler = new Handler<BootstrapResponse>() {
+    Handler<LUTPart> brspHandler = new Handler<LUTPart>() {
 
         @Override
-        public void handle(BootstrapResponse e) {
+        public void handle(LUTPart e) {
             if (state == State.WAITING) {
+                lutcoll = e.collector();
+                state = State.RECEIVING;
+            }
+            if (state == State.RECEIVING) {
+                lutcoll.collect(e);
                 try {
-                    lut = LookupTable.deserialise(e.lut);
-                    trigger(new Ready(self, config.getBootstrapServer()), net);
-                    state = State.READY;
+                    if (lutcoll.complete()) {
+                        lut = lutcoll.result();
+                        trigger(new Ready(self, config.getBootstrapServer()), net);
+                        state = State.READY;
+                    }
                 } catch (IOException ex) {
                     log.error("Could not deserialise LookupTable.", ex);
                     // Just wait for the server to resend it. 
@@ -126,10 +135,13 @@ public class BootstrapClient extends ComponentDefinition {
                 }
             }
             if ((state == State.STARTED) && (lut == null)) {
-                // The other nodes are already up, so we can start immediately
+                lutcoll.collect(e);
                 try {
-                    lut = LookupTable.deserialise(e.lut);
-                    trigger(new Bootstrapped(lut), bootstrap);
+                    // The other nodes are already up, so we can start immediately
+                    if (lutcoll.complete()) {
+                        lut = lutcoll.result();
+                        trigger(new Bootstrapped(lut), bootstrap);
+                    }
                 } catch (IOException ex) {
                     log.error("Could not deserialise LookupTable.", ex);
                     // Just wait for the server to resend it. 

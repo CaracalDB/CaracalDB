@@ -109,11 +109,11 @@ public class MaintenanceSerializer implements Serializer {
             CustomSerialisers.serialiseKeyRange(m.change.range, buf);
             return;
         }
-        if (op instanceof LUTUpdate) {
-            LUTUpdate m = (LUTUpdate) op;
+        if (op instanceof LUTUpdated) {
+            LUTUpdated m = (LUTUpdated) op;
             flags.write(UPDATE);
             flags.write(false, false); // reserve bits 3&4
-            m.serialise(buf);
+            m.update.serialise(buf);
         }
     }
 
@@ -154,7 +154,7 @@ public class MaintenanceSerializer implements Serializer {
         }
         if (matches(flags, UPDATE)) {
             try {
-                return LUTUpdate.deserialise(buf);
+                return new LUTUpdated(LUTUpdate.deserialise(buf));
             } catch (InstantiationException ex) {
                 LOG.error("Could not deserialise LUTUpdate: \n   ", ex);
             } catch (IllegalAccessException ex) {

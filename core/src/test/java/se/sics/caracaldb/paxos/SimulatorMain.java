@@ -30,9 +30,7 @@ import org.slf4j.LoggerFactory;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Fault;
-import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
-import se.sics.kompics.Kompics;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 import se.sics.kompics.simulation.SimulatorScheduler;
@@ -68,12 +66,9 @@ public class SimulatorMain extends ComponentDefinition {
         connect(simulationComponent.getNegative(PaxosExperiment.class),
                 simulator.getPositive(PaxosExperiment.class));
     }
-    Handler<Fault> faultHandler = new Handler<Fault>() {
-        @Override
-        public void handle(Fault event) {
-            LOG.error("Fault: {}", event.getFault());
-            event.getFault().printStackTrace();
-            Kompics.forceShutdown();
-        }
-    };
+    @Override
+    public Fault.ResolveAction handleFault(Fault fault) {
+        LOG.error(fault.toString());
+        return Fault.ResolveAction.ESCALATE;
+    }
 }

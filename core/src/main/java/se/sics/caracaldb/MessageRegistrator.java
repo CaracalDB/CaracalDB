@@ -34,7 +34,10 @@ import se.sics.kompics.network.netty.serialization.Serializers;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class MessageRegistrator {
+public abstract class MessageRegistrator {
+    
+    public static final int STREAM_MAX_MSG_SIZE = 64000;
+    public static final int UDP_MAX_MSG_SIZE = 1500;
 
     public static void register() {
         Serializers.register(CoreSerializer.SYSTEM.instance, "systemS");

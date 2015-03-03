@@ -39,7 +39,7 @@ public class BootstrapSerializer implements Serializer {
 
     // 0&1
     private static final Boolean[] REQ = new Boolean[]{false, false};
-    private static final Boolean[] RESP = new Boolean[]{false, true};
+    //private static final Boolean[] RESP = new Boolean[]{false, true}; // free now
     private static final Boolean[] READY = new Boolean[]{true, false};
     private static final Boolean[] BOOT = new Boolean[]{true, true};
 
@@ -57,13 +57,6 @@ public class BootstrapSerializer implements Serializer {
         if (o instanceof BootstrapRequest) {
             BootstrapRequest br = (BootstrapRequest) o;
             SpecialSerializers.MessageSerializationUtil.msgToBinary(br, buf, REQ[0], REQ[1]);
-            return;
-        }
-        if (o instanceof BootstrapResponse) {
-            BootstrapResponse br = (BootstrapResponse) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(br, buf, RESP[0], RESP[1]);
-            buf.writeInt(br.lut.length);
-            buf.writeBytes(br.lut);
             return;
         }
         if (o instanceof Ready) {
@@ -84,12 +77,6 @@ public class BootstrapSerializer implements Serializer {
         MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
         if (matches(fields, REQ)) {
             return new BootstrapRequest(fields.orig, fields.src, fields.dst);
-        }
-        if (matches(fields, RESP)) {
-            int length = buf.readInt();
-            byte[] lut = new byte[length];
-            buf.readBytes(lut);
-            return new BootstrapResponse(fields.src, fields.dst, lut);
         }
         if (matches(fields, READY)) {
             return new Ready(fields.src, fields.dst);

@@ -28,7 +28,8 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sics.caracaldb.Key;
+import se.sics.caracaldb.global.LUTGenerator;
+import se.sics.caracaldb.global.LUTPart;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.ComponentDefinition;
@@ -109,7 +110,9 @@ public class BootstrapServer extends ComponentDefinition {
                 }
             }
             if (state == State.SEEDING) {
-                trigger(new BootstrapResponse(self, e.getSource(), lutData), net);
+                for (LUTPart part : LUTPart.split(self, e.getSource(), lutData)) {
+                    trigger(part, net);
+                }
             }
         }
     };
@@ -161,7 +164,7 @@ public class BootstrapServer extends ComponentDefinition {
         LOG.info("Threshold reached. Seeding LUT.");
         bootSet = ImmutableSet.copyOf(active);
         waitSet = ImmutableSet.copyOf(active);
-        lut = LookupTable.generateInitial(bootSet, config, self);
+        lut = LUTGenerator.generateInitial(bootSet, config, self);
         StringBuilder sb = new StringBuilder();
         lut.printFormat(sb);
         System.out.println(sb.toString());
@@ -169,7 +172,9 @@ public class BootstrapServer extends ComponentDefinition {
 
         for (Address adr : bootSet) {
             if (!adr.equals(self)) {
-                trigger(new BootstrapResponse(self, adr, lutData), net);
+                for (LUTPart part : LUTPart.split(self, adr, lutData)) {
+                    trigger(part, net);
+                }
             }
         }
         state = State.SEEDING;

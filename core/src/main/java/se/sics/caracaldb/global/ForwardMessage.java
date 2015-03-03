@@ -94,12 +94,17 @@ public class ForwardMessage implements Msg, Forwardable<ForwardMessage> {
     }
 
     @Override
-    public ForwardMessage insertDestination(Address src, Address dest) {
+    public ForwardMessage insertDestination(Address src, Address dest, long lutversion) {
         return new ForwardMessage(src, dest, orig, protocol, forwardTo, msg);
     }
 
     @Override
     public UUID getId() {
         return msg.getId();
+    }
+
+    @Override
+    public long getLUTVersion() {
+        return -1;
     }
 }

@@ -292,7 +292,7 @@ public class MethCat extends ComponentDefinition {
         @Override
         public void handle(ForwardMessage event) {
             LOG.warn("{}: You are not supposed to send ForwardMessages to VNodes!!! I'll pass it along this time...grudgingly... {}", self, event);
-            trigger(event.insertDestination(self, self.hostAddress()), network);
+            trigger(event.insertDestination(self, self.hostAddress(), -1), network);
         }
     };
 
@@ -334,7 +334,7 @@ public class MethCat extends ComponentDefinition {
     private void forwardToViewMember(CaracalMsg event) {
         for (Address adr : view.members) {
             if (!adr.equals(self)) {
-                trigger(event.insertDestination(self, adr), network);
+                trigger(event.insertDestination(self, adr, event.lutversion), network);
             }
         }
     }

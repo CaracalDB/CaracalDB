@@ -22,7 +22,6 @@ package se.sics.caracaldb.global;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
@@ -73,7 +72,7 @@ public class LUTTest {
     public void generationTest() {
         TreeSet<Address> addrs = generateAddresses(6);
         Configuration conf = Launcher.config().setValue("caracal.scatterWidth", 3).finalise();
-        LookupTable lut = LookupTable.generateInitial(addrs, conf, addrs.first());
+        LookupTable lut = LUTGenerator.generateInitial(addrs, conf, addrs.first());
 
         System.out.println("%%%%%%% Generated LUT: %%%%%%%%\n");
         StringBuilder sb = new StringBuilder();
@@ -97,7 +96,7 @@ public class LUTTest {
     public void bigGenerationTest() {
         TreeSet<Address> addrs = generateAddresses(500);
         Configuration conf = Launcher.config().setValue("caracal.scatterWidth", 20).finalise();
-        LookupTable lut = LookupTable.generateInitial(addrs, conf, addrs.first());
+        LookupTable lut = LUTGenerator.generateInitial(addrs, conf, addrs.first());
 
         assertEquals(addrs.size(), lut.numHosts());
         //assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationSets());
@@ -120,7 +119,7 @@ public class LUTTest {
     public void localNodesTest() {
         TreeSet<Address> addrs = generateAddresses(3);
         Configuration conf = Launcher.config().finalise();
-        LookupTable lut = LookupTable.generateInitial(addrs, conf, addrs.first());
+        LookupTable lut = LUTGenerator.generateInitial(addrs, conf, addrs.first());
 
         StringBuilder sb = new StringBuilder();
         lut.printFormat(sb);
@@ -160,7 +159,7 @@ public class LUTTest {
             final int n = 5;
             TreeSet<Address> addrs = generateAddresses(n);
             Configuration conf = Launcher.config().finalise();
-            LookupTable lut = LookupTable.generateInitial(addrs, conf, addrs.first());
+            LookupTable lut = LUTGenerator.generateInitial(addrs, conf, addrs.first());
 
             byte[] lutbytes = lut.serialise();
 

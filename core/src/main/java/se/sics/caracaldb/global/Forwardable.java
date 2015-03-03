@@ -34,9 +34,10 @@ public interface Forwardable<T extends Msg> {
      * 
      * @param src Address where message is from (now, original sender is kept in orig)
      * @param dest Address where message is forwarded to
+     * @param lutversion version id of the LUT that was used to lookup the dest
      * @return Message to be forwarded
      */
-    public T insertDestination(Address src, Address dest);
+    public T insertDestination(Address src, Address dest, long lutversion);
     
     /**
      * Return a unique ID for this Forwardable.
@@ -46,4 +47,6 @@ public interface Forwardable<T extends Msg> {
      * @return 
      */
     public UUID getId();
+    
+    public long getLUTVersion();
 }

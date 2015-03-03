@@ -1,6 +1,7 @@
 /server/target/
 /client/target/
 /simulator/target/
+/simulator/lib/
 /core/target/
 
 .classpath

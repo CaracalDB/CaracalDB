@@ -37,26 +37,28 @@ public class CaracalMsg implements Msg, Forwardable<CaracalMsg> {
     public final Address orig;
     public final Transport protocol;
     public final CaracalOp op;
+    public final long lutversion;
 
     public CaracalMsg(Address src, Address dst, CaracalOp op) {
-        this(src, dst, src, Transport.TCP, op);
+        this(src, dst, src, Transport.TCP, op, -1);
     }
 
     public CaracalMsg(Address src, Address dst, Address orig, CaracalOp op) {
-        this(src, dst, orig, Transport.TCP, op);
+        this(src, dst, orig, Transport.TCP, op, -1);
     }
 
-    public CaracalMsg(Address src, Address dst, Address orig, Transport protocol, CaracalOp op) {
+    public CaracalMsg(Address src, Address dst, Address orig, Transport protocol, CaracalOp op, long lutversion) {
         this.src = src;
         this.dst = dst;
         this.orig = orig;
         this.protocol = protocol;
         this.op = op;
+        this.lutversion = lutversion;
     }
 
     @Override
-    public CaracalMsg insertDestination(Address src, Address dest) {
-        return new CaracalMsg(src, dest, orig, protocol, op);
+    public CaracalMsg insertDestination(Address src, Address dest, long lutversion) {
+        return new CaracalMsg(src, dest, orig, protocol, op, lutversion);
     }
 
     @Override
@@ -99,5 +101,10 @@ public class CaracalMsg implements Msg, Forwardable<CaracalMsg> {
     @Override
     public UUID getId() {
         return op.id;
+    }
+
+    @Override
+    public long getLUTVersion() {
+        return this.lutversion;
     }
 }

@@ -101,7 +101,8 @@ public class OperationSerializer implements Serializer {
         if (flags[0] == MSG) {
             MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
             CaracalOp op = fromBinaryOp(buf, flags);
-            return new CaracalMsg(fields.src, fields.dst, fields.orig, fields.proto, op);
+            long lutversion = buf.readLong();
+            return new CaracalMsg(fields.src, fields.dst, fields.orig, fields.proto, op, lutversion);
         }
         if (flags[0] == OP) {
             return fromBinaryOp(buf, flags);
@@ -112,6 +113,7 @@ public class OperationSerializer implements Serializer {
     private void toBinaryMsg(CaracalMsg caracalMsg, ByteBuf buf, BitBuffer flags) {
         SpecialSerializers.MessageSerializationUtil.msgToBinary(caracalMsg, buf, false, false);
         toBinaryOp(caracalMsg.op, buf, flags);
+        buf.writeLong(caracalMsg.lutversion);
     }
 
     private void toBinaryOp(CaracalOp caracalOp, ByteBuf buf, BitBuffer flags) {

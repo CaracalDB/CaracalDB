@@ -189,7 +189,7 @@ public class LUTManager extends ComponentDefinition {
         public void handle(ForwardToAny event) {
             try {
                 Address dest = lut.findDest(event.key, self, RAND);
-                Msg msg = event.msg.insertDestination(self, dest);
+                Msg msg = event.msg.insertDestination(self, dest, lut.versionId);
                 trigger(msg, net);
                 LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
             } catch (LookupTable.NoResponsibleForKeyException ex) {
@@ -270,9 +270,16 @@ public class LUTManager extends ComponentDefinition {
         public void handle(ForwardMessage event) {
             try {
                 Address dest = lut.findDest(event.forwardTo, self, RAND);
-                Msg msg = event.msg.insertDestination(self, dest);
+                Msg msg = event.msg.insertDestination(self, dest, lut.versionId);
                 trigger(msg, net);
                 LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
+                if (event.msg.getLUTVersion() >= 0) { // has a lut version
+                    if (event.msg.getLUTVersion() > lut.versionId) { // my LUT is outdated
+                        
+                    } else if (event.msg.getLUTVersion() < lut.versionId) { // their LUT is outdated
+                        
+                    }
+                }
             } catch (LookupTable.NoResponsibleForKeyException ex) {
                 LOG.warn("Dropping message!", ex);
             } catch (LookupTable.NoSuchSchemaException ex) {
@@ -383,8 +390,9 @@ public class LUTManager extends ComponentDefinition {
 
         @Override
         public void handle(MaintenanceMsg event) {
-            if (event.op instanceof LUTUpdate) {
-                LUTUpdate update = (LUTUpdate) event.op;
+            if (event.op instanceof LUTUpdated) {
+                LUTUpdated updated = (LUTUpdated) event.op;
+                LUTUpdate update = updated.update;
                 LOG.info("{}: Got an update for the LUT: {}", self, update);
                 if (!update.applicable(lut)) {
                     LOG.debug("{}: Deferring update. Current version {}, update version {}", new Object[]{self, lut.versionId, update.version});
@@ -568,7 +576,8 @@ public class LUTManager extends ComponentDefinition {
         }
 
         @Override
-        public void reconf(Key k, ViewChange change) {
+        public void reconf(Key k, View v, int quorum, KeyRange range) {
+            ViewChange change = new ViewChange(v, quorum, range);
             HostAction cur = actions.get(k);
             if (cur == null) {
                 actions.put(k, this.new Reconf(change));

@@ -48,12 +48,18 @@ public class LookupSerializer implements Serializer {
 
     private static final Boolean[] FORWARD = new Boolean[]{false, false};
     private static final Boolean[] SCHEMA = new Boolean[]{false, true};
-    private static final Boolean[] REQUEST = new Boolean[]{true, false};
-    private static final Boolean[] SAMPLE = new Boolean[]{true, true};
+    private static final Boolean[] SAMPLE = new Boolean[]{true, false};
+    private static final Boolean[] LUT = new Boolean[]{true, true};
     // SCHEMA-
     private static final Boolean[] CREATE = new Boolean[]{false, false};
     private static final Boolean[] DROP = new Boolean[]{false, true};
     private static final Boolean[] RESP = new Boolean[]{true, false};
+    // SAMPLE-
+    private static final Boolean[] SREQ = new Boolean[]{false, false};
+    private static final Boolean[] SRESP = new Boolean[]{false, true};
+    // LUT-
+    private static final Boolean[] LOUTDATED = new Boolean[]{false, false};
+    private static final Boolean[] LPART = new Boolean[]{false, true};
 
     @Override
     public int identifier() {
@@ -71,7 +77,10 @@ public class LookupSerializer implements Serializer {
         }
         if (o instanceof SampleRequest) {
             SampleRequest msg = (SampleRequest) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, REQUEST[0], REQUEST[1]);
+            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SAMPLE[0], SAMPLE[1]);
+            BitBuffer flags = BitBuffer.create(SREQ);
+            byte[] flagsB = flags.finalise();
+            buf.writeBytes(flagsB);
             buf.writeInt(msg.n);
             buf.writeBoolean(msg.schema);
             return;
@@ -79,6 +88,9 @@ public class LookupSerializer implements Serializer {
         if (o instanceof Sample) {
             Sample msg = (Sample) o;
             SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SAMPLE[0], SAMPLE[1]);
+            BitBuffer flags = BitBuffer.create(SRESP);
+            byte[] flagsB = flags.finalise();
+            buf.writeBytes(flagsB);
             buf.writeInt(msg.nodes.size());
             for (Address addr : msg.nodes) {
                 SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
@@ -136,6 +148,24 @@ public class LookupSerializer implements Serializer {
             }
             return;
         }
+        if (o instanceof LUTOutdated) {
+            LUTOutdated msg = (LUTOutdated) o;
+            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, LUT[0], LUT[1]);
+            BitBuffer flags = BitBuffer.create(LOUTDATED);
+            byte[] flagsB = flags.finalise();
+            buf.writeBytes(flagsB);
+            buf.writeLong(msg.newerlutversion);
+            return;
+        }
+        if (o instanceof LUTPart) {
+            LUTPart msg = (LUTPart) o;
+            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, LUT[0], LUT[1]);
+            BitBuffer flags = BitBuffer.create(LPART);
+            byte[] flagsB = flags.finalise();
+            buf.writeBytes(flagsB);
+            msg.serialiseContent(buf);
+            return;
+        }
         LOG.warn("Couldn't serialize {}: {}", o, o.getClass());
     }
 
@@ -147,25 +177,30 @@ public class LookupSerializer implements Serializer {
             Forwardable msg = (Forwardable) Serializers.fromBinary(buf, Optional.absent());
             return new ForwardMessage(fields.src, fields.dst, fields.orig, fields.proto, key, msg);
         }
-        if (matches(fields, REQUEST)) {
-            int n = buf.readInt();
-            boolean schema = buf.readBoolean();
-            return new SampleRequest(fields.src, fields.dst, n, schema);
-        }
         if (matches(fields, SAMPLE)) {
-            int size = buf.readInt();
-            ImmutableSet.Builder<Address> builder = ImmutableSet.builder();
-            for (int i = 0; i < size; i++) {
-                Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
-                builder.add(addr);
+            byte[] flagsB = new byte[1];
+            buf.readBytes(flagsB);
+            boolean[] flags = BitBuffer.extract(8, flagsB);
+            if (matches(flags, SREQ)) {
+                int n = buf.readInt();
+                boolean schema = buf.readBoolean();
+                return new SampleRequest(fields.src, fields.dst, n, schema);
             }
-            int schemaL = buf.readInt();
-            if (schemaL < 0) {
-                return new Sample(fields.src, fields.dst, builder.build(), null);
+            if (matches(flags, SRESP)) {
+                int size = buf.readInt();
+                ImmutableSet.Builder<Address> builder = ImmutableSet.builder();
+                for (int i = 0; i < size; i++) {
+                    Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+                    builder.add(addr);
+                }
+                int schemaL = buf.readInt();
+                if (schemaL < 0) {
+                    return new Sample(fields.src, fields.dst, builder.build(), null);
+                }
+                byte[] schemaData = new byte[schemaL];
+                buf.readBytes(schemaData);
+                return new Sample(fields.src, fields.dst, builder.build(), schemaData);
             }
-            byte[] schemaData = new byte[schemaL];
-            buf.readBytes(schemaData);
-            return new Sample(fields.src, fields.dst, builder.build(), schemaData);
         }
         if (matches(fields, SCHEMA)) {
             byte[] flagsB = new byte[1];
@@ -201,6 +236,18 @@ public class LookupSerializer implements Serializer {
                     msg = new String(msgB, SchemaData.CHARSET);
                 }
                 return new Schema.Response(fields.src, fields.dst, name, id, flags[2], msg);
+            }
+        }
+        if (matches(fields, LUT)) {
+            byte[] flagsB = new byte[1];
+            buf.readBytes(flagsB);
+            boolean[] flags = BitBuffer.extract(8, flagsB);
+            if (matches(flags, LOUTDATED)) {
+                long newerlutversion = buf.readLong();
+                return new LUTOutdated(fields.src, fields.dst, fields.orig, newerlutversion);
+            }
+            if (matches(flags, LPART)) {
+                return LUTPart.deserialiseContent(buf, fields);
             }
         }
         LOG.warn("Don't know how to deserialise fields: {}", fields);
