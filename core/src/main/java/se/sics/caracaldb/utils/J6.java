@@ -41,6 +41,6 @@ public abstract class J6 {
     }
     
     public static int roundUp(int num, int divisor) {
-        return (num + divisor - 1) / divisor;
+        return (int)roundUp((long)num, (long)divisor);
     }
 }

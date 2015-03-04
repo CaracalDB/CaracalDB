@@ -34,11 +34,13 @@ public class ClientWorkerInit extends Init<ClientWorker> {
     public final Address self;
     public final Address bootstrapServer;
     public final int sampleSize;
+    public final boolean fetchLUT;
     
-    public ClientWorkerInit(BlockingQueue<CaracalResponse> q, Address self, Address bootstrapServer, int sampleSize) {
+    public ClientWorkerInit(BlockingQueue<CaracalResponse> q, Address self, Address bootstrapServer, int sampleSize, boolean fetchLUT) {
         this.q = q;
         this.self = self;
         this.bootstrapServer = bootstrapServer;
         this.sampleSize = sampleSize;
+        this.fetchLUT = fetchLUT;
     }
 }

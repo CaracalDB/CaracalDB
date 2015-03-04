@@ -275,9 +275,9 @@ public class LUTManager extends ComponentDefinition {
                 LOG.debug("{}: Forwarding {} to {}", new Object[]{self, event.msg, dest});
                 if (event.msg.getLUTVersion() >= 0) { // has a lut version
                     if (event.msg.getLUTVersion() > lut.versionId) { // my LUT is outdated
-                        
+                        askForUpdatesTo(event.msg.getLUTVersion(), true);
                     } else if (event.msg.getLUTVersion() < lut.versionId) { // their LUT is outdated
-                        
+                        trigger(new LUTOutdated(self, event.orig, self, lut.versionId), net);
                     }
                 }
             } catch (LookupTable.NoResponsibleForKeyException ex) {
@@ -334,6 +334,7 @@ public class LUTManager extends ComponentDefinition {
 
         @Override
         public void handle(SampleRequest event) {
+            LOG.debug("Handling SampleRequest from {}", event.orig);
             ArrayList<Address> hosts = lut.hosts();
             if (hosts.size() <= event.n) {
                 trigger(event.reply(ImmutableSet.copyOf(hosts), lut.schemas()), net);
@@ -348,6 +349,21 @@ public class LUTManager extends ComponentDefinition {
                 sample.add(addr);
             }
             trigger(event.reply(ImmutableSet.copyOf(sample), lut.schemas()), net);
+            if (event.lutversion >= 0) { // has a lut version
+                if (event.lutversion > lut.versionId) { // my LUT is outdated
+                    askForUpdatesTo(event.lutversion, true);
+                } else if (event.lutversion < lut.versionId) { // their LUT is outdated
+                    trigger(new LUTOutdated(self, event.orig, self, lut.versionId), net);
+                }
+            }
+            LOG.trace("Replied to SampleRequest from {}", event.orig);
+            if (event.lut) {
+                LOG.debug("Also sending LUT to {}", event.orig);
+                byte[] lutB = lut.serialise();
+                for (LUTPart part : LUTPart.split(self, event.orig, lutB)) {
+                    trigger(part, net);
+                }
+            }
         }
     };
     Handler<Schema.CreateReq> createSchemaHandler = new Handler<Schema.CreateReq>() {
@@ -397,7 +413,7 @@ public class LUTManager extends ComponentDefinition {
                 if (!update.applicable(lut)) {
                     LOG.debug("{}: Deferring update. Current version {}, update version {}", new Object[]{self, lut.versionId, update.version});
                     stalledUpdates.put(update.version, update);
-                    askForUpdatesTo(update.version);
+                    askForUpdatesTo(update.version, false);
                     return;
                 }
                 boolean masterBefore = checkMaster();
@@ -441,7 +457,7 @@ public class LUTManager extends ComponentDefinition {
                             LUTUpdate update = LUTUpdate.deserialise(e.getValue());
                             if (!update.applicable(lut)) {
                                 stalledUpdates.put(update.version, update);
-                                askForUpdatesTo(update.version);
+                                askForUpdatesTo(update.version, false);
                                 return;
                             }
                             ManagerCallbacks chc = new ManagerCallbacks();
@@ -663,11 +679,16 @@ public class LUTManager extends ComponentDefinition {
         public abstract void execute(Key k);
     }
 
-    private void askForUpdatesTo(long version) {
+    private void askForUpdatesTo(long version, boolean incl) {
         try {
             Key startKey = LookupTable.RESERVED_LUTUPDATES.append(new Key(Longs.toByteArray(lut.versionId))).get();
             Key endKey = LookupTable.RESERVED_LUTUPDATES.append(new Key(Longs.toByteArray(version))).get();
-            KeyRange range = KeyRange.open(startKey).open(endKey);
+            KeyRange range;
+            if (incl) {
+                range = KeyRange.open(startKey).closed(endKey);
+            } else {
+                range = KeyRange.open(startKey).open(endKey);
+            }
             UUID id = TimestampIdFactory.get().newId();
             RangeQuery.Request r = new RangeQuery.Request(id, range, null, null, null, RangeQuery.Type.SEQUENTIAL);
             Address dest = lut.findDest(startKey, self, RAND);

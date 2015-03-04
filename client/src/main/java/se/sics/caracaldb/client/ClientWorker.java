@@ -28,11 +28,17 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.global.ForwardMessage;
+import se.sics.caracaldb.global.LUTOutdated;
+import se.sics.caracaldb.global.LUTPart;
+import se.sics.caracaldb.global.LookupTable;
+import se.sics.caracaldb.global.ReadOnlyLUT;
 import se.sics.caracaldb.global.Sample;
 import se.sics.caracaldb.global.SampleRequest;
 import se.sics.caracaldb.global.Schema;
@@ -72,23 +78,30 @@ public class ClientWorker extends ComponentDefinition {
     private final Address bootstrapServer;
     private final SortedSet<Address> knownNodes = new TreeSet<Address>();
     private final int sampleSize;
+    private final boolean useLUT;
     private UUID currentRequestId = new UUID(-1, -1);
     private RangeQuery.SeqCollector col;
     private final Map<String, CaracalFuture<Schema.Response>> ongoingSchemaRequests
             = new HashMap<String, CaracalFuture<Schema.Response>>();
     private volatile boolean connectionEstablished = false;
     private volatile SchemaData schemas;
+    private final ReadOnlyLUT lut;
+    private final ReadWriteLock lutLock = new ReentrantReadWriteLock();
 
     public ClientWorker(ClientWorkerInit init) {
         responseQ = init.q;
         self = init.self;
         bootstrapServer = init.bootstrapServer;
         sampleSize = init.sampleSize;
+        useLUT = init.fetchLUT;
+        lut = new ReadOnlyLUT(self, RAND);
         knownNodes.add(bootstrapServer);
 
         // Subscriptions
         subscribe(startHandler, control);
         subscribe(sampleHandler, net);
+        subscribe(outdatedHandler, net);
+        subscribe(partHandler, net);
         subscribe(schemaCreateHandler, client);
         subscribe(schemaDropHandler, client);
         subscribe(multiOpHandler, client);
@@ -102,7 +115,7 @@ public class ClientWorker extends ComponentDefinition {
         @Override
         public void handle(Start event) {
             LOG.debug("Starting new worker {}", self);
-            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
+            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, useLUT, lutversion());
             trigger(req, net);
         }
     };
@@ -113,6 +126,33 @@ public class ClientWorker extends ComponentDefinition {
             knownNodes.addAll(event.nodes);
             schemas = SchemaData.deserialise(event.schemaData);
             connectionEstablished = true;
+        }
+    };
+    Handler<LUTOutdated> outdatedHandler = new Handler<LUTOutdated>() {
+
+        @Override
+        public void handle(LUTOutdated event) {
+            lutLock.readLock().lock();
+            try {
+                lut.handleOutdated(event);
+                while (lut.hasMessages()) {
+                    trigger(lut.pollMessages(), net);
+                }
+            } finally {
+                lutLock.readLock().unlock();
+            }
+        }
+    };
+    Handler<LUTPart> partHandler = new Handler<LUTPart>() {
+
+        @Override
+        public void handle(LUTPart event) {
+            lutLock.writeLock().lock();
+            try {
+                lut.collect(event);
+            } finally {
+                lutLock.writeLock().unlock();
+            }
         }
     };
     Handler<CreateSchema> schemaCreateHandler = new Handler<CreateSchema>() {
@@ -157,7 +197,7 @@ public class ClientWorker extends ComponentDefinition {
         public void handle(MultiOpRequest event) {
             LOG.debug("Handling MultiOp");
             currentRequestId = event.id;
-            Address target = randomNode();
+            Address target = findDest(event.anyKey());
             CaracalMsg msg = new CaracalMsg(self, target, event);
             ForwardMessage fmsg = new ForwardMessage(self, target, event.anyKey(), msg);
             trigger(fmsg, net);
@@ -169,7 +209,7 @@ public class ClientWorker extends ComponentDefinition {
         public void handle(PutRequest event) {
             LOG.debug("Handling Put {}", event.key);
             currentRequestId = event.id;
-            Address target = randomNode();
+            Address target = findDest(event.key);
             CaracalMsg msg = new CaracalMsg(self, target, event);
             ForwardMessage fmsg = new ForwardMessage(self, target, event.key, msg);
             trigger(fmsg, net);
@@ -181,7 +221,7 @@ public class ClientWorker extends ComponentDefinition {
         public void handle(GetRequest event) {
             LOG.debug("Handling Get {}", event.key);
             currentRequestId = event.id;
-            Address target = randomNode();
+            Address target = findDest(event.key);
             CaracalMsg msg = new CaracalMsg(self, target, event);
             ForwardMessage fmsg = new ForwardMessage(self, target, event.key, msg);
             LOG.debug("MSG: {}", fmsg);
@@ -194,7 +234,7 @@ public class ClientWorker extends ComponentDefinition {
         public void handle(RangeQuery.Request event) {
             LOG.debug("Handling RQ {}", event);
             currentRequestId = event.id;
-            Address target = randomNode();
+            Address target = findDest(event.initRange.begin);
             CaracalMsg msg = new CaracalMsg(self, target, event);
             ForwardMessage fmsg = new ForwardMessage(self, target, event.initRange.begin, msg);
             LOG.debug("MSG: {}", fmsg);
@@ -210,6 +250,17 @@ public class ClientWorker extends ComponentDefinition {
             LOG.debug("Handling Message {}", event);
             if (event.op instanceof CaracalResponse) {
                 CaracalResponse resp = (CaracalResponse) event.op;
+                lutLock.writeLock().lock();
+                try {
+                    if (lut.collect(resp)) { // Might be a piece of a LUTUpdate
+                        while (lut.hasMessages()) {
+                            trigger(lut.pollMessages(), net);
+                        }
+                        return;
+                    }
+                } finally {
+                    lutLock.writeLock().unlock();
+                }
                 if (!resp.id.equals(currentRequestId)) {
                     LOG.debug("Ignoring {} as it has already been received.", resp);
                     return;
@@ -246,7 +297,7 @@ public class ClientWorker extends ComponentDefinition {
             CaracalFuture<Schema.Response> f = ongoingSchemaRequests.remove(event.name);
             if (f != null) {
                 if (event.success) { // request a new sample to update schemas
-                    SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
+                    SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, false, lutversion());
                     trigger(req, net);
                 }
                 f.set(event);
@@ -274,7 +325,7 @@ public class ClientWorker extends ComponentDefinition {
             if (schemaId != null) {
                 return k.prepend(schemaId).get();
             } else { // try to update the schema data (might want to rate-limit this a bit)
-                SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
+                SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, false, lutversion());
                 trigger(req, net);
             }
         }
@@ -289,7 +340,7 @@ public class ClientWorker extends ComponentDefinition {
                 Key endK = k.end.prepend(schemaId).get();
                 return k.replaceKeys(startK, endK);
             } else { // try to update the schema data (might want to rate-limit this a bit)
-                SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true);
+                SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, false, lutversion());
                 trigger(req, net);
             }
         }
@@ -328,6 +379,40 @@ public class ClientWorker extends ComponentDefinition {
             return schemas.schemaInfo(schemaName);
         }
         return "No connection!";
+    }
+    
+    String getSystemInfo() {
+        if (connectionEstablished) {
+            lutLock.readLock().lock();
+            try {
+                return lut.info();
+            } finally {
+                lutLock.readLock().unlock();
+            }
+        }
+        return "No connection!";
+    }
+
+    private long lutversion() {
+        lutLock.readLock().lock();
+        try {
+            return lut.version();
+        } finally {
+            lutLock.readLock().unlock();
+        }
+    }
+
+    private Address findDest(Key k) {
+        lutLock.readLock().lock();
+        try {
+            return lut.findDest(k);
+        } catch (LookupTable.NoResponsibleForKeyException ex) {
+            return randomNode();
+        } catch (LookupTable.NoSuchSchemaException ex) { // this can only happen if LUT and SchemaData are out of sync
+            return randomNode();
+        } finally {
+            lutLock.readLock().unlock();
+        }
     }
 
 }

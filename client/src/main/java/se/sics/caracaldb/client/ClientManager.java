@@ -39,7 +39,6 @@ import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.ControlPort;
-import se.sics.kompics.Event;
 import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.KompicsEvent;
@@ -68,8 +67,7 @@ public class ClientManager extends ComponentDefinition {
     Component timer;
     VirtualNetworkChannel vnc;
     // Instance
-    private final int messageBufferSizeMax;
-    private final int messageBufferSize;
+    private final boolean fetchLUT;
     private final int sampleSize;
     private static Config conf = null;
     private final Address bootstrapServer;
@@ -139,9 +137,8 @@ public class ClientManager extends ComponentDefinition {
         if (conf == null) {
             conf = ConfigFactory.load();
         }
-        messageBufferSizeMax = conf.getInt("caracal.messageBufferSizeMax") * 1024;
-        messageBufferSize = conf.getInt("caracal.messageBufferSize") * 1024;
         sampleSize = conf.getInt("bootstrap.sampleSize");
+        fetchLUT = conf.getBoolean("client.fetchLUT");
         String ipStr = conf.getString("bootstrap.address.hostname");
         String localHost = conf.getString("client.address.hostname");
         int bootPort = conf.getInt("bootstrap.address.port");
@@ -199,7 +196,7 @@ public class ClientManager extends ComponentDefinition {
         try {
             Address adr = addVNode();
             BlockingQueue<CaracalResponse> q = new LinkedBlockingQueue<CaracalResponse>();
-            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, adr, bootstrapServer, sampleSize));
+            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, adr, bootstrapServer, sampleSize, fetchLUT));
             vnc.addConnection(adr.getId(), cw.getNegative(Network.class));
             connect(timer.getPositive(Timer.class), cw.getNegative(Timer.class));
             trigger(Start.event, cw.control());

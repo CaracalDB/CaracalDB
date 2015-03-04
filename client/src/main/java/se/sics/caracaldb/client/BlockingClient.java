@@ -238,4 +238,8 @@ public class BlockingClient {
     public String getSchemaInfo(String schemaName) {
         return worker.getSchemaInfo(schemaName);
     }
+    
+    public String getSystemInfo() {
+        return worker.getSystemInfo();
+    }
 }

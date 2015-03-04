@@ -201,6 +201,8 @@ public class Console {
                 } else {
                     out.println("Usage: put <schema> <key> <value>");
                 }
+            } else if (cmd.equalsIgnoreCase("system")) {
+                out.println(worker.getSystemInfo());
             } else if (cmd.equalsIgnoreCase("schemas")) {
                 out.println("Schemas:");
                 for (String schema : worker.listSchemas()) {
@@ -294,6 +296,7 @@ public class Console {
                 out.println("Available commands: \n\n");
                 out.println("get <schema> <key>              gets the current <value> for <key>");
                 out.println("put <schema> <key> <value>      sets <key> to <value>");
+                out.println("system                          show full system stats (with LUT only)");
                 out.println("schemas                         lists all schemas currently known");
                 out.println("info <schema>                   lists schema meta data if exists");
                 out.println("create <schema> <param>:<value>...  creates a new schema with the param:value pairs as meta data");

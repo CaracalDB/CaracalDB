@@ -31,16 +31,20 @@ import se.sics.kompics.network.Transport;
 public class SampleRequest extends Message {
 
     public final int n;
-    public final boolean schema;
+    public final boolean schemas;
+    public final boolean lut;
+    public final long lutversion;
 
-    public SampleRequest(Address src, Address dest, int n, boolean schema) {
+    public SampleRequest(Address src, Address dest, int n, boolean schema, boolean lut, long lutversion) {
         super(src, dest, src, Transport.TCP);
         this.n = n;
-        this.schema = schema;
+        this.schemas = schema;
+        this.lut = lut;
+        this.lutversion = lutversion;
     }
 
     public Sample reply(ImmutableSet<Address> nodes, SchemaData schemaData) {
-        if (schema) {
+        if (schemas) {
             return new Sample(this.getDestination(), this.getSource(), nodes, schemaData.serialise());
         } else {
             return new Sample(this.getDestination(), this.getSource(), nodes, null);

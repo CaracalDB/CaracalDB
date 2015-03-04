@@ -78,11 +78,13 @@ public class LookupSerializer implements Serializer {
         if (o instanceof SampleRequest) {
             SampleRequest msg = (SampleRequest) o;
             SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SAMPLE[0], SAMPLE[1]);
-            BitBuffer flags = BitBuffer.create(SREQ);
+            BitBuffer flags = BitBuffer.create(SREQ); // 0 and 1
+            flags.write(msg.schemas); // 2
+            flags.write(msg.lut); // 3
             byte[] flagsB = flags.finalise();
             buf.writeBytes(flagsB);
             buf.writeInt(msg.n);
-            buf.writeBoolean(msg.schema);
+            buf.writeLong(msg.lutversion);
             return;
         }
         if (o instanceof Sample) {
@@ -183,8 +185,8 @@ public class LookupSerializer implements Serializer {
             boolean[] flags = BitBuffer.extract(8, flagsB);
             if (matches(flags, SREQ)) {
                 int n = buf.readInt();
-                boolean schema = buf.readBoolean();
-                return new SampleRequest(fields.src, fields.dst, n, schema);
+                long lutversion = buf.readLong();
+                return new SampleRequest(fields.src, fields.dst, n, flags[2], flags[3], lutversion);
             }
             if (matches(flags, SRESP)) {
                 int size = buf.readInt();
