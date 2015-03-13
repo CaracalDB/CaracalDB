@@ -27,11 +27,16 @@ import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueFactory;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import jline.console.ConsoleReader;
 import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.WriterAppender;
 import se.sics.caracaldb.Key;
@@ -52,6 +57,319 @@ public class Console {
     private ConsoleReader reader;
     private PrintWriter out;
     private Config conf;
+    private final Map<String, Command> commands = new HashMap<String, Command>();
+    private final int padTo;
+
+    {
+        commands.put("get", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                if (cmdline.length == 2) {
+                    String[] kvline = cmdline[1].split(" ", 2);
+                    if (kvline.length != 2) {
+                        return false;
+                    }
+                    String schema = kvline[0];
+                    Key k = Key.fromHex(correctFormat(kvline[1]));
+                    out.println("Getting " + k.toString() + "...");
+                    GetResponse resp = worker.get(schema, k);
+                    if (resp.code == ResponseCode.SUCCESS) {
+                        out.println("success!");
+                        if (resp.data != null) {
+                            out.println("   " + k.toString() + "->" + new String(resp.data));
+                        } else {
+                            out.println("   " + k.toString() + "->(null)");
+                        }
+                        return true;
+                    } else {
+                        out.println("Result: " + resp.code.name());
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            public String usage() {
+                return "get <schema> <key>";
+            }
+
+            @Override
+            public String help() {
+                return "gets the current <value> for <key>";
+            }
+        });
+        commands.put("put", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                if (cmdline.length == 2) {
+                    String[] kvline = cmdline[1].split(" ", 3);
+                    if (kvline.length < 2 || kvline.length > 3) {
+                        return false;
+                    }
+                    String schema = kvline[0];
+                    Key k = Key.fromHex(correctFormat(kvline[1]));
+                    byte[] value = null;
+                    if (kvline.length == 3) {
+                        value = kvline[2].getBytes();
+                    }
+                    out.println("Setting " + k.toString() + " to 0x" + ByteArrayFormatter.toHexString(value) + "...");
+                    ResponseCode resp = worker.put(schema, k, value);
+                    out.println("Result: " + resp.name());
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
+            public String usage() {
+                return "put <schema> <key> <value>";
+            }
+
+            @Override
+            public String help() {
+                return "sets <key> to <value>";
+            }
+        });
+        commands.put("system", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                out.println(worker.getSystemInfo());
+                return true;
+            }
+
+            @Override
+            public String usage() {
+                return "system";
+            }
+
+            @Override
+            public String help() {
+                return "show full system stats (with LUT only)";
+            }
+        });
+        commands.put("schemas", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                out.println("Schemas:");
+                for (String schema : worker.listSchemas()) {
+                    out.println("   " + schema);
+                }
+                return true;
+            }
+
+            @Override
+            public String usage() {
+                return "schemas";
+            }
+
+            @Override
+            public String help() {
+                return "lists all schemas currently known";
+            }
+        });
+        commands.put("info", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                if (cmdline.length == 2) {
+                    out.println("Schema Info:");
+                    out.println(worker.getSchemaInfo(cmdline[1]));
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
+            public String usage() {
+                return "info <schema>";
+            }
+
+            @Override
+            public String help() {
+                return "lists schema meta data if exists";
+            }
+        });
+        commands.put("create", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                if (cmdline.length == 2) {
+                    String[] kvline = cmdline[1].split(" ");
+                    String schema = kvline[0];
+                    ImmutableMap.Builder<String, String> meta = ImmutableMap.builder();
+                    for (int i = 1; i < kvline.length; i++) {
+                        String[] paramline = kvline[i].split(":", 2);
+                        if (paramline.length != 2) {
+                            out.print("Invalid parameter format: " + kvline[i]);
+                            return false;
+                        }
+                        meta.put(paramline[0], paramline[1]);
+                    }
+                    Future<Schema.Response> f = worker.createSchema(schema, meta.build());
+                    out.println("Creating schema " + schema + "()...this might take a while...");
+                    try {
+                        Schema.Response res = f.get();
+                        if (res.success) {
+                            out.println("Created schema " + res.name + " with id " + ByteArrayFormatter.toHexString(res.id));
+                        } else {
+                            out.println("Could not create schema " + res.name + ". Message was: \n" + res.msg);
+                        }
+                    } catch (InterruptedException ex) {
+                        out.println("Couldn't get response. Error was: " + ex.getMessage());
+                    } catch (ExecutionException ex) {
+                        out.println("Couldn't get response. Error was: " + ex.getMessage());
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
+            public String usage() {
+                return "create <schema> <param>:<value>...";
+            }
+
+            @Override
+            public String help() {
+                return "creates a new schema with the param:value pairs as meta data";
+            }
+        });
+        commands.put("drop", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                if (cmdline.length == 2) {
+                    Future<Schema.Response> f = worker.dropSchema(cmdline[1]);
+                    out.println("Dropping schema " + cmdline[1] + "()...this might take a while...");
+                    try {
+                        Schema.Response res = f.get();
+                        if (res.success) {
+                            out.println("Dropped schema " + res.name);
+                        } else {
+                            out.println("Could not drop schema " + res.name + ". Message was: \n" + res.msg);
+                        }
+                    } catch (InterruptedException ex) {
+                        out.println("Couldn't get response. Error was: " + ex.getMessage());
+                    } catch (ExecutionException ex) {
+                        out.println("Couldn't get response. Error was: " + ex.getMessage());
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
+            public String usage() {
+                return "drop <schema>";
+            }
+
+            @Override
+            public String help() {
+                return "deletes schema if it exists";
+            }
+        });
+        commands.put("selectAll", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                if (cmdline.length == 2) {
+                    KeyRange r = KeyRange.closed(Key.NULL_KEY).open(Key.INF);
+                    RangeResponse res = worker.rangeRequest(cmdline[1], r);
+                    if (res.code == ResponseCode.SUCCESS) {
+                        out.println("sucess!");
+                        for (Entry<Key, byte[]> e : res.results.entrySet()) {
+                            Key k = e.getKey();
+                            byte[] val = e.getValue();
+                            if (val != null) {
+                                out.println("   " + k.toString() + "->" + new String(val));
+                            } else {
+                                out.println("   " + k.toString() + "->(null)");
+                            }
+                        }
+                    } else {
+                        out.println("Could not execute request. Error was: " + res.code.name());
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
+            public String usage() {
+                return "selectAll <schema>";
+            }
+
+            @Override
+            public String help() {
+                return "executed a range query on the whole schema (mostly for debugging)";
+            }
+        });
+        commands.put("help", new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                //out.println("Interface currently connected to " + bootstrapAddr + ":" + bootstrapPort + ".\n\n");
+                out.println("Available commands: \n\n");
+                Set<Command> comSet = new HashSet<Command>(commands.values());
+                StringBuilder sb = new StringBuilder();
+                for (Command c : comSet) {
+                    sb.append(c.usage());
+                    for (int i = c.usage().length(); i < padTo; i++) {
+                        sb.append(' ');
+                    }
+                    sb.append(c.help());
+                    sb.append('\n');
+                }
+                out.println(sb.toString());
+                return true;
+            }
+
+            @Override
+            public String usage() {
+                return "help";
+            }
+
+            @Override
+            public String help() {
+                return "shows this help";
+            }
+        });
+        Command exitcom = new Command() {
+
+            @Override
+            public boolean execute(String[] cmdline, BlockingClient worker) {
+                out.println("Exiting...");
+                System.exit(0);
+                return true; // clearly an unreachable statement, mr java compiler -.-
+            }
+
+            @Override
+            public String usage() {
+                return "exit|quit";
+            }
+
+            @Override
+            public String help() {
+                return "closes the shell";
+            }
+        };
+        commands.put("exit", exitcom);
+        commands.put("quit", exitcom);
+        int longestCom = 0;
+        Set<Command> comSet = new HashSet<Command>(commands.values());
+        for (Command c : comSet) {
+            int useLength = c.usage().length();
+            if (useLength > longestCom) {
+                longestCom = useLength;
+            }
+        }
+        padTo = longestCom + 4;
+    }
 
     public static void main(String[] args) throws IOException {
         Console c = new Console();
@@ -62,7 +380,9 @@ public class Console {
         reader = new ConsoleReader();
         out = new PrintWriter(reader.getOutput());
         PatternLayout layout = new ColoredPatternLayout("%d{[HH:mm:ss,SSS]} %-5p {%c{1}} %m%n");
-        LogManager.getRootLogger().addAppender(new WriterAppender(layout, out));
+        Logger rootL = LogManager.getRootLogger();
+        rootL.removeAllAppenders();
+        rootL.addAppender(new WriterAppender(layout, out));
         conf = ConfigFactory.load();
     }
 
@@ -158,155 +478,13 @@ public class Console {
             }
             String[] cmdline = line.split(" ", 2);
             String cmd = cmdline[0];
-            if (cmd.equalsIgnoreCase("get")) {
-                if (cmdline.length == 2) {
-                    String[] kvline = cmdline[1].split(" ", 2);
-                    if (kvline.length != 2) {
-                        out.println("Usage: get <schema> <key>");
-                        continue;
-                    }
-                    String schema = kvline[0];
-                    Key k = Key.fromHex(correctFormat(kvline[1]));
-                    out.println("Getting " + k.toString() + "...");
-                    GetResponse resp = worker.get(schema, k);
-                    if (resp.code == ResponseCode.SUCCESS) {
-                        out.println("success!");
-                        if (resp.data != null) {
-                            out.println("   " + k.toString() + "->" + new String(resp.data));
-                        } else {
-                            out.println("   " + k.toString() + "->(null)");
-                        }
-                    } else {
-                        out.println("Result: " + resp.code.name());
-                    }
-                } else {
-                    out.println("Usage: get <schema> <key>");
+            cmd = cmd.toLowerCase();
+            Command c = commands.get(cmd);
+            if (c != null) {
+                if (!c.execute(cmdline, worker)) {
+                    out.print("Usage: ");
+                    out.println(c.usage());
                 }
-            } else if (cmd.equalsIgnoreCase("put")) {
-                if (cmdline.length == 2) {
-                    String[] kvline = cmdline[1].split(" ", 3);
-                    if (kvline.length < 2 || kvline.length > 3) {
-                        out.println("Usage: put <schema> <key> <value>");
-                        continue;
-                    }
-                    String schema = kvline[0];
-                    Key k = Key.fromHex(correctFormat(kvline[1]));
-                    byte[] value = null;
-                    if (kvline.length == 3) {
-                        value = kvline[2].getBytes();
-                    }
-                    out.println("Setting " + k.toString() + " to 0x" + ByteArrayFormatter.toHexString(value) + "...");
-                    ResponseCode resp = worker.put(schema, k, value);
-                    out.println("Result: " + resp.name());
-                } else {
-                    out.println("Usage: put <schema> <key> <value>");
-                }
-            } else if (cmd.equalsIgnoreCase("system")) {
-                out.println(worker.getSystemInfo());
-            } else if (cmd.equalsIgnoreCase("schemas")) {
-                out.println("Schemas:");
-                for (String schema : worker.listSchemas()) {
-                    out.println("   " + schema);
-                }
-            } else if (cmd.equalsIgnoreCase("info")) {
-                if (cmdline.length == 2) {
-                    out.println("Schema Info:");
-                    out.println(worker.getSchemaInfo(cmdline[1]));
-                } else {
-                    out.println("Usage: info <schema>");
-                }
-            } else if (cmd.equalsIgnoreCase("create")) {
-                if (cmdline.length == 2) {
-                    String[] kvline = cmdline[1].split(" ");
-                    String schema = kvline[0];
-                    ImmutableMap.Builder<String, String> meta = ImmutableMap.builder();
-                    boolean abortflag = false; // there are languages where you can say which loop to break/continue...Java isn't one of them :(
-                    for (int i = 1; i < kvline.length; i++) {
-                        String[] paramline = kvline[i].split(":", 2);
-                        if (paramline.length != 2) {
-                            out.print("Invalid parameter format: " + kvline[i]);
-                            abortflag = true;
-                            break;
-                        }
-                        meta.put(paramline[0], paramline[1]);
-                    }
-                    if (abortflag) {
-                        continue;
-                    }
-                    Future<Schema.Response> f = worker.createSchema(schema, meta.build());
-                    out.println("Creating schema " + schema + "()...this might take a while...");
-                    try {
-                        Schema.Response res = f.get();
-                        if (res.success) {
-                            out.println("Created schema " + res.name + " with id " + ByteArrayFormatter.toHexString(res.id));
-                        } else {
-                            out.println("Could not create schema " + res.name + ". Message was: \n" + res.msg);
-                        }
-                    } catch (InterruptedException ex) {
-                        out.println("Couldn't get response. Error was: " + ex.getMessage());
-                    } catch (ExecutionException ex) {
-                        out.println("Couldn't get response. Error was: " + ex.getMessage());
-                    }
-
-                } else {
-                    out.println("Usage: create <schema> <param>:<value>...");
-                }
-            } else if (cmd.equalsIgnoreCase("drop")) {
-                if (cmdline.length == 2) {
-                    Future<Schema.Response> f = worker.dropSchema(cmdline[1]);
-                    out.println("Dropping schema " + cmdline[1] + "()...this might take a while...");
-                    try {
-                        Schema.Response res = f.get();
-                        if (res.success) {
-                            out.println("Dropped schema " + res.name);
-                        } else {
-                            out.println("Could not drop schema " + res.name + ". Message was: \n" + res.msg);
-                        }
-                    } catch (InterruptedException ex) {
-                        out.println("Couldn't get response. Error was: " + ex.getMessage());
-                    } catch (ExecutionException ex) {
-                        out.println("Couldn't get response. Error was: " + ex.getMessage());
-                    }
-                } else {
-                    out.println("Usage: drop <schema>");
-                }
-            } else if (cmd.equalsIgnoreCase("selectAll")) {
-                if (cmdline.length == 2) {
-                    KeyRange r = KeyRange.closed(Key.NULL_KEY).open(Key.INF);
-                    RangeResponse res = worker.rangeRequest(cmdline[1], r);
-                    if (res.code == ResponseCode.SUCCESS) {
-                        out.println("sucess!");
-                        for (Entry<Key, byte[]> e : res.results.entrySet()) {
-                            Key k = e.getKey();
-                            byte[] val = e.getValue();
-                            if (val != null) {
-                                out.println("   " + k.toString() + "->" + new String(val));
-                            } else {
-                                out.println("   " + k.toString() + "->(null)");
-                            }
-                        }
-                    } else {
-                        out.println("Could not execute request. Error was: " + res.code.name());
-                    }
-                } else {
-                    out.println("Usage: selectAll <schema>");
-                }
-            } else if (cmd.equalsIgnoreCase("help")) {
-                out.println("Interface currently connected to " + bootstrapAddr + ":" + bootstrapPort + ".\n\n");
-                out.println("Available commands: \n\n");
-                out.println("get <schema> <key>              gets the current <value> for <key>");
-                out.println("put <schema> <key> <value>      sets <key> to <value>");
-                out.println("system                          show full system stats (with LUT only)");
-                out.println("schemas                         lists all schemas currently known");
-                out.println("info <schema>                   lists schema meta data if exists");
-                out.println("create <schema> <param>:<value>...  creates a new schema with the param:value pairs as meta data");
-                out.println("drop <schema>                   deletes schema if it exists");
-                out.println("selectAll <schema>              executed a range query on the whole schema (mostly for debugging)");
-                out.println("help                   shows this help");
-                out.println("exit|quit              closes to shell");
-            } else if (cmd.equalsIgnoreCase("exit") || cmd.equalsIgnoreCase("quit")) {
-                out.println("Exiting...");
-                System.exit(0);
             } else {
                 out.println("Unkown command: " + cmd + " (use 'help' to see available commands)");
             }
@@ -377,5 +555,14 @@ public class Console {
             }
         }
         return str.toString();
+    }
+
+    public static abstract class Command {
+
+        public abstract boolean execute(String[] cmdline, BlockingClient worker);
+
+        public abstract String usage();
+
+        public abstract String help();
     }
 }

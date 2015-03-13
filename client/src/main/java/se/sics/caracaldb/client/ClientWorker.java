@@ -114,7 +114,7 @@ public class ClientWorker extends ComponentDefinition {
     Handler<Start> startHandler = new Handler<Start>() {
         @Override
         public void handle(Start event) {
-            LOG.debug("Starting new worker {}", self);
+            LOG.debug("Starting new worker {} with LUT? {}", self, useLUT);
             SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, useLUT, lutversion());
             trigger(req, net);
         }
@@ -147,6 +147,7 @@ public class ClientWorker extends ComponentDefinition {
 
         @Override
         public void handle(LUTPart event) {
+            LOG.trace("{}: Got LUTPart!", self);
             lutLock.writeLock().lock();
             try {
                 lut.collect(event);

@@ -50,4 +50,24 @@ public class SampleRequest extends Message {
             return new Sample(this.getDestination(), this.getSource(), nodes, null);
         }
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SampleRequest(");
+        sb.append("src: ");
+        sb.append(src.toString());
+        sb.append(", dest: ");
+        sb.append(dst.toString());
+        sb.append(", #samples: ");
+        sb.append(n);
+        sb.append(", schemas? ");
+        sb.append(schemas);
+        sb.append(", lut? ");
+        sb.append(lut);
+        sb.append(", lutversion: ");
+        sb.append(lutversion);
+        sb.append(')');
+        return sb.toString();
+    }
 }

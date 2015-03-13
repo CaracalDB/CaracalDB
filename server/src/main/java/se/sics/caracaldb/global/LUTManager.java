@@ -334,21 +334,21 @@ public class LUTManager extends ComponentDefinition {
 
         @Override
         public void handle(SampleRequest event) {
-            LOG.debug("Handling SampleRequest from {}", event.orig);
+            LOG.debug("Handling SampleRequest:\n    {}", event);
             ArrayList<Address> hosts = lut.hosts();
             if (hosts.size() <= event.n) {
                 trigger(event.reply(ImmutableSet.copyOf(hosts), lut.schemas()), net);
-                return;
-            }
-            Set<Address> sample = new TreeSet<Address>();
-            for (int i = 0; i < event.n; i++) {
-                Address addr = null;
-                while (addr == null) {
-                    addr = hosts.get(RAND.nextInt(hosts.size()));
+            } else {
+                Set<Address> sample = new TreeSet<Address>();
+                for (int i = 0; i < event.n; i++) {
+                    Address addr = null;
+                    while (addr == null) {
+                        addr = hosts.get(RAND.nextInt(hosts.size()));
+                    }
+                    sample.add(addr);
                 }
-                sample.add(addr);
+                trigger(event.reply(ImmutableSet.copyOf(sample), lut.schemas()), net);
             }
-            trigger(event.reply(ImmutableSet.copyOf(sample), lut.schemas()), net);
             if (event.lutversion >= 0) { // has a lut version
                 if (event.lutversion > lut.versionId) { // my LUT is outdated
                     askForUpdatesTo(event.lutversion, true);

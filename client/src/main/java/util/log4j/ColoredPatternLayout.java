@@ -128,7 +128,9 @@ public class ColoredPatternLayout extends PatternLayout{
 	    return infoColor+super.format(event)+END_COLOR;
 	}if( event.getLevel() == Level.DEBUG){
 	    return debugColor+super.format(event)+END_COLOR;
-	}else{
+	}if ( event.getLevel() == Level.TRACE) {
+            return debugColor+super.format(event)+END_COLOR;
+        }else{
 	    throw new RuntimeException("Unsupported Level "+event.toString());
 	}
     }
