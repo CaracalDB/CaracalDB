@@ -22,9 +22,9 @@ package se.sics.caracaldb.datatransfer;
 
 import java.util.Map;
 import java.util.UUID;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.KeyRange;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
 
 /**
  *

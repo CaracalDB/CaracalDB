@@ -20,25 +20,20 @@
  */
 package se.sics.caracaldb.global;
 
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class MaintenanceMsg implements Msg {
-
-    public final Address src;
-    public final Address dst;
-    public final Transport protocol = Transport.TCP;
+public class MaintenanceMsg extends BaseMessage {
 
     public final Maintenance op;
 
     public MaintenanceMsg(Address src, Address dst, Maintenance op) {
-        this.src = src;
-        this.dst = dst;
+        super(src, dst, Transport.TCP);
         this.op = op;
     }
 
@@ -48,25 +43,5 @@ public class MaintenanceMsg implements Msg {
                 + this.getSource().toString() + ", "
                 + this.getDestination().toString() + ", "
                 + op.toString() + ")";
-    }
-
-    @Override
-    public Address getSource() {
-        return src;
-    }
-
-    @Override
-    public Address getDestination() {
-        return dst;
-    }
-
-    @Override
-    public Address getOrigin() {
-        return src;
-    }
-
-    @Override
-    public Transport getProtocol() {
-        return protocol;
     }
 }

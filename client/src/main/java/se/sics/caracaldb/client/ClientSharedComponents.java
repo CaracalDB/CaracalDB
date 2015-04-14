@@ -20,11 +20,11 @@
  */
 package se.sics.caracaldb.client;
 
+import se.sics.caracaldb.Address;
 import se.sics.kompics.Component;
 import se.sics.kompics.Positive;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.network.VirtualNetworkChannel;
+import se.sics.kompics.network.virtual.VirtualNetworkChannel;
 import se.sics.kompics.timer.Timer;
 
 /**

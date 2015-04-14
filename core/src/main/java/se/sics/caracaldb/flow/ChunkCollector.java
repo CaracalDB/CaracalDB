@@ -26,7 +26,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 import se.sics.caracaldb.flow.FlowManager.Chunk;
 
 /**

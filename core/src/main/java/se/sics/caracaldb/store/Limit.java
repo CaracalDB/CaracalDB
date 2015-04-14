@@ -21,7 +21,7 @@
 package se.sics.caracaldb.store;
 
 import java.io.Serializable;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  *

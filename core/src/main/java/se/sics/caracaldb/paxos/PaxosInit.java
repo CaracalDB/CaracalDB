@@ -20,10 +20,9 @@
  */
 package se.sics.caracaldb.paxos;
 
-import com.google.common.collect.ImmutableSet;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.View;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
 
 /**
  *

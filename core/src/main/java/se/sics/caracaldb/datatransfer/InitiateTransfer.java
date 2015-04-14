@@ -22,7 +22,7 @@ package se.sics.caracaldb.datatransfer;
 
 import java.util.Map;
 import java.util.UUID;
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
 
 /**
  *

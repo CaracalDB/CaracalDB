@@ -27,6 +27,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.fd.Restore;
@@ -38,7 +39,6 @@ import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Stop;
-import se.sics.kompics.address.Address;
 
 /**
  *

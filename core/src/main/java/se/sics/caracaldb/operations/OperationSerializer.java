@@ -23,6 +23,7 @@ package se.sics.caracaldb.operations;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.larskroll.common.BitBuffer;
 import io.netty.buffer.ByteBuf;
 import java.util.Map.Entry;
 import java.util.SortedMap;
@@ -33,6 +34,8 @@ import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.MultiOp.Condition;
 import se.sics.caracaldb.store.RangeAction;
@@ -40,9 +43,7 @@ import se.sics.caracaldb.store.TransformationFilter;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers.UUIDSerializer;
 
 /**
  *
@@ -99,7 +100,7 @@ public class OperationSerializer implements Serializer {
         buf.readBytes(flagsB);
         boolean[] flags = BitBuffer.extract(8, flagsB);
         if (flags[0] == MSG) {
-            MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
+            MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
             CaracalOp op = fromBinaryOp(buf, flags);
             long lutversion = buf.readLong();
             return new CaracalMsg(fields.src, fields.dst, fields.orig, fields.proto, op, lutversion);
@@ -111,13 +112,13 @@ public class OperationSerializer implements Serializer {
     }
 
     private void toBinaryMsg(CaracalMsg caracalMsg, ByteBuf buf, BitBuffer flags) {
-        SpecialSerializers.MessageSerializationUtil.msgToBinary(caracalMsg, buf, false, false);
+        MessageSerializationUtil.msgToBinary(caracalMsg, buf, false, false);
         toBinaryOp(caracalMsg.op, buf, flags);
         buf.writeLong(caracalMsg.lutversion);
     }
 
     private void toBinaryOp(CaracalOp caracalOp, ByteBuf buf, BitBuffer flags) {
-        SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(caracalOp.id, buf);
+        UUIDSerializer.INSTANCE.toBinary(caracalOp.id, buf);
         if (caracalOp instanceof GetRequest) {
             flags.write(REQ); // 1
             flags.write(GET); // 2 3 4
@@ -245,7 +246,7 @@ public class OperationSerializer implements Serializer {
     }
 
     private CaracalOp fromBinaryOp(ByteBuf buf, boolean[] flags) {
-        UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+        UUID id = (UUID) UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         boolean direction = flags[1];
         if (direction == REQ) {
             return fromBinaryReq(buf, flags, id);

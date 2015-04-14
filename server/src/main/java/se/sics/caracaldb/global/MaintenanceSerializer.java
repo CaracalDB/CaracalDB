@@ -21,18 +21,18 @@
 package se.sics.caracaldb.global;
 
 import com.google.common.base.Optional;
+import com.larskroll.common.BitBuffer;
 import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.KeyRange;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.caracaldb.ServerSerializer;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.replication.linearisable.ViewChange;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
 
 /**
  *
@@ -63,7 +63,7 @@ public class MaintenanceSerializer implements Serializer {
             int flagPos = buf.writerIndex();
             buf.writeByte(0); // reserve for flags
             BitBuffer flags = BitBuffer.create(MSG); // 0
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, false, false);
+            MessageSerializationUtil.msgToBinary(msg, buf, false, false);
             toBinaryOp(msg.op, buf, flags);
             byte[] flagsB = flags.finalise();
             buf.setByte(flagPos, flagsB[0]);
@@ -119,11 +119,11 @@ public class MaintenanceSerializer implements Serializer {
 
     @Override
     public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
-                byte[] flagsB = new byte[1];
+        byte[] flagsB = new byte[1];
         buf.readBytes(flagsB);
         boolean[] flags = BitBuffer.extract(8, flagsB);
         if (flags[0] == MSG) {
-            MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
+            MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
             Maintenance op = fromBinaryOp(buf, flags);
             return new MaintenanceMsg(fields.src, fields.dst, op);
         }
@@ -163,7 +163,7 @@ public class MaintenanceSerializer implements Serializer {
         }
         return null;
     }
-    
+
     private boolean matches(boolean[] flags, Boolean[] type) {
         return (flags[1] == type[0]) && (flags[2] == type[1]);
     }

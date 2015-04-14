@@ -21,19 +21,19 @@
 package se.sics.caracaldb.flow;
 
 import com.google.common.base.Optional;
+import com.larskroll.common.ByteArrayRef;
 import io.netty.buffer.ByteBuf;
 import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.CoreSerializer;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.caracaldb.flow.ChunkCollector.ClearFlowId;
-import se.sics.caracaldb.utils.ByteArrayRef;
 import se.sics.caracaldb.flow.FlowManager.CTS;
 import se.sics.caracaldb.flow.FlowManager.Chunk;
 import se.sics.caracaldb.flow.FlowManager.RTS;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
 
 /**
  *

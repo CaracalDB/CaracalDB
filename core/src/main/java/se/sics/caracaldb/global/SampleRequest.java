@@ -21,14 +21,15 @@
 package se.sics.caracaldb.global;
 
 import com.google.common.collect.ImmutableSet;
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class SampleRequest extends Message {
+public class SampleRequest extends BaseMessage  implements LookupMessage {
 
     public final int n;
     public final boolean schemas;
@@ -56,9 +57,9 @@ public class SampleRequest extends Message {
         StringBuilder sb = new StringBuilder();
         sb.append("SampleRequest(");
         sb.append("src: ");
-        sb.append(src.toString());
+        sb.append(this.getSource().toString());
         sb.append(", dest: ");
-        sb.append(dst.toString());
+        sb.append(this.getDestination().toString());
         sb.append(", #samples: ");
         sb.append(n);
         sb.append(", schemas? ");

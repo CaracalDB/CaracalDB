@@ -18,48 +18,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.global;
+package se.sics.caracaldb.fd;
 
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
-import se.sics.kompics.network.Transport;
+import com.google.common.base.Optional;
+import io.netty.buffer.ByteBuf;
+import se.sics.caracaldb.CoreSerializer;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.fd.SimpleEFD.Heartbeat;
+import se.sics.kompics.network.netty.serialization.Serializer;
 
 /**
  *
  * @author lkroll
  */
-public class Message implements Msg {
+public class SimpleFDSerializer implements Serializer {
 
-    public final Address src;
-    public final Address dst;
-    public final Address orig;
-    public final Transport protocol;
-
-    public Message(Address src, Address dst, Address orig, Transport protocol) {
-        this.src = src;
-        this.dst = dst;
-        this.orig = orig;
-        this.protocol = protocol;
+    @Override
+    public int identifier() {
+        return CoreSerializer.SFD.id;
     }
 
     @Override
-    public Address getSource() {
-        return src;
+    public void toBinary(Object o, ByteBuf buf) {
+        if (o instanceof Heartbeat) {
+            Heartbeat hb = (Heartbeat) o;
+            MessageSerializationUtil.msgToBinary(hb, buf, true, false);
+            return;
+        }
     }
 
     @Override
-    public Address getDestination() {
-        return dst;
-    }
-
-    @Override
-    public Address getOrigin() {
-        return orig;
-    }
-
-    @Override
-    public Transport getProtocol() {
-        return protocol;
+    public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
+        MessageSerializationUtil.MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
+        return new Heartbeat(fields.src, fields.dst);
     }
 
 }

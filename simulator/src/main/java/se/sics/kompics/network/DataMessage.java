@@ -20,7 +20,9 @@
  */
 package se.sics.kompics.network;
 
-import se.sics.kompics.address.Address;
+import se.sics.kompics.network.test.TestAddress;
+
+
 
 /**
  *
@@ -30,17 +32,17 @@ public class DataMessage extends TestMessage {
     
     public final byte[] data;
     
-    public DataMessage(Address src, Address dst, Transport proto, long id, byte[] data) {
+    public DataMessage(TestAddress src, TestAddress dst, Transport proto, long id, byte[] data) {
         super(src, dst, proto, id);
         this.data = data;
     }
     
     public Ack ack() {
-        return new Ack(this.getDestination(), this.getSource(), this.getProtocol(), id);
+        return new Ack((TestAddress)this.getDestination(), (TestAddress)this.getSource(), this.getProtocol(), id);
     }
     
     public static class Ack extends TestMessage {
-        public Ack(Address src, Address dst, Transport proto, long id) {
+        public Ack(TestAddress src, TestAddress dst, Transport proto, long id) {
             super(src, dst, proto, id);
         }
     }

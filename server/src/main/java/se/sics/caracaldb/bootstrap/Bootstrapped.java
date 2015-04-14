@@ -21,9 +21,9 @@
 package se.sics.caracaldb.bootstrap;
 
 import com.google.common.collect.ImmutableSet;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.kompics.KompicsEvent;
-import se.sics.kompics.address.Address;
 
 /**
  *

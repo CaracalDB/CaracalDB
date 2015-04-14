@@ -22,7 +22,9 @@ package se.sics.caracaldb.global;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
+import se.sics.caracaldb.Header;
 import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Transport;
 
@@ -31,12 +33,13 @@ import se.sics.kompics.network.Transport;
  * @author lkroll
  */
 public abstract class Schema {
-    
-    public static interface Req extends Msg {
+
+    public static interface Req extends Msg<Address, Header>, LookupMessage {
+
         public Req forward(Address from, Address to);
     }
 
-    public static class CreateReq extends Message implements Req {
+    public static class CreateReq extends BaseMessage implements Req {
 
         public final String name;
         public final ImmutableMap<String, String> metaData;
@@ -55,13 +58,13 @@ public abstract class Schema {
 
         @Override
         public Req forward(Address from, Address to) {
-            return new CreateReq(from, to, orig, name, metaData);
+            return new CreateReq(from, to, this.getOrigin(), name, metaData);
         }
-        
+
         @Override
         public boolean equals(Object o) {
             if (o instanceof CreateReq) {
-                return name == ((CreateReq) o).name;
+                return name.equals(((CreateReq) o).name);
             }
             return false;
         }
@@ -72,21 +75,21 @@ public abstract class Schema {
             hash = 37 * hash + (this.name != null ? this.name.hashCode() : 0);
             return hash;
         }
-        
+
         @Override
         public String toString() {
             return Objects.toStringHelper(this)
                     .add("name", name)
                     .add("meta", metaData).toString();
         }
-        
+
         public Response reply(Address src, byte[] schemaId) {
-            return new Response(src, orig, name, schemaId, true, "Schema created.");
+            return new Response(src, this.getOrigin(), name, schemaId, true, "Schema created.");
         }
 
     }
 
-    public static class DropReq extends Message implements Req {
+    public static class DropReq extends BaseMessage implements Req {
 
         public final String name;
 
@@ -102,13 +105,13 @@ public abstract class Schema {
 
         @Override
         public Req forward(Address from, Address to) {
-            return new DropReq(from, to, orig, name);
+            return new DropReq(from, to, this.getOrigin(), name);
         }
-        
+
         @Override
         public boolean equals(Object o) {
             if (o instanceof DropReq) {
-                return name == ((DropReq) o).name;
+                return name.equals(((DropReq) o).name);
             }
             return false;
         }
@@ -119,19 +122,20 @@ public abstract class Schema {
             hash = 11 * hash + (this.name != null ? this.name.hashCode() : 0);
             return hash;
         }
+
         @Override
         public String toString() {
             return Objects.toStringHelper(this)
                     .add("name", name).toString();
         }
-        
+
         public Response reply(Address src, byte[] schemaId) {
-            return new Response(src, orig, name, schemaId, true, "Schema dropped.");
+            return new Response(src, this.getOrigin(), name, schemaId, true, "Schema dropped.");
         }
 
     }
 
-    public static class Response extends Message {
+    public static class Response extends BaseMessage {
 
         public final String name;
         public final byte[] id;
@@ -145,7 +149,7 @@ public abstract class Schema {
             this.success = success;
             this.msg = msg;
         }
-        
+
         @Override
         public String toString() {
             return Objects.toStringHelper(this)

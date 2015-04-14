@@ -21,6 +21,7 @@
 
 package se.sics.caracaldb;
 
+import se.sics.caracaldb.fd.SimpleFDSerializer;
 import se.sics.caracaldb.flow.FlowMessageSerializer;
 import se.sics.caracaldb.global.LookupSerializer;
 import se.sics.caracaldb.operations.ConditionSerializer;
@@ -43,6 +44,7 @@ public class CoreSerializer<S extends Serializer> {
     public static final CoreSerializer<OperationSerializer> OP = new CoreSerializer<OperationSerializer>(104, new OperationSerializer());
     public static final CoreSerializer<LookupSerializer> LOOKUP = new CoreSerializer<LookupSerializer>(105, new LookupSerializer());
     public static final CoreSerializer<ConditionSerializer> COND = new CoreSerializer<ConditionSerializer>(106, new ConditionSerializer());
+    public static final CoreSerializer<SimpleFDSerializer> SFD = new CoreSerializer<SimpleFDSerializer>(107, new SimpleFDSerializer());
     
     public final int id;
     public final S instance;

@@ -22,14 +22,12 @@ package se.sics.caracaldb.global;
 
 import com.google.common.base.Optional;
 import io.netty.buffer.ByteBuf;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.AddressSerializer;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.KompicsEvent;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  *
@@ -52,7 +50,7 @@ public class NodeStats implements KompicsEvent {
     }
 
     public void serialise(ByteBuf buf) throws IOException {
-        SpecialSerializers.AddressSerializer.INSTANCE.toBinary(node, buf);
+        AddressSerializer.INSTANCE.toBinary(node, buf);
         CustomSerialisers.serialiseKeyRange(range, buf);
         buf.writeLong(storeSize);
         buf.writeLong(storeNumberOfKeys);
@@ -60,7 +58,7 @@ public class NodeStats implements KompicsEvent {
     }
 
     public static NodeStats deserialise(ByteBuf buf) throws IOException {
-        Address node = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+        Address node = (Address) AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         KeyRange range = CustomSerialisers.deserialiseKeyRange(buf);
         long storeSize = buf.readLong();
         long storeNumberOfKeys = buf.readLong();

@@ -13,8 +13,8 @@ object CaracalRESTBuild extends Build {
     settings = Project.defaultSettings ++ Seq(
       name := "CaracalDB REST API",
       organization := "se.sics",
-      version := "0.3-SNAPSHOT",
-      scalaVersion := "2.11.1",
+      version := "0.4-SNAPSHOT",
+      scalaVersion := "2.11.6",
       //scalacOptions += "-Ydependent-method-types",
       scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-language:postfixOps", "-language:implicitConversions"),
       resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases",
@@ -34,9 +34,9 @@ object CaracalRESTBuild extends Build {
       libraryDependencies += "io.spray" %% "spray-testkit" % "1.3.1-20140423",
       libraryDependencies += "io.spray" %% "spray-util" % "1.3.1-20140423",
       libraryDependencies += "io.spray" %% "spray-json" % "1.2.6",
-      libraryDependencies += "se.sics.caracaldb" % "caracaldb-core" % "0.0.6-SNAPSHOT" excludeAll(ExclusionRule(organization = "org.slf4j")) exclude("log4j", "log4j") exclude("commons-logging", "commons-logging"),
-      libraryDependencies += "se.sics.caracaldb" % "caracaldb-client" % "0.0.6-SNAPSHOT" excludeAll(ExclusionRule(organization = "org.slf4j")) exclude("log4j", "log4j") exclude("commons-logging", "commons-logging"),
-      libraryDependencies += "se.sics.caracaldb" % "DataModelClient" % "0.0.6-SNAPSHOT" excludeAll(ExclusionRule(organization = "org.slf4j")) exclude("log4j", "log4j") exclude("commons-logging", "commons-logging"),
+      libraryDependencies += "se.sics.caracaldb" % "caracaldb-core" % "0.0.7-SNAPSHOT" excludeAll(ExclusionRule(organization = "org.slf4j")) exclude("log4j", "log4j") exclude("commons-logging", "commons-logging"),
+      libraryDependencies += "se.sics.caracaldb" % "caracaldb-client" % "0.0.7-SNAPSHOT" excludeAll(ExclusionRule(organization = "org.slf4j")) exclude("log4j", "log4j") exclude("commons-logging", "commons-logging"),
+      libraryDependencies += "com.larskroll" %% "common-utils-scala" % "1.0-SNAPSHOT",
       libraryDependencies += "com.google.code.findbugs" % "jsr305" % "2.0.2",
       libraryDependencies += "com.google.inject" % "guice-parent" % "3.0",
       libraryDependencies += "com.chuusai" %%  "shapeless" % "1.2.4"

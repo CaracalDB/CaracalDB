@@ -27,7 +27,10 @@ import io.netty.buffer.ByteBuf;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.caracaldb.CoreSerializer;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.paxos.Paxos.Accept;
 import se.sics.caracaldb.paxos.Paxos.Accepted;
@@ -42,11 +45,8 @@ import se.sics.caracaldb.paxos.Paxos.Rejected;
 import se.sics.caracaldb.replication.log.Reconfigure;
 import se.sics.caracaldb.replication.log.Value;
 import se.sics.caracaldb.utils.CustomSerialisers;
-import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
 
 /**
  *
@@ -76,7 +76,7 @@ public class PaxosSerializer implements Serializer {
         // Non PaxosMsg
         if (o instanceof Forward) {
             Forward f = (Forward) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(f, buf, true, false);
+            MessageSerializationUtil.msgToBinary(f, buf, true, false);
             buf.writeByte(FORWARD);
             Serializers.toBinary(f.p, buf);
             return;
@@ -86,7 +86,7 @@ public class PaxosSerializer implements Serializer {
         }
         // PaxosMsg
         PaxosMsg msg = (PaxosMsg) o;
-        SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, false, false);
+        MessageSerializationUtil.msgToBinary(msg, buf, false, false);
         buf.writeInt(msg.ballot);
         if (o instanceof Prepare) {
             buf.writeByte(PREPARE);
@@ -144,7 +144,7 @@ public class PaxosSerializer implements Serializer {
 
     @Override
     public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
-        MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
+        MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
         if (fields.flag1) {
             return otherFromBinary(fields, buf);
         } else {
@@ -165,7 +165,7 @@ public class PaxosSerializer implements Serializer {
         return new Instance(id, ballot, v);
     }
 
-    private Msg otherFromBinary(MessageFields fields, ByteBuf buf) {
+    private BaseMessage otherFromBinary(MessageFields fields, ByteBuf buf) {
         byte type = buf.readByte();
         Value val;
         switch (type) {

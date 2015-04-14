@@ -20,10 +20,8 @@
  */
 package se.sics.caracaldb.system;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.global.LookupService;
 import se.sics.caracaldb.global.MaintenanceService;
@@ -32,9 +30,8 @@ import se.sics.caracaldb.persistence.Database;
 import se.sics.caracaldb.store.Store;
 import se.sics.kompics.Component;
 import se.sics.kompics.Positive;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.network.VirtualNetworkChannel;
+import se.sics.kompics.network.virtual.VirtualNetworkChannel;
 import se.sics.kompics.timer.Timer;
 
 /**
@@ -66,11 +63,11 @@ public class VirtualSharedComponents extends ServiceRegistry {
     public byte[] getId() {
         return id;
     }
-    
+
     public SingleSchema getSchema() {
         return this.schema;
     }
-    
+
     public Class<? extends Database> getDbType(Configuration config) throws ClassNotFoundException {
         if (dbType != null) {
             return dbType;
@@ -82,7 +79,7 @@ public class VirtualSharedComponents extends ServiceRegistry {
         dbType = config.getDBMan().getType(dbName);
         return dbType;
     }
-    
+
     public Database.Level getDbLevel(Configuration config) throws ClassNotFoundException {
         Class<? extends Database> dbtype = getDbType(config);
         try {
@@ -93,7 +90,7 @@ public class VirtualSharedComponents extends ServiceRegistry {
             throw new ClassNotFoundException(ex.getMessage());
         }
     }
-    
+
     /*
      * Core Services
      */
@@ -107,7 +104,7 @@ public class VirtualSharedComponents extends ServiceRegistry {
     void setNetwork(VirtualNetworkChannel vnc) {
         this.net = vnc;
     }
-    
+
     void setFailureDetector(Positive<EventualFailureDetector> fd) {
         this.fd = fd;
     }
@@ -163,7 +160,7 @@ public class VirtualSharedComponents extends ServiceRegistry {
     public void setTimer(Positive<Timer> timer) {
         this.timer = timer;
     }
-    
+
     public Positive<EventualFailureDetector> getFailureDetector() {
         return this.fd;
     }

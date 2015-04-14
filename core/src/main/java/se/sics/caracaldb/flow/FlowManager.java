@@ -32,16 +32,16 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.MessageNotify;
-import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.Transport;
 import se.sics.kompics.network.netty.serialization.Serializers;
@@ -296,40 +296,16 @@ public class FlowManager extends ComponentDefinition {
         }
     }
 
-    public static abstract class FlowMessage implements Msg {
+    public static abstract class FlowMessage extends BaseMessage {
 
-        public final Address source;
-        public final Address destination;
-        public final Transport protocol;
 
         public final UUID flowId;
 
         public FlowMessage(Address src, Address dst, Transport protocol, UUID flowId) {
-            this.source = src;
-            this.destination = dst;
-            this.protocol = protocol;
+            super(src, dst, protocol);
             this.flowId = flowId;
         }
 
-        @Override
-        public Address getSource() {
-            return this.source;
-        }
-
-        @Override
-        public Address getDestination() {
-            return this.destination;
-        }
-
-        @Override
-        public Address getOrigin() {
-            return this.source;
-        }
-
-        @Override
-        public Transport getProtocol() {
-            return this.protocol;
-        }
     }
 
     public static class RTS extends FlowMessage {

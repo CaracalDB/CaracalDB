@@ -21,6 +21,7 @@
 package se.sics.caracaldb;
 
 import se.sics.caracaldb.global.ForwardMessage;
+import se.sics.caracaldb.global.LookupMessage;
 import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.CaracalOp;
 import se.sics.caracaldb.store.MultiOp;
@@ -50,7 +51,7 @@ public abstract class MessageRegistrator {
         //
         Serializers.register(CoreSerializer.LOOKUP.instance, "lookupS");
         Serializers.register(ForwardMessage.class, "lookupS");
-        Serializers.register(se.sics.caracaldb.global.Message.class, "lookupS");
+        Serializers.register(LookupMessage.class, "lookupS");
         //
         Serializers.register(CoreSerializer.COND.instance, "condS");
         Serializers.register(MultiOp.Condition.class, "condS");

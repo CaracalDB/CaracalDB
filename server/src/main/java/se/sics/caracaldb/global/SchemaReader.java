@@ -23,8 +23,6 @@ package se.sics.caracaldb.global;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -35,28 +33,23 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static se.sics.caracaldb.global.LUTJsonProtocol.GSON;
 import se.sics.caracaldb.system.Configuration;
-import se.sics.caracaldb.utils.ByteArrayFormatter;
+import com.larskroll.common.ByteArrayFormatter;
 import se.sics.caracaldb.utils.HashIdGenerator;
 
 /**
  *
  * @author lkroll
  */
-public abstract class SchemaReader {
+public abstract class SchemaReader extends LUTJsonProtocol {
 
     private static final Logger LOG = LoggerFactory.getLogger(SchemaReader.class);
-
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Charset CHARSET = Charset.forName("UTF8");
 
     public static SchemaData importSchemas(Configuration config) {
         ImmutableSet<String> paths = config.getSchemaFiles();
@@ -85,7 +78,7 @@ public abstract class SchemaReader {
                 try {
                     LOG.info("Importing Schema: {}", path);
                     StringBuilder sb = new StringBuilder();
-                    while(breader.ready()) {
+                    while (breader.ready()) {
                         sb.append(breader.readLine());
                     }
                     jsons.add(sb.toString());
@@ -134,18 +127,7 @@ public abstract class SchemaReader {
     }
 
     public static String exportSchemas(SchemaData schemas, String filename) throws FileNotFoundException, UnsupportedEncodingException {
-        LinkedList<SchemaObj> schemata = new LinkedList<SchemaObj>();
-        for (Entry<ByteBuffer, String> e : schemas.schemaNames.entrySet()) {
-            ByteBuffer id = e.getKey();
-            String name = e.getValue();
-            ImmutableMap<String, String> meta = schemas.metaData.get(id);
-            SchemaObj so = new SchemaObj();
-            so.name = name;
-            so.meta.putAll(meta);
-            so.meta.put("id", ByteArrayFormatter.toHexString(id.array()));
-            schemata.add(so);
-            System.out.println(so);
-        }
+        List<SchemaObj> schemata = prepareSchemas(schemas);
         String json = GSON.toJson(schemata);
         System.out.println("SCHEMAS: \n " + json);
         if (filename != null) {
@@ -162,18 +144,4 @@ public abstract class SchemaReader {
         return json;
     }
 
-    public static class SchemaObj {
-
-        private String name;
-        private HashMap<String, String> meta = new HashMap<String, String>();
-
-        public SchemaObj() {
-
-        }
-
-        @Override
-        public String toString() {
-            return name + ": " + meta;
-        }
-    }
 }

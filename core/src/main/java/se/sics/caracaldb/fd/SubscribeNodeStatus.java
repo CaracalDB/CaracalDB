@@ -21,9 +21,8 @@
 package se.sics.caracaldb.fd;
 
 import java.util.UUID;
-import se.sics.kompics.Event;
+import se.sics.caracaldb.Address;
 import se.sics.kompics.Request;
-import se.sics.kompics.address.Address;
 
 /**
  *

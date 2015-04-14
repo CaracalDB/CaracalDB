@@ -21,9 +21,9 @@
 package se.sics.caracaldb.global;
 
 import java.util.List;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.kompics.Response;
-import se.sics.kompics.address.Address;
 
 /**
  *

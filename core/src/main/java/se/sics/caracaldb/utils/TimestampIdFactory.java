@@ -26,10 +26,9 @@ import com.google.common.primitives.Longs;
 import com.larskroll.math.FixedInteger;
 import java.util.Arrays;
 import java.util.UUID;
-//import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
 
 /**
  *

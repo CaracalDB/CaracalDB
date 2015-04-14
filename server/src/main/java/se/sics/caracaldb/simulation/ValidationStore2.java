@@ -43,7 +43,7 @@ import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.persistence.memory.InMemoryDB;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.system.Launcher;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>

@@ -32,7 +32,7 @@ import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.MultiVersionUtil;
 import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.persistence.VNodeLevelDB;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  * A TreeMap based Database implementation.

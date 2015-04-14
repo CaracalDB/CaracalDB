@@ -21,14 +21,14 @@
 package se.sics.caracaldb.global;
 
 import java.util.UUID;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public interface Forwardable<T extends Msg> {
+public interface Forwardable<T extends BaseMessage> {
     /**
      * Return a message with desired contents and with the given address as dest.
      * 

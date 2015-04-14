@@ -32,6 +32,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.global.ForwardMessage;
@@ -57,7 +58,6 @@ import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.Timer;
 
@@ -381,7 +381,7 @@ public class ClientWorker extends ComponentDefinition {
         }
         return "No connection!";
     }
-    
+
     String getSystemInfo() {
         if (connectionEstablished) {
             lutLock.readLock().lock();
@@ -392,6 +392,42 @@ public class ClientWorker extends ComponentDefinition {
             }
         }
         return "No connection!";
+    }
+
+    String lutAsJson() {
+        if (connectionEstablished) {
+            lutLock.readLock().lock();
+            try {
+                return lut.asJson();
+            } finally {
+                lutLock.readLock().unlock();
+            }
+        }
+        return "";
+    }
+
+    String schemasAsJson() {
+        if (connectionEstablished) {
+            lutLock.readLock().lock();
+            try {
+                return lut.schemasAsJson();
+            } finally {
+                lutLock.readLock().unlock();
+            }
+        }
+        return "";
+    }
+
+    String hostsAsJson() {
+        if (connectionEstablished) {
+            lutLock.readLock().lock();
+            try {
+                return lut.hostsAsJson();
+            } finally {
+                lutLock.readLock().unlock();
+            }
+        }
+        return "";
     }
 
     private long lutversion() {

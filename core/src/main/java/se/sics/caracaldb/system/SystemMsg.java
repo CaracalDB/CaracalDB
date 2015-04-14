@@ -20,42 +20,17 @@
  */
 package se.sics.caracaldb.system;
 
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author lkroll
  */
-public abstract class SystemMsg implements Msg {
-
-    public final Address src;
-    public final Address dst;
-    public final Transport protocol = Transport.TCP;
+public abstract class SystemMsg extends BaseMessage {
 
     public SystemMsg(Address src, Address dst) {
-        this.src = src;
-        this.dst = dst;
-    }
-
-    @Override
-    public Address getSource() {
-        return src;
-    }
-
-    @Override
-    public Address getDestination() {
-        return dst;
-    }
-
-    @Override
-    public Address getOrigin() {
-        return dst;
-    }
-
-    @Override
-    public Transport getProtocol() {
-        return protocol;
+        super(src, dst, Transport.TCP);
     }
 }

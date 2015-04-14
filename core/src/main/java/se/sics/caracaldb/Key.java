@@ -23,12 +23,12 @@ package se.sics.caracaldb;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.common.primitives.UnsignedInteger;
+import com.larskroll.common.ByteArrayFormatter;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
-import se.sics.kompics.address.IdUtils;
 
 /**
  *
@@ -212,7 +212,7 @@ public class Key implements Comparable<Key> {
 
     @Override
     public String toString() {
-        return IdUtils.printFormat(data);
+        return ByteArrayFormatter.printFormat(data);
     }
 
     // wtb operator overrides in Java -.-

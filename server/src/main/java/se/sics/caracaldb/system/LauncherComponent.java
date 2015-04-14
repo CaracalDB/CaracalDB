@@ -20,15 +20,15 @@
  */
 package se.sics.caracaldb.system;
 
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.network.VirtualNetworkChannel;
 import se.sics.kompics.network.netty.NettyInit;
 import se.sics.kompics.network.netty.NettyNetwork;
+import se.sics.kompics.network.virtual.VirtualNetworkChannel;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.timer.java.JavaTimer;
 

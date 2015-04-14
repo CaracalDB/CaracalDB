@@ -39,15 +39,15 @@ import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.junit.Assert;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.paxos.PaxosManager.PaxosOp;
-import se.sics.kompics.address.Address;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class DecisionStore {
-    
+
     private static final UUID negId = new UUID(-1, -1);
 
     private TreeMap<Integer, EpochStore> stores = new TreeMap<Integer, EpochStore>();
@@ -102,7 +102,7 @@ public class DecisionStore {
         }
 
     }
-    
+
     public void joined(Address node) {
         currentGroup.add(node);
     }
@@ -165,7 +165,7 @@ public class DecisionStore {
     public int numOps() {
         return ops.size();
     }
-    
+
     public boolean allDecided() {
         return decided.size() == ops.size();
     }
@@ -212,7 +212,7 @@ public class DecisionStore {
     public static class EpochStore {
 
         private static final UUID zeroId = new UUID(0, 0);
-        
+
         private final int epoch;
         private LinkedListMultimap<Address, UUID> decidedMap = LinkedListMultimap.create();
         public final ImmutableSet<Address> group;
@@ -232,7 +232,7 @@ public class DecisionStore {
                 }
             } else {
                 //throw new RuntimeException("Can't write into an epoch where node is not present!");
-                
+
             }
         }
 
@@ -298,14 +298,11 @@ public class DecisionStore {
         public void html(StringBuilder sb) {
             sb.append("<table>");
 
-
-
             Map<Address, Iterator<UUID>> its = new HashMap<Address, Iterator<UUID>>();
             //Map<Address, Long> lastValue = new HashMap<Address, Long>();
             for (Entry<Address, Collection<UUID>> e : decidedMap.asMap().entrySet()) {
                 its.put(e.getKey(), e.getValue().iterator());
             }
-
 
             Multimap<Address, String> lines = LinkedListMultimap.create();
             for (Address adr : group) {

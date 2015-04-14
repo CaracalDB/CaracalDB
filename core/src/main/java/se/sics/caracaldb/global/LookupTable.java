@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.UnsignedBytes;
+import com.larskroll.common.ByteArrayFormatter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.io.IOException;
@@ -43,12 +44,11 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.javatuples.Pair;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.AddressSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.address.IdUtils;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>
@@ -359,7 +359,7 @@ public class LookupTable {
         for (Entry<String, ByteBuffer> e : schemas.schemaIDs.entrySet()) {
             String name = e.getKey();
             byte[] id = e.getValue().array();
-            sb.append(IdUtils.printFormat(id));
+            ByteArrayFormatter.printFormat(id, sb);
             sb.append(" : ");
             sb.append(schemas.schemaInfo(name));
             sb.append('\n');
@@ -440,7 +440,7 @@ public class LookupTable {
         // hosts
         buf.writeInt(hosts.size());
         for (Address addr : hosts) {
-            SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
+            AddressSerializer.INSTANCE.toBinary(addr, buf);
         }
 
         // replicationgroups
@@ -483,7 +483,7 @@ public class LookupTable {
         int numHosts = buf.readInt();
         INSTANCE.hosts = new ArrayList<Address>(numHosts);
         for (int i = 0; i < numHosts; i++) {
-            Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            Address addr = (Address) AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             INSTANCE.hosts.add(addr);
         }
 
@@ -719,6 +719,10 @@ public class LookupTable {
             return null;
         }
         return replicationSets.get(rgId);
+    }
+    
+    public String asJson() {
+        return LUTJsonProtocol.getLUT(versionId, schemas, hosts, replicationSets, replicationSetVersions, virtualHostGroups, virtualHostGroupVersions);
     }
 
     public static class NoResponsibleInGroup extends Throwable {

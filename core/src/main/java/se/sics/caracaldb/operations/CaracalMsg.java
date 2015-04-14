@@ -21,21 +21,17 @@
 package se.sics.caracaldb.operations;
 
 import java.util.UUID;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.caracaldb.global.Forwardable;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class CaracalMsg implements Msg, Forwardable<CaracalMsg> {
+public class CaracalMsg extends BaseMessage implements Forwardable<CaracalMsg> {
 
-    public final Address src;
-    public final Address dst;
-    public final Address orig;
-    public final Transport protocol;
     public final CaracalOp op;
     public final long lutversion;
 
@@ -48,54 +44,31 @@ public class CaracalMsg implements Msg, Forwardable<CaracalMsg> {
     }
 
     public CaracalMsg(Address src, Address dst, Address orig, Transport protocol, CaracalOp op, long lutversion) {
-        this.src = src;
-        this.dst = dst;
-        this.orig = orig;
-        this.protocol = protocol;
+        super(src, dst, orig, protocol);
         this.op = op;
         this.lutversion = lutversion;
     }
 
     @Override
     public CaracalMsg insertDestination(Address src, Address dest, long lutversion) {
-        return new CaracalMsg(src, dest, orig, protocol, op, lutversion);
+        return new CaracalMsg(src, dest, this.getOrigin(), this.getProtocol(), op, lutversion);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("CaracalMsg(");
-        sb.append(src.toString());
+        sb.append(this.getSource().toString());
         sb.append(" -> ");
-        sb.append(dst.toString());
+        sb.append(this.getDestination().toString());
         sb.append(" from ");
-        sb.append(orig.toString());
+        sb.append(this.getOrigin().toString());
         sb.append(" over ");
-        sb.append(protocol.name());
+        sb.append(this.getProtocol().name());
         sb.append(" with:");
         sb.append(op.toString());
         sb.append(")");
         return sb.toString();
-    }
-
-    @Override
-    public Address getSource() {
-        return src;
-    }
-
-    @Override
-    public Address getDestination() {
-        return dst;
-    }
-
-    @Override
-    public Address getOrigin() {
-        return orig;
-    }
-
-    @Override
-    public Transport getProtocol() {
-        return protocol;
     }
 
     @Override

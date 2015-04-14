@@ -20,9 +20,9 @@
  */
 package se.sics.caracaldb.system;
 
+import se.sics.caracaldb.Address;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.VirtualNetworkChannel;
+import se.sics.kompics.network.virtual.VirtualNetworkChannel;
 
 /**
  *

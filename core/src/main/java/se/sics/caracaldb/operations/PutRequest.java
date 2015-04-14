@@ -22,7 +22,7 @@ package se.sics.caracaldb.operations;
 
 import java.util.UUID;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.utils.ByteArrayFormatter;
+import com.larskroll.common.ByteArrayFormatter;
 
 /**
  *

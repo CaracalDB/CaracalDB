@@ -20,24 +20,26 @@
  */
 package se.sics.caracaldb.bootstrap;
 
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
+import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class BootstrapRequest extends BootstrapMsg {
+public class BootstrapRequest extends BaseMessage implements BootstrapMsg {
 
     public BootstrapRequest(Address src, Address dest) {
-        super(src, src, dest);
+        super(src, dest, src, Transport.TCP);
     }
 
     BootstrapRequest(Address orig, Address src, Address dest) {
-        super(orig, src, dest);
+        super(src, dest, orig, Transport.TCP);
     }
 
     public BootstrapRequest forward(Address from, Address to) {
-        return new BootstrapRequest(origin, from, to);
+        return new BootstrapRequest(this.getOrigin(), from, to);
     }
 
 }

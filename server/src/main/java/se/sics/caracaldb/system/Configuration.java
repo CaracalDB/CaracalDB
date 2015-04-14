@@ -38,11 +38,11 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.global.DefaultPolicy;
 import se.sics.caracaldb.global.MaintenancePolicy;
 import se.sics.caracaldb.persistence.DatabaseManager;
 import se.sics.caracaldb.utils.HashIdGenerator;
-import se.sics.kompics.address.Address;
 
 /**
  *

@@ -25,6 +25,7 @@ import com.google.common.primitives.UnsignedBytes;
 import com.google.common.primitives.UnsignedInteger;
 import com.google.common.primitives.UnsignedInts;
 import com.google.common.primitives.UnsignedLong;
+import com.larskroll.common.J6;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,12 +34,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.bootstrap.BootstrapServer;
 import static se.sics.caracaldb.global.LookupTable.RAND;
 import se.sics.caracaldb.system.Configuration;
-import se.sics.caracaldb.utils.J6;
-import se.sics.kompics.address.Address;
 
 /**
  *

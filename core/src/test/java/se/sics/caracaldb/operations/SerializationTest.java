@@ -28,9 +28,9 @@ import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
-import se.sics.kompics.address.Address;
 
 /**
  *

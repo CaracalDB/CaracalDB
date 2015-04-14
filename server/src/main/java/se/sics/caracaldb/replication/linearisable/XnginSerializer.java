@@ -21,6 +21,7 @@
 package se.sics.caracaldb.replication.linearisable;
 
 import com.google.common.base.Optional;
+import com.larskroll.common.BitBuffer;
 import io.netty.buffer.ByteBuf;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -34,15 +35,14 @@ import se.sics.caracaldb.replication.linearisable.ExecutionEngine.SyncedUp;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers.UUIDSerializer;
 
 /**
  *
  * @author lkroll
  */
 public class XnginSerializer implements Serializer {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(XnginSerializer.class);
 
     private static final Boolean[] OP = new Boolean[]{false, false};
@@ -60,7 +60,7 @@ public class XnginSerializer implements Serializer {
             SMROp op = (SMROp) o;
             byte[] flags = BitBuffer.create(OP).finalise();
             buf.writeBytes(flags);
-            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(op.id, buf);
+            UUIDSerializer.INSTANCE.toBinary(op.id, buf);
             Serializers.toBinary(op.op, buf);
             return;
         }
@@ -68,14 +68,14 @@ public class XnginSerializer implements Serializer {
             SyncedUp op = (SyncedUp) o;
             byte[] flags = BitBuffer.create(SYNCED).finalise();
             buf.writeBytes(flags);
-            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(op.id, buf);
+            UUIDSerializer.INSTANCE.toBinary(op.id, buf);
             return;
         }
         if (o instanceof Scan) {
             Scan op = (Scan) o;
             byte[] flags = BitBuffer.create(SCAN).finalise();
             buf.writeBytes(flags);
-            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(op.id, buf);
+            UUIDSerializer.INSTANCE.toBinary(op.id, buf);
             CustomSerialisers.serialiseKeyRange(op.range, buf);
             return;
         }
@@ -88,22 +88,22 @@ public class XnginSerializer implements Serializer {
         buf.readBytes(flagsB);
         boolean[] flags = BitBuffer.extract(8, flagsB);
         if (matches(flags, OP)) {
-            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            UUID id = (UUID) UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             CaracalOp op = (CaracalOp) Serializers.fromBinary(buf, Optional.absent());
             return new SMROp(id, op);
         }
         if (matches(flags, SYNCED)) {
-            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            UUID id = (UUID) UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             return new SyncedUp(id);
         }
         if (matches(flags, SCAN)) {
-            UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            UUID id = (UUID) UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             KeyRange range = CustomSerialisers.deserialiseKeyRange(buf);
             return new Scan(id, range);
         }
         return null;
     }
-    
+
     private boolean matches(boolean[] flags, Boolean[] type) {
         return (flags[0] == type[0]) && (flags[1] == type[1]);
     }

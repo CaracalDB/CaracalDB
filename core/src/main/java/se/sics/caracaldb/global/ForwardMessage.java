@@ -21,21 +21,16 @@
 package se.sics.caracaldb.global;
 
 import java.util.UUID;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.caracaldb.Key;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class ForwardMessage implements Msg, Forwardable<ForwardMessage> {
-
-    public final Address src;
-    public final Address dst;
-    public final Address orig;
-    public final Transport protocol;
+public class ForwardMessage extends BaseMessage implements Forwardable<ForwardMessage> {
 
     public final Key forwardTo;
     public final Forwardable msg;
@@ -45,10 +40,7 @@ public class ForwardMessage implements Msg, Forwardable<ForwardMessage> {
     }
 
     public ForwardMessage(Address src, Address dst, Address orig, Transport protocol, Key forwardTo, Forwardable msg) {
-        this.src = src;
-        this.dst = dst;
-        this.orig = orig;
-        this.protocol = protocol;
+        super(src, dst, orig, protocol);
         assert (forwardTo != null); // or bad things happen -.-
         this.forwardTo = forwardTo;
         this.msg = msg;
@@ -58,13 +50,13 @@ public class ForwardMessage implements Msg, Forwardable<ForwardMessage> {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("ForwardMessage(");
-        sb.append(src.toString());
+        sb.append(this.getSource().toString());
         sb.append(" -> ");
-        sb.append(dst.toString());
+        sb.append(this.getDestination().toString());
         sb.append(" from ");
-        sb.append(orig.toString());
+        sb.append(this.getOrigin().toString());
         sb.append(" over ");
-        sb.append(protocol.name());
+        sb.append(this.getProtocol().name());
         sb.append(" forward to ");
         sb.append(forwardTo.toString());
         sb.append(": \n     ");
@@ -74,28 +66,8 @@ public class ForwardMessage implements Msg, Forwardable<ForwardMessage> {
     }
 
     @Override
-    public Address getSource() {
-        return src;
-    }
-
-    @Override
-    public Address getDestination() {
-        return dst;
-    }
-
-    @Override
-    public Address getOrigin() {
-        return orig;
-    }
-
-    @Override
-    public Transport getProtocol() {
-        return protocol;
-    }
-
-    @Override
     public ForwardMessage insertDestination(Address src, Address dest, long lutversion) {
-        return new ForwardMessage(src, dest, orig, protocol, forwardTo, msg);
+        return new ForwardMessage(src, dest, this.getOrigin(), this.getProtocol(), forwardTo, msg);
     }
 
     @Override

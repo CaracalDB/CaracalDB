@@ -25,6 +25,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
@@ -45,7 +46,6 @@ import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Stop;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
@@ -89,9 +89,9 @@ public class MethCat extends ComponentDefinition {
         this.self = init.self;
         this.view = init.view;
         this.timerInterval = init.statsPeriod;
-        
+
         LOG.info("{} vnode responsibility:{}", new Object[]{self, responsibility});
-        
+
         state = State.FORWARDING;
 
         // subscriptions
@@ -172,7 +172,7 @@ public class MethCat extends ComponentDefinition {
                     trigger(req, replication);
                 } else {
                     LOG.debug("{}: Forwarding request {}", new Object[]{self, event});
-                    ForwardToRange ftr = new ForwardToRange(req, req.subRange, event.orig);
+                    ForwardToRange ftr = new ForwardToRange(req, req.subRange, event.getOrigin());
                     trigger(ftr, lookup);
                 }
             } else if (event.op instanceof GetRequest) {
@@ -206,7 +206,7 @@ public class MethCat extends ComponentDefinition {
                 } else { // if a node is not responsible for all keys in the MultiOp it must be rejected!
                     LOG.debug("{}: Rejecting request {}", new Object[]{self, event});
                     MultiOpResponse resp = new MultiOpResponse(req.id, ResponseCode.NOT_COLLOCATED, false);
-                    trigger(new CaracalMsg(self, event.orig, resp), network);
+                    trigger(new CaracalMsg(self, event.getOrigin(), resp), network);
                 }
             } else {
                 LOG.warn("Unknown operation {}", event.op);
@@ -231,8 +231,8 @@ public class MethCat extends ComponentDefinition {
                 rsp = resp;
                 if (req.execType.equals(RangeQuery.Type.SEQUENTIAL) && !resp.readLimit) {
                     LOG.debug("{} origRange:{} currRange:{} localResponsability:{}", new Object[]{self, req.initRange, req.subRange, responsibility});
-                    
-                    if(req.subRange.end.equals(req.initRange.end) && req.subRange.endBound.equals(req.initRange.endBound)) {
+
+                    if (req.subRange.end.equals(req.initRange.end) && req.subRange.endBound.equals(req.initRange.endBound)) {
                         LOG.debug("{}: Range query:{} from:{} finalized", new Object[]{self, rsp, orig.getOrigin()});
                         //finished rangequery do no forward it further
                     } else {
@@ -285,7 +285,7 @@ public class MethCat extends ComponentDefinition {
         }
 
     };
-    
+
     // OPTIONAL
     Handler<ForwardMessage> forwardMsgHandler = new Handler<ForwardMessage>() {
 

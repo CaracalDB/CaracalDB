@@ -24,7 +24,6 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
 import java.util.Iterator;
-import se.sics.kompics.address.Address;
 
 /**
  *

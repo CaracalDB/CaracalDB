@@ -20,7 +20,8 @@
  */
 package se.sics.caracaldb.system;
 
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+
 
 /**
  *

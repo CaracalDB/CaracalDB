@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.global;
 
+import com.larskroll.common.J6;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
 import java.util.Iterator;
@@ -27,17 +28,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.caracaldb.MessageRegistrator;
-import se.sics.caracaldb.utils.J6;
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.kompics.network.Transport;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
 
 /**
  *
  * @author lkroll
  */
-public class LUTPart extends Message {
+public class LUTPart extends BaseMessage implements LookupMessage {
 
     public static final int MAX_PART_SIZE = MessageRegistrator.STREAM_MAX_MSG_SIZE;
 

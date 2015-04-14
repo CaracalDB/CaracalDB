@@ -23,9 +23,9 @@ package se.sics.caracaldb.global;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.system.Stats;
 import se.sics.caracaldb.utils.HashIdGenerator;
-import se.sics.kompics.address.Address;
 
 /**
  *

@@ -20,7 +20,6 @@ import spray.json.DefaultJsonProtocol._
 import spray.routing.ExceptionHandler
 import akka.actor.Props
 import se.sics.caracaldb.operations.ResponseCode
-import se.sics.datamodel.msg.DMMessage
 import akka.routing._
 import se.sics.caracaldb.api.data._
 import java.nio.charset.Charset
@@ -28,6 +27,7 @@ import akka.event.LoggingAdapter
 import se.sics.caracaldb.Key
 import se.sics.caracaldb.KeyRange
 import se.sics.caracaldb.KeyRange.Bound
+import com.larskroll.common.CORSDirectives
 
 class ServiceRouterActor extends Actor with ServiceRouter with ActorLogging {
 
@@ -50,9 +50,7 @@ trait ServiceRouter extends HttpService with CORSDirectives {
 
     val conf = Main.system.settings.config;
     val numWorkers = conf.getInt("caracal.api.workers");
-    val numDMWorkers = conf.getInt("datamodel.workers");
     val workers = actorRefFactory.actorOf(Props[CaracalWorker].withRouter(SmallestMailboxPool(numWorkers)), "caracal-workers");
-    val dmWorkers = actorRefFactory.actorOf(Props[DataModelWorker].withRouter(SmallestMailboxPool(numDMWorkers)), "datamodel-workers");
 
     import ExecutionDirectives._
     def debugHandler(implicit log: LoggingContext) = ExceptionHandler {
@@ -62,12 +60,36 @@ trait ServiceRouter extends HttpService with CORSDirectives {
             ctx.complete(InternalServerError, "An unknown error occurred. We apologize for this inconvenience.");
     }
 
-    val detachAndRespond = respondWithMediaType(`application/json`) & handleExceptions(debugHandler) & detach();
+    val detachAndRespond = respondWithMediaType(`application/json`) & handleExceptions(debugHandler) & detach(());
 
     val primaryRoute: Route = {
         corsFilter(corsExp) {
             options {
                 complete("This is an OPTIONS request.")
+            } ~ path("schemas") {
+                get {
+                    detachAndRespond { ctx =>
+                        ctx.complete {
+                            listSchemas();
+                        }
+                    }
+                }
+            } ~ path("hosts") {
+                get {
+                    detachAndRespond { ctx =>
+                        ctx.complete {
+                            listHosts();
+                        }
+                    }
+                }
+            } ~ path("system") {
+                get {
+                    detachAndRespond { ctx =>
+                        ctx.complete {
+                            getLUT();
+                        }
+                    }
+                }
             } ~ path("schema" / Segment) { schema =>
                 get {
                     detachAndRespond { ctx =>
@@ -112,48 +134,6 @@ trait ServiceRouter extends HttpService with CORSDirectives {
                         detachAndRespond { ctx =>
                             ctx.complete {
                                 rangeOp(schema, prefix, null);
-                            }
-                        }
-                    }
-                }
-            } ~ path("type") {
-                entity(as[String]) { value =>
-                    post {
-                        detachAndRespond { ctx =>
-                            ctx.complete {
-                                objMGetPutOp(GetTypeRequest(value));
-                            }
-                        }
-                    } ~ put {
-                        detachAndRespond { ctx =>
-                            ctx.complete {
-                                objMGetPutOp(PutTypeRequest(value));
-                            }
-                        }
-                    }
-                }
-            } ~ path("object" / "q") {
-                entity(as[String]) { value =>
-                    post {
-                        detachAndRespond { ctx =>
-                            ctx.complete {
-                                objMQuery(value);
-                            }
-                        }
-                    }
-                }
-            } ~ path("object") {
-                entity(as[String]) { value =>
-                    post {
-                        detachAndRespond { ctx =>
-                            ctx.complete {
-                                objMGetPutOp(GetObjRequest(value));
-                            }
-                        }
-                    } ~ put {
-                        detachAndRespond { ctx =>
-                            ctx.complete {
-                                objMGetPutOp(PutObjRequest(value));
                             }
                         }
                     }
@@ -218,24 +198,22 @@ trait ServiceRouter extends HttpService with CORSDirectives {
         }
     }
 
-    private def objMGetPutOp(req: CaracalRequest): Either[FormattedResponse, DMOperation] = {
-        val f = dmWorkers ? req;
-        val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
-        logger.debug("ObjM OP result was {}", res);
-        res match {
-            case fr: FormattedResponse => return Left(fr);
-            case o: DMOperation        => return Right(o);
-        }
+    private def listSchemas(): FormattedResponse = {
+        val f = workers ? Schemas();
+        val res = Await.result(f, 10 seconds).asInstanceOf[FormattedResponse];
+        return res;
     }
 
-    private def objMQuery(str: String): Either[List[Entry], DMOperation] = {
-        val f = dmWorkers ? QueryObjRequest(str);
-        val res = Await.result(f, 10 seconds).asInstanceOf[CaracalResponse];
-        logger.debug("ObjM OP result was {}", res);
-        res match {
-            case Entries(l)     => return Left(l);
-            case o: DMOperation => return Right(o);
-        }
+    private def getLUT(): FormattedResponse = {
+        val f = workers ? LUT();
+        val res = Await.result(f, 10 seconds).asInstanceOf[FormattedResponse];
+        return res;
+    }
+
+    private def listHosts(): FormattedResponse = {
+        val f = workers ? Hosts();
+        val res = Await.result(f, 10 seconds).asInstanceOf[FormattedResponse];
+        return res;
     }
 
 }

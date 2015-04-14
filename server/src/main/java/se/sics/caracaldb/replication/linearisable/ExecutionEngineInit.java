@@ -20,10 +20,10 @@
  */
 package se.sics.caracaldb.replication.linearisable;
 
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
 
 /**
  *

@@ -25,8 +25,8 @@ import java.net.UnknownHostException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.kompics.Kompics;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.netty.serialization.Serializers;
+import se.sics.kompics.network.test.TestAddress;
 
 /**
  *
@@ -34,9 +34,9 @@ import se.sics.kompics.network.netty.serialization.Serializers;
  */
 public class MsgSizeTest {
     
-    public volatile static Address senderAddr;
-    public volatile static Address receiverAddr;
-    public static final Transport PROTOCOL = Transport.UDP;
+    public volatile static TestAddress senderAddr;
+    public volatile static TestAddress receiverAddr;
+    public static final Transport PROTOCOL = Transport.UDT;
     public static final Logger LOG = LoggerFactory.getLogger(MsgSizeTest.class);
     public static final int MIN_SIZE = 1000; // 1KB
     public static final int MAX_SIZE = 1000*1000*1000; // 1GB
@@ -47,8 +47,8 @@ public class MsgSizeTest {
         Serializers.register(TestMessage.class, "testS");
         
         InetAddress ip = InetAddress.getLocalHost();
-        senderAddr = new Address(ip, 45454, null);
-        receiverAddr = new Address(ip, 45455, null);
+        senderAddr = new TestAddress(ip, 45454);
+        receiverAddr = new TestAddress(ip, 45455);
         
         Kompics.createAndStart(Parent.class);
     }

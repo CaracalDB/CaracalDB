@@ -32,9 +32,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.global.NodeStats;
 import se.sics.caracaldb.system.Stats.Report;
-import se.sics.kompics.address.Address;
 
 /**
  *

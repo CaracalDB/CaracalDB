@@ -21,9 +21,9 @@
 package se.sics.caracaldb.client;
 
 import java.util.concurrent.BlockingQueue;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
 
 /**
  *

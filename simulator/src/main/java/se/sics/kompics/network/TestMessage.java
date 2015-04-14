@@ -20,7 +20,9 @@
  */
 package se.sics.kompics.network;
 
-import se.sics.kompics.address.Address;
+import se.sics.kompics.network.test.TestAddress;
+import se.sics.kompics.network.test.TestHeader;
+
 
 /**
  *
@@ -28,37 +30,33 @@ import se.sics.kompics.address.Address;
  */
 public abstract class TestMessage implements Msg {
     
-    private final Address src;
-    private final Address dst;
-    private final Transport proto;
+    private final TestHeader header;
     
     public final long id;
     
-    public TestMessage(Address src, Address dst, Transport proto, long id) {
-        this.src = src;
-        this.dst = dst;
-        this.proto = proto;
+    public TestMessage(TestAddress src, TestAddress dst, Transport proto, long id) {
+        this.header = new TestHeader(src, dst, proto);
         
         this.id = id;
     }
     
         @Override
     public Address getSource() {
-        return this.src;
+        return this.header.getSource();
     }
 
     @Override
     public Address getDestination() {
-        return this.dst;
-    }
-
-    @Override
-    public Address getOrigin() {
-        return this.src;
+        return this.header.getDestination();
     }
 
     @Override
     public Transport getProtocol() {
-        return this.proto;
+        return this.header.getProtocol();
+    }
+    
+    @Override
+    public Header getHeader() {
+        return header;
     }
 }

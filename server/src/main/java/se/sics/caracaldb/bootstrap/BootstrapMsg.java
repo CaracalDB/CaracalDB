@@ -20,44 +20,13 @@
  */
 package se.sics.caracaldb.bootstrap;
 
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
-import se.sics.kompics.network.Transport;
 
 /**
- *
+ * Just a marker interface for serialization
+ * 
  * @author lkroll
  */
-public abstract class BootstrapMsg implements Msg {
-
-    public final Address origin;
-    public final Address src;
-    public final Address dest;
-
-    public BootstrapMsg(Address origin, Address src, Address dest) {
-        this.origin = origin;
-        this.src = src;
-        this.dest = dest;
-    }
-
-    @Override
-    public Address getSource() {
-        return src;
-    }
-
-    @Override
-    public Address getDestination() {
-        return dest;
-    }
-
-    @Override
-    public Address getOrigin() {
-        return origin;
-    }
-
-    @Override
-    public Transport getProtocol() {
-        return Transport.TCP;
-    }
+public interface BootstrapMsg {
+    
 
 }

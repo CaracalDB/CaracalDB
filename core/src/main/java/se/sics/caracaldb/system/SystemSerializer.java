@@ -25,11 +25,11 @@ import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.caracaldb.global.SchemaData;
 import se.sics.caracaldb.global.SchemaData.SingleSchema;
 import se.sics.kompics.network.netty.serialization.Serializer;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
 
 /**
  *
@@ -55,7 +55,7 @@ public class SystemSerializer implements Serializer {
         }
         SystemMsg msg = (SystemMsg) o;
         if (msg instanceof StartVNode) {
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, START, false);
+            MessageSerializationUtil.msgToBinary(msg, buf, START, false);
             StartVNode s = (StartVNode) msg;
             buf.writeInt(s.nodeId.length);
             buf.writeBytes(s.nodeId);
@@ -63,7 +63,7 @@ public class SystemSerializer implements Serializer {
             return;
         }
         if (msg instanceof StopVNode) {
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, STOP, false);
+            MessageSerializationUtil.msgToBinary(msg, buf, STOP, false);
             return;
         }
         LOG.error("Can't serialize {}:{}", o, o.getClass());
@@ -71,7 +71,7 @@ public class SystemSerializer implements Serializer {
 
     @Override
     public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
-        MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
+        MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
         if (fields.flag1 == START) {
             int size = buf.readInt();
             byte[] nodeId = new byte[size];

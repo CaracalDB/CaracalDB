@@ -20,16 +20,17 @@
  */
 package se.sics.caracaldb.leader;
 
-import se.sics.kompics.Event;
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+import se.sics.kompics.KompicsEvent;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class Trust extends Event {
+public class Trust implements KompicsEvent {
+
     public final Address leader;
-    
+
     public Trust(Address leader) {
         this.leader = leader;
     }

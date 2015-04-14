@@ -21,14 +21,14 @@
 package se.sics.caracaldb.fd;
 
 import java.util.UUID;
-import se.sics.kompics.Event;
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+import se.sics.kompics.KompicsEvent;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class UnsubscribeNodeStatus extends Event {
+public class UnsubscribeNodeStatus implements KompicsEvent {
     public final UUID requestId;
     public final Address node;
     

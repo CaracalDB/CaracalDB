@@ -230,16 +230,28 @@ public class BlockingClient {
         worker.triggerOnSelf(ds);
         return ds.future;
     }
-    
+
     public ImmutableSortedSet<String> listSchemas() {
         return worker.listSchemas();
     }
-    
+
     public String getSchemaInfo(String schemaName) {
         return worker.getSchemaInfo(schemaName);
     }
-    
+
     public String getSystemInfo() {
         return worker.getSystemInfo();
+    }
+
+    public String lutAsJson() {
+        return worker.lutAsJson();
+    }
+
+    public String schemasAsJson() {
+        return worker.schemasAsJson();
+    }
+
+    public String hostsAsJson() {
+        return worker.hostsAsJson();
     }
 }

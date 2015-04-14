@@ -45,7 +45,7 @@ import se.sics.caracaldb.global.Schema;
 import se.sics.caracaldb.operations.GetResponse;
 import se.sics.caracaldb.operations.RangeResponse;
 import se.sics.caracaldb.operations.ResponseCode;
-import se.sics.caracaldb.utils.ByteArrayFormatter;
+import com.larskroll.common.ByteArrayFormatter;
 import util.log4j.ColoredPatternLayout;
 
 /**

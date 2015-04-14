@@ -46,12 +46,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.caracaldb.system.Launcher;
 import se.sics.caracaldb.utils.HashIdGenerator;
-import se.sics.kompics.address.Address;
 
 /**
  *

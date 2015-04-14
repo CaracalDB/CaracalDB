@@ -18,29 +18,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package se.sics.caracaldb.utils;
+package se.sics.caracaldb.global;
 
 /**
- * Utility class with workarounds for functionality from Java8 that is missing
- * in Java6
- *
+ * Just a marker interface for serialization.
+ * 
  * @author lkroll
  */
-public abstract class J6 {
-
-    public static <T> T orDefault(T obj, T defaultValue) {
-        if (obj == null) {
-            return defaultValue;
-        } else {
-            return obj;
-        }
-    }
-
-    public static long roundUp(long num, long divisor) {
-        return (num + divisor - 1) / divisor;
-    }
+public interface LookupMessage {
     
-    public static int roundUp(int num, int divisor) {
-        return (int)roundUp((long)num, (long)divisor);
-    }
 }

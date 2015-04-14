@@ -41,7 +41,7 @@ import se.sics.caracaldb.utils.CustomSerialisers;
 public class LookupGroup {
 
     private TreeMap<Key, Integer> virtualHosts; // Replace later with SILT
-    private final byte prefix;
+    final byte prefix;
 
     public LookupGroup(byte prefix) {
         virtualHosts = new TreeMap<Key, Integer>();
@@ -127,8 +127,8 @@ public class LookupGroup {
         }
         return nodeSet;
     }
-    
-    public Set<Key>getVirtualNodesInSchema(Key schemaId) {
+
+    public Set<Key> getVirtualNodesInSchema(Key schemaId) {
         Set<Key> nodeSet = new TreeSet<Key>();
         for (Entry<Key, Integer> e : virtualHosts.entrySet()) {
             if (e.getKey().hasPrefix(schemaId)) {
@@ -180,5 +180,10 @@ public class LookupGroup {
             sb.append(e.getValue());
             sb.append('\n');
         }
+    }
+
+    Map<Key, Integer> fillMap(Map<Key, Integer> m) {
+        m.putAll(virtualHosts);
+        return m;
     }
 }

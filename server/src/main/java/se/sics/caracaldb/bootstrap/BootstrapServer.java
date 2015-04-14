@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.global.LUTGenerator;
 import se.sics.caracaldb.global.LUTPart;
 import se.sics.caracaldb.global.LookupTable;
@@ -37,7 +38,6 @@ import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
@@ -103,6 +103,7 @@ public class BootstrapServer extends ComponentDefinition {
 
         @Override
         public void handle(BootstrapRequest e) {
+            LOG.trace("Handling BootstrapRequest {} from {}", e, e.getSource());
             if (state != State.DONE) {
                 fresh.add(e.getSource());
                 if (!active.contains(e.getSource())) {

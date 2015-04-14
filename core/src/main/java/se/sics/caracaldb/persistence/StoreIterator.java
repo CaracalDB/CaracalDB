@@ -22,7 +22,7 @@ package se.sics.caracaldb.persistence;
 
 import java.io.Closeable;
 import java.util.SortedMap;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>

@@ -20,25 +20,24 @@
  */
 package se.sics.caracaldb.global;
 
-import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.bootstrap.Bootstrapped;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class GlobalInit extends Init {
-    
+
     public final Bootstrapped bootEvent;
     public final Address self;
     public final Configuration conf;
     public final ReadWriteLock lock = new ReentrantReadWriteLock();
-    
+
     public GlobalInit(Bootstrapped bootr, Address self, Configuration conf) {
         bootEvent = bootr;
         this.self = self;

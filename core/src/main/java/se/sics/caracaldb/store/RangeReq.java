@@ -32,7 +32,7 @@ import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.persistence.Persistence;
 import se.sics.caracaldb.persistence.StoreIterator;
 import se.sics.caracaldb.store.Limit.LimitTracker;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  *

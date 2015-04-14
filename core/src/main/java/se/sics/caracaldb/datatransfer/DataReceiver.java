@@ -25,6 +25,7 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.flow.DataMessage;
 import se.sics.caracaldb.persistence.Batch;
@@ -34,7 +35,6 @@ import se.sics.caracaldb.store.StorageRequest;
 import se.sics.caracaldb.store.StorageResponse;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Start;
-import se.sics.kompics.address.Address;
 
 /**
  *

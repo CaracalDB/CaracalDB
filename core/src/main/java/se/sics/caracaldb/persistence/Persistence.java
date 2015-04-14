@@ -21,7 +21,7 @@
 package se.sics.caracaldb.persistence;
 
 import java.util.SortedMap;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  *

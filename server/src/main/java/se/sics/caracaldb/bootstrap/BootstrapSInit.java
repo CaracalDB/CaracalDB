@@ -20,9 +20,9 @@
  */
 package se.sics.caracaldb.bootstrap;
 
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.system.Configuration;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
 
 /**
  *

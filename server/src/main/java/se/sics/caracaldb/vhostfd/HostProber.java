@@ -20,12 +20,12 @@
  */
 package se.sics.caracaldb.vhostfd;
 
-import se.sics.caracaldb.fd.SubscribeNodeStatus;
-import se.sics.caracaldb.fd.Restore;
-import se.sics.caracaldb.fd.Suspect;
 import java.util.HashMap;
 import java.util.UUID;
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.fd.Restore;
+import se.sics.caracaldb.fd.SubscribeNodeStatus;
+import se.sics.caracaldb.fd.Suspect;
 
 /**
  *

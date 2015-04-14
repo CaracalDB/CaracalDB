@@ -34,7 +34,7 @@ import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.HostLevelDB;
 import se.sics.caracaldb.persistence.MultiVersionUtil;
 import se.sics.caracaldb.persistence.StoreIterator;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>

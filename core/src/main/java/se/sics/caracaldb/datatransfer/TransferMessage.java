@@ -21,15 +21,15 @@
 package se.sics.caracaldb.datatransfer;
 
 import java.util.UUID;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public abstract class TransferMessage extends Message {
+public abstract class TransferMessage extends BaseMessage {
 
     public final UUID id;
 

@@ -27,11 +27,13 @@ import java.net.ServerSocket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.caracaldb.TestUtil;
 import se.sics.caracaldb.global.SchemaData;
 import se.sics.caracaldb.system.Configuration.NodePhase;
@@ -42,9 +44,8 @@ import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
 import se.sics.kompics.network.Network;
+import se.sics.kompics.network.Transport;
 
 /**
  *
@@ -80,7 +81,7 @@ public class LauncherTest {
         } catch (UnknownHostException ex) {
             fail(ex.getMessage());
         }
-        
+
         try {
             ServerSocket s = new ServerSocket(0); // try to find a free port
             port = s.getLocalPort();
@@ -105,20 +106,20 @@ public class LauncherTest {
                 .setIp(netAddr.getIp())
                 .setPort(netAddr.getPort())
                 .addHostHook(SystemPhase.INIT, new ComponentHook() {
-            @Override
-            public void setUp(HostSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Setting up (" + shared.getSelf() + ").");
-                Component sender = parent.create(SenderComponent.class, new SenderInit(shared.getSelf()));
-                Component receiver = parent.create(ReceiverComponent.class, Init.NONE);
-                shared.connectNetwork(sender);
-                shared.connectNetwork(receiver);
-            }
+                    @Override
+                    public void setUp(HostSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Setting up (" + shared.getSelf() + ").");
+                        Component sender = parent.create(SenderComponent.class, new SenderInit(shared.getSelf()));
+                        Component receiver = parent.create(ReceiverComponent.class, Init.NONE);
+                        shared.connectNetwork(sender);
+                        shared.connectNetwork(receiver);
+                    }
 
-            @Override
-            public void tearDown(HostSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Tearing down.");
-            }
-        });
+                    @Override
+                    public void tearDown(HostSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Tearing down.");
+                    }
+                });
 
         System.out.println("Starting up.");
         TestUtil.reset();
@@ -137,35 +138,34 @@ public class LauncherTest {
                 .setIp(netAddr.getIp())
                 .setPort(netAddr.getPort())
                 .addHostHook(SystemPhase.INIT, new ComponentHook() {
-            @Override
-            public void setUp(HostSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Setting up (" + shared.getSelf() + ").");
-                Component spawner = parent.create(SpawnerComponent.class, Init.NONE);
-                shared.connectNetwork(spawner);
-            }
+                    @Override
+                    public void setUp(HostSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Setting up (" + shared.getSelf() + ").");
+                        Component spawner = parent.create(SpawnerComponent.class, Init.NONE);
+                        shared.connectNetwork(spawner);
+                    }
 
-            @Override
-            public void tearDown(HostSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Tearing down.");
-            }
-        })
+                    @Override
+                    public void tearDown(HostSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Tearing down.");
+                    }
+                })
                 .addVirtualHook(NodePhase.INIT, new VirtualComponentHook() {
-            @Override
-            public void setUp(VirtualSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Setting up (" + shared.getSelf() + ").");
-                Component sender = parent.create(SenderComponent.class, new SenderInit(shared.getSelf()));
-                Component receiver = parent.create(ReceiverComponent.class, Init.NONE);
-                shared.connectNetwork(sender);
-                shared.connectNetwork(receiver);
-            }
+                    @Override
+                    public void setUp(VirtualSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Setting up (" + shared.getSelf() + ").");
+                        Component sender = parent.create(SenderComponent.class, new SenderInit(shared.getSelf()));
+                        Component receiver = parent.create(ReceiverComponent.class, Init.NONE);
+                        shared.connectNetwork(sender);
+                        shared.connectNetwork(receiver);
+                    }
 
-            @Override
-            public void tearDown(VirtualSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Tearing down.");
-            }
-        });
+                    @Override
+                    public void tearDown(VirtualSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Tearing down.");
+                    }
+                });
         spawn2 = true;
-
 
         System.out.println("Starting up.");
         TestUtil.reset();
@@ -178,7 +178,6 @@ public class LauncherTest {
         Launcher.stop();
         System.out.println("Done.");
 
-
     }
 
     @Test
@@ -187,37 +186,37 @@ public class LauncherTest {
                 .setIp(netAddr.getIp())
                 .setPort(netAddr.getPort())
                 .addHostHook(SystemPhase.INIT, new ComponentHook() {
-            @Override
-            public void setUp(HostSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Setting up (" + shared.getSelf() + ").");
-                Component spawner = parent.create(SpawnerComponent.class, Init.NONE);
-                shared.connectNetwork(spawner);
-            }
+                    @Override
+                    public void setUp(HostSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Setting up (" + shared.getSelf() + ").");
+                        Component spawner = parent.create(SpawnerComponent.class, Init.NONE);
+                        shared.connectNetwork(spawner);
+                    }
 
-            @Override
-            public void tearDown(HostSharedComponents shared, ComponentProxy parent) {
-                System.out.println(SYSTEM_DOWN);
-                TestUtil.submit(SYSTEM_DOWN);
-            }
-        })
+                    @Override
+                    public void tearDown(HostSharedComponents shared, ComponentProxy parent) {
+                        System.out.println(SYSTEM_DOWN);
+                        TestUtil.submit(SYSTEM_DOWN);
+                    }
+                })
                 .addVirtualHook(NodePhase.INIT, new VirtualComponentHook() {
-            private Component respawner;
+                    private Component respawner;
 
-            @Override
-            public void setUp(VirtualSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Setting up (" + shared.getSelf() + ").");
-                respawner = parent.create(RespawnerComponent.class, new RespawnerInit(shared.getSelf()));
-                shared.connectNetwork(respawner);
-            }
+                    @Override
+                    public void setUp(VirtualSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Setting up (" + shared.getSelf() + ").");
+                        respawner = parent.create(RespawnerComponent.class, new RespawnerInit(shared.getSelf()));
+                        shared.connectNetwork(respawner);
+                    }
 
-            @Override
-            public void tearDown(VirtualSharedComponents shared, ComponentProxy parent) {
-                System.out.println("Tearing down " + shared.getSelf());
-                shared.disconnectNetwork(respawner);
-                parent.destroy(respawner);
-                TestUtil.submit(NODE_DOWN);
-            }
-        });
+                    @Override
+                    public void tearDown(VirtualSharedComponents shared, ComponentProxy parent) {
+                        System.out.println("Tearing down " + shared.getSelf());
+                        shared.disconnectNetwork(respawner);
+                        parent.destroy(respawner);
+                        TestUtil.submit(NODE_DOWN);
+                    }
+                });
         spawn2 = false;
 
         System.out.println("Starting up.");
@@ -238,7 +237,6 @@ public class LauncherTest {
         TestUtil.waitFor(SYSTEM_DOWN);
         System.out.println("Done.");
 
-
     }
 
     public static class SenderComponent extends ComponentDefinition {
@@ -249,7 +247,6 @@ public class LauncherTest {
             final Positive<Network> net = requires(Network.class);
 
             self = init.self;
-
 
             Handler<Start> startHandler = new Handler<Start>() {
                 @Override
@@ -307,7 +304,6 @@ public class LauncherTest {
 
             self = init.self;
 
-
             Handler<Start> startHandler = new Handler<Start>() {
                 @Override
                 public void handle(Start event) {
@@ -343,10 +339,10 @@ public class LauncherTest {
         }
     }
 
-    public static class TestMsg extends Message {
+    public static class TestMsg extends BaseMessage {
 
         public TestMsg(Address from, Address to) {
-            super(from, to);
+            super(from, to, Transport.TCP);
         }
     }
 }

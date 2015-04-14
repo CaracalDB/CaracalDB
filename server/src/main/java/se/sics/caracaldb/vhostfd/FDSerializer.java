@@ -18,7 +18,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 package se.sics.caracaldb.vhostfd;
 
 import com.google.common.base.Optional;
@@ -26,21 +25,22 @@ import io.netty.buffer.ByteBuf;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.caracaldb.ServerSerializer;
 import se.sics.caracaldb.vhostfd.VirtualEPFD.Ping;
 import se.sics.caracaldb.vhostfd.VirtualEPFD.Pong;
 import se.sics.kompics.network.netty.serialization.Serializer;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
+import se.sics.kompics.network.netty.serialization.SpecialSerializers.UUIDSerializer;
 
 /**
  *
  * @author lkroll
  */
 public class FDSerializer implements Serializer {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(FDSerializer.class);
-    
+
     private static final boolean PING = false;
     private static final boolean PONG = true;
 
@@ -53,15 +53,15 @@ public class FDSerializer implements Serializer {
     public void toBinary(Object o, ByteBuf buf) {
         if (o instanceof Ping) {
             Ping p = (Ping) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(p, buf, PING, false);
-            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(p.id, buf);
+            MessageSerializationUtil.msgToBinary(p, buf, PING, false);
+            UUIDSerializer.INSTANCE.toBinary(p.id, buf);
             buf.writeLong(p.ts);
             return;
         }
         if (o instanceof Pong) {
             Pong p = (Pong) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(p, buf, PONG, false);
-            SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(p.id, buf);
+            MessageSerializationUtil.msgToBinary(p, buf, PONG, false);
+            UUIDSerializer.INSTANCE.toBinary(p.id, buf);
             buf.writeLong(p.ts);
             return;
         }
@@ -70,8 +70,8 @@ public class FDSerializer implements Serializer {
 
     @Override
     public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
-        MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
-        UUID id = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+        MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
+        UUID id = (UUID) UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         long ts = buf.readLong();
         if (fields.flag1 == PING) {
             return new Ping(id, ts, fields.src, fields.dst);
@@ -81,5 +81,5 @@ public class FDSerializer implements Serializer {
         }
         return null; // Shouldn't get here
     }
-    
+
 }

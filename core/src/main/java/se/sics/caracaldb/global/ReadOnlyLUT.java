@@ -30,6 +30,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
@@ -37,7 +38,6 @@ import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.caracaldb.utils.TimestampIdFactory;
-import se.sics.kompics.address.Address;
 
 /**
  *
@@ -185,6 +185,30 @@ public class ReadOnlyLUT {
             return sb.toString();
         } else {
             return "LUT incomplete!";
+        }
+    }
+
+    public String asJson() {
+        if (lut != null) {
+            return lut.asJson();
+        } else {
+            return "";
+        }
+    }
+
+    public String schemasAsJson() {
+        if (lut != null) {
+            return LUTJsonProtocol.getSchemas(lut.schemas());
+        } else {
+            return "";
+        }
+    }
+
+    public String hostsAsJson() {
+        if (lut != null) {
+            return LUTJsonProtocol.getHosts(lut.hosts());
+        } else {
+            return "";
         }
     }
 

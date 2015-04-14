@@ -37,6 +37,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
@@ -61,7 +62,6 @@ import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
@@ -277,7 +277,7 @@ public class LUTManager extends ComponentDefinition {
                     if (event.msg.getLUTVersion() > lut.versionId) { // my LUT is outdated
                         askForUpdatesTo(event.msg.getLUTVersion(), true);
                     } else if (event.msg.getLUTVersion() < lut.versionId) { // their LUT is outdated
-                        trigger(new LUTOutdated(self, event.orig, self, lut.versionId), net);
+                        trigger(new LUTOutdated(self, event.getOrigin(), self, lut.versionId), net);
                     }
                 }
             } catch (LookupTable.NoResponsibleForKeyException ex) {
@@ -353,14 +353,14 @@ public class LUTManager extends ComponentDefinition {
                 if (event.lutversion > lut.versionId) { // my LUT is outdated
                     askForUpdatesTo(event.lutversion, true);
                 } else if (event.lutversion < lut.versionId) { // their LUT is outdated
-                    trigger(new LUTOutdated(self, event.orig, self, lut.versionId), net);
+                    trigger(new LUTOutdated(self, event.getOrigin(), self, lut.versionId), net);
                 }
             }
-            LOG.trace("Replied to SampleRequest from {}", event.orig);
+            LOG.trace("Replied to SampleRequest from {}", event.getOrigin());
             if (event.lut) {
-                LOG.debug("Also sending LUT to {}", event.orig);
+                LOG.debug("Also sending LUT to {}", event.getOrigin());
                 byte[] lutB = lut.serialise();
-                for (LUTPart part : LUTPart.split(self, event.orig, lutB)) {
+                for (LUTPart part : LUTPart.split(self, event.getOrigin(), lutB)) {
                     trigger(part, net);
                 }
             }
@@ -371,7 +371,7 @@ public class LUTManager extends ComponentDefinition {
         @Override
         public void handle(Schema.CreateReq event) {
             LOG.trace("{}: Got Schema.CreateReq: {}", self, event);
-            if (event.orig.equals(event.src)) { // hasn't been forwarded to masters, yet
+            if (event.getOrigin().equals(event.getSource())) { // hasn't been forwarded to masters, yet
                 LOG.debug("{}: Forwarding Schema.CreateReq to masters: {}", self, masterGroup);
                 for (Address addr : masterGroup) {
                     trigger(event.forward(self, addr), net);
@@ -389,7 +389,7 @@ public class LUTManager extends ComponentDefinition {
         @Override
         public void handle(Schema.DropReq event) {
             LOG.trace("{}: Got Schema.DropReq: {}", self, event);
-            if (event.orig.equals(event.src)) { // hasn't been forwarded to masters, yet
+            if (event.getOrigin().equals(event.getSource())) { // hasn't been forwarded to masters, yet
                 LOG.debug("{}: Forwarding Schema.DropReq to masters: {}", self, masterGroup);
                 for (Address addr : masterGroup) {
                     trigger(event.forward(self, addr), net);
@@ -433,7 +433,7 @@ public class LUTManager extends ComponentDefinition {
                     System.exit(1); // this might mean that the system is unstable, better to fail fast than risk further inconsistency
                 }
                 if (checkMaster()) {
-                    trigger(new AppliedUpdate(update, event.src.equals(self)), herder);
+                    trigger(new AppliedUpdate(update, event.getSource().equals(self)), herder);
                 }
             }
         }
@@ -485,7 +485,7 @@ public class LUTManager extends ComponentDefinition {
 
         @Override
         public void handle(BootstrapRequest event) {
-            if (event.origin.equals(event.src)) { // hasn't been forwarded to masters, yet
+            if (event.getOrigin().equals(event.getSource())) { // hasn't been forwarded to masters, yet
                 for (Address addr : masterGroup) {
                     trigger(event.forward(self, addr), net);
                 }

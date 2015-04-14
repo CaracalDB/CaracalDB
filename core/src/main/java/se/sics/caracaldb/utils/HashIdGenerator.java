@@ -21,6 +21,7 @@
 
 package se.sics.caracaldb.utils;
 
+import com.larskroll.common.ByteArrayRef;
 import com.google.common.primitives.Ints;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

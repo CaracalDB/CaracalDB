@@ -27,6 +27,7 @@ import java.util.Queue;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.flow.ClearToSend;
 import se.sics.caracaldb.flow.DataMessage;
@@ -38,7 +39,6 @@ import se.sics.caracaldb.store.RangeResp;
 import se.sics.caracaldb.store.TFFactory;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Start;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
 

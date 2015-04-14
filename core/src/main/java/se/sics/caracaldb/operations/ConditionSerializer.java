@@ -21,19 +21,17 @@
 package se.sics.caracaldb.operations;
 
 import com.google.common.base.Optional;
+import com.larskroll.common.BitBuffer;
 import io.netty.buffer.ByteBuf;
-//import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.store.MultiOp.Condition;
 import se.sics.caracaldb.store.MultiOp.EqualCondition;
-//import se.sics.caracaldb.store.MultiOp.FunctionalCondition;
 import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
 
 /**
  *

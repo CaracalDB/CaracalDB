@@ -20,14 +20,17 @@
  */
 package se.sics.caracaldb.bootstrap;
 
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
+import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class BootUp extends BootstrapMsg {
+public class BootUp extends BaseMessage implements BootstrapMsg {
+
     public BootUp(Address src, Address dst) {
-        super(src, src, dst);
+        super(src, dst, src, Transport.TCP);
     }
 }

@@ -29,6 +29,7 @@ import java.util.UUID;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.datatransfer.Completed;
@@ -75,7 +76,6 @@ import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
 import se.sics.kompics.Stopped;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.Timer;
 

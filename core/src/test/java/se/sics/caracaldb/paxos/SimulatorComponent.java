@@ -20,8 +20,6 @@
  */
 package se.sics.caracaldb.paxos;
 
-import se.sics.caracaldb.replication.log.Reconfigure;
-import se.sics.caracaldb.replication.log.Propose;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import java.net.InetAddress;
@@ -33,11 +31,14 @@ import java.util.TreeSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.paxos.Commands.Fail;
 import se.sics.caracaldb.paxos.Commands.Join;
 import se.sics.caracaldb.paxos.Commands.Operation;
+import se.sics.caracaldb.replication.log.Propose;
+import se.sics.caracaldb.replication.log.Reconfigure;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
@@ -45,9 +46,8 @@ import se.sics.kompics.Kompics;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.network.VirtualNetworkChannel;
+import se.sics.kompics.network.virtual.VirtualNetworkChannel;
 import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.virtual.networkmodel.HostAddress;

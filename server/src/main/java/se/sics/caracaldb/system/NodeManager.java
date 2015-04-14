@@ -22,6 +22,7 @@ package se.sics.caracaldb.system;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.global.LookupService;
@@ -56,7 +57,6 @@ import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.Timer;
 

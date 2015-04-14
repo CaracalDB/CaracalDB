@@ -22,7 +22,7 @@ package se.sics.caracaldb.store;
 
 import java.io.Serializable;
 import org.javatuples.Pair;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  * @author Alex Ormenisan <aaor@sics.se>

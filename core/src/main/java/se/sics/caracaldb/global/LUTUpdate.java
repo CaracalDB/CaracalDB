@@ -33,12 +33,12 @@ import java.util.ArrayList;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.AddressSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.utils.CustomSerialisers;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  *
@@ -275,13 +275,13 @@ public class LUTUpdate {
         public void serialise(ByteBuf buf) {
             buf.writeByte(code());
             buf.writeInt(id);
-            SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
+            AddressSerializer.INSTANCE.toBinary(addr, buf);
         }
 
         @Override
         public void fill(ByteBuf buf) {
             id = buf.readInt();
-            addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            addr = (Address) AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         }
 
     }

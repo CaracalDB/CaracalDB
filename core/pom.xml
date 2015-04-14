@@ -4,7 +4,7 @@
     <parent>
         <groupId>se.sics.caracaldb</groupId>
         <artifactId>caracaldb-parent-pom</artifactId>
-        <version>0.0.6-SNAPSHOT</version>
+        <version>0.0.7-SNAPSHOT</version>
     </parent>
 
     <artifactId>caracaldb-core</artifactId>
@@ -26,7 +26,7 @@
         </dependency>
         <dependency>
             <groupId>se.sics.kompics.basic</groupId>
-            <artifactId>kompics-component-virtual-netty-network</artifactId>
+            <artifactId>kompics-component-netty-network</artifactId>
             <version>${kompics.version}</version>
             <scope>compile</scope>
         </dependency>
@@ -45,7 +45,7 @@
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>caracaldb-simulator</artifactId>
-            <version>0.0.6-SNAPSHOT</version>
+            <version>0.0.7-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>

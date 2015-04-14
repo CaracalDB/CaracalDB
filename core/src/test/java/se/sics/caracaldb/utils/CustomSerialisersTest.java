@@ -21,19 +21,19 @@
 package se.sics.caracaldb.utils;
 
 import com.google.common.collect.ImmutableSortedSet;
+import com.larskroll.common.BitBuffer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.net.InetAddress;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
 
 /**
  *

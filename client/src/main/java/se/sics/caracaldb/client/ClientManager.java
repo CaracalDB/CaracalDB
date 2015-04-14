@@ -31,6 +31,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.MessageRegistrator;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.system.ComponentProxy;
@@ -39,6 +40,7 @@ import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.ControlPort;
+import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.KompicsEvent;
@@ -47,11 +49,10 @@ import se.sics.kompics.Port;
 import se.sics.kompics.PortType;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
-import se.sics.kompics.network.VirtualNetworkChannel;
 import se.sics.kompics.network.netty.NettyInit;
 import se.sics.kompics.network.netty.NettyNetwork;
+import se.sics.kompics.network.virtual.VirtualNetworkChannel;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.timer.java.JavaTimer;
 
@@ -74,7 +75,7 @@ public class ClientManager extends ComponentDefinition {
     private final Address self;
     private final SortedSet<Address> vNodes = new TreeSet<Address>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
+    private static final BlockingQueue<Boolean> startedQ = new LinkedBlockingQueue<Boolean>(1);
 
     static {
         MessageRegistrator.register();
@@ -159,6 +160,17 @@ public class ClientManager extends ComponentDefinition {
         timer = create(JavaTimer.class, Init.NONE);
         vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
 
+        subscribe(new Handler<Start>() {
+
+            @Override
+            public void handle(Start event) {
+                try {
+                    startedQ.put(true);
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        }, control);
     }
 
     public static ClientManager getInstance() {
@@ -177,8 +189,13 @@ public class ClientManager extends ComponentDefinition {
         if (INSTANCE == null) { // Not the nicest singleton solution but fine for this
             synchronized (ClientManager.class) {
                 if (INSTANCE == null) {
-                    //MessageRegistrator.register();
-                    Kompics.createAndStart(ClientManager.class, Runtime.getRuntime().availableProcessors());
+                    try {
+                        //MessageRegistrator.register();
+                        Kompics.createAndStart(ClientManager.class, Runtime.getRuntime().availableProcessors());
+                        startedQ.take();
+                    } catch (InterruptedException ex) {
+                        throw new RuntimeException(ex);
+                    }
                 }
             }
         }

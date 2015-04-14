@@ -21,10 +21,8 @@
 package se.sics.caracaldb.flow;
 
 import java.util.UUID;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import se.sics.caracaldb.Address;
 import se.sics.kompics.Direct;
-import se.sics.kompics.address.Address;
 
 /**
  * The <code>ClearToSend</code> class.

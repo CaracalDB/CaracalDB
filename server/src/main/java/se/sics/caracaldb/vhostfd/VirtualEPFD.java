@@ -26,6 +26,8 @@ import java.util.HashSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.caracaldb.fd.EventualFailureDetector;
 import se.sics.caracaldb.fd.Restore;
 import se.sics.caracaldb.fd.SubscribeNodeStatus;
@@ -35,8 +37,6 @@ import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.Transport;
 import se.sics.kompics.timer.CancelTimeout;
@@ -257,35 +257,11 @@ public class VirtualEPFD extends ComponentDefinition {
         }
     }
 
-    public static abstract class FDMsg implements Msg {
+    public static abstract class FDMsg extends BaseMessage {
 
-        public final Address src;
-        public final Address dst;
-        public final Transport protocol = Transport.TCP;
 
         public FDMsg(Address src, Address dst) {
-            this.src = src;
-            this.dst = dst;
-        }
-
-        @Override
-        public Address getSource() {
-            return src;
-        }
-
-        @Override
-        public Address getDestination() {
-            return dst;
-        }
-
-        @Override
-        public Address getOrigin() {
-            return src;
-        }
-
-        @Override
-        public Transport getProtocol() {
-            return protocol;
+            super(src, dst, Transport.TCP);
         }
 
     }

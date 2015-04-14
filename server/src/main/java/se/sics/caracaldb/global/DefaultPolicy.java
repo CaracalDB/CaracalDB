@@ -20,7 +20,6 @@
  */
 package se.sics.caracaldb.global;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedMap;
@@ -30,11 +29,11 @@ import com.google.common.collect.TreeMultimap;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.common.primitives.UnsignedInteger;
 import com.google.common.primitives.UnsignedLong;
+import com.larskroll.common.ExtremeKMap;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -43,11 +42,10 @@ import java.util.TreeSet;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.system.Stats;
-import se.sics.caracaldb.utils.ExtremeKMap;
 import se.sics.caracaldb.utils.HashIdGenerator;
-import se.sics.kompics.address.Address;
 
 /**
  *

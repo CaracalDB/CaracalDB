@@ -23,14 +23,14 @@ package se.sics.caracaldb.utils;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.primitives.UnsignedBytes;
+import com.larskroll.common.BitBuffer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.AddressSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
 
 /**
  *
@@ -43,7 +43,7 @@ public abstract class CustomSerialisers {
 
     public static byte[] serialiseAddress(Address addr) {
         ByteBuf buf = Unpooled.buffer();
-        SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
+        AddressSerializer.INSTANCE.toBinary(addr, buf);
         byte[] bytes = new byte[buf.readableBytes()];
         buf.readBytes(bytes);
         buf.release();
@@ -52,7 +52,7 @@ public abstract class CustomSerialisers {
 
     public static Address deserialiseAddress(byte[] data) {
         ByteBuf buf = Unpooled.wrappedBuffer(data);
-        Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+        Address addr = (Address) AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         buf.release();
         return addr;
     }
@@ -115,14 +115,14 @@ public abstract class CustomSerialisers {
         r.readBytes(id);
         return new Key(id);
     }
-    
+
     public static Key deserialiseKey(byte[] r) {
         ByteBuf buf = Unpooled.wrappedBuffer(r);
         Key k = deserialiseKey(buf);
         buf.release();
         return k;
     }
-    
+
     public static void serialiseKeyRange(KeyRange range, ByteBuf w) {
         BitBuffer bbuf = BitBuffer.create(range.beginBound == KeyRange.Bound.CLOSED,
                 range.endBound == KeyRange.Bound.CLOSED);
@@ -131,7 +131,7 @@ public abstract class CustomSerialisers {
         serialiseKey(range.begin, w);
         serialiseKey(range.end, w);
     }
-    
+
     public static byte[] serialiseKeyRange(KeyRange range) {
         ByteBuf buf = Unpooled.buffer();
         serialiseKeyRange(range, buf);
@@ -140,7 +140,7 @@ public abstract class CustomSerialisers {
         buf.release();
         return bytes;
     }
-    
+
     public static KeyRange deserialiseKeyRange(ByteBuf r) {
         byte[] flags = new byte[1];
         r.readBytes(flags);
@@ -151,33 +151,33 @@ public abstract class CustomSerialisers {
         Key end = deserialiseKey(r);
         return new KeyRange(beginBound, begin, end, endBound);
     }
-    
+
     public static KeyRange deserialiseKeyRange(byte[] data) {
         ByteBuf buf = Unpooled.wrappedBuffer(data);
         KeyRange kr = deserialiseKeyRange(buf);
         buf.release();
         return kr;
     }
-    
+
     public static void serialiseView(View view, ByteBuf buf) {
         buf.writeInt(view.id);
         buf.writeInt(view.members.size());
         for (Address addr : view.members) {
-            SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
+            AddressSerializer.INSTANCE.toBinary(addr, buf);
         }
     }
-    
+
     public static View deserialiseView(ByteBuf buf) {
         int id = buf.readInt();
         int memsize = buf.readInt();
         ImmutableSortedSet.Builder<Address> addrs = ImmutableSortedSet.naturalOrder();
         for (int i = 0; i < memsize; i++) {
-            Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            Address addr = (Address) AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             addrs.add(addr);
         }
         return new View(addrs.build(), id);
     }
-    
+
 //    public static class BitBuffer {
 //
 //        private static final int ZERO = 0;

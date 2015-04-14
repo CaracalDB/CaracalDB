@@ -20,11 +20,11 @@
  */
 package se.sics.caracaldb.global;
 
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.RangeQuery;
 import se.sics.kompics.KompicsEvent;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Msg;
 
 /**

@@ -24,10 +24,10 @@ import com.google.common.base.Optional;
 import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.caracaldb.ServerSerializer;
 import se.sics.kompics.network.netty.serialization.Serializer;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
 
 /**
  *
@@ -56,17 +56,17 @@ public class BootstrapSerializer implements Serializer {
         }
         if (o instanceof BootstrapRequest) {
             BootstrapRequest br = (BootstrapRequest) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(br, buf, REQ[0], REQ[1]);
+            MessageSerializationUtil.msgToBinary(br, buf, REQ[0], REQ[1]);
             return;
         }
         if (o instanceof Ready) {
             Ready r = (Ready) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(r, buf, READY[0], READY[1]);
+            MessageSerializationUtil.msgToBinary(r, buf, READY[0], READY[1]);
             return;
         }
         if (o instanceof BootUp) {
             BootUp bu = (BootUp) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(bu, buf, BOOT[0], BOOT[1]);
+            MessageSerializationUtil.msgToBinary(bu, buf, BOOT[0], BOOT[1]);
             return;
         }
         LOG.warn("Couldn't serialize BootstrapMsg {}: {}", o, o.getClass());
@@ -74,7 +74,7 @@ public class BootstrapSerializer implements Serializer {
 
     @Override
     public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
-        MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
+        MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
         if (matches(fields, REQ)) {
             return new BootstrapRequest(fields.orig, fields.src, fields.dst);
         }

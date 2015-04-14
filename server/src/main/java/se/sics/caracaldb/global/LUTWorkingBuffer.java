@@ -20,7 +20,6 @@
  */
 package se.sics.caracaldb.global;
 
-import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +32,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.global.LUTUpdate.Action;
 import se.sics.caracaldb.global.LUTUpdate.CreateSchema;
@@ -41,7 +41,6 @@ import se.sics.caracaldb.global.LUTUpdate.PutHost;
 import se.sics.caracaldb.global.LUTUpdate.PutReplicationGroup;
 import se.sics.caracaldb.global.LUTUpdate.PutReplicationSet;
 import se.sics.caracaldb.global.SchemaData.SingleSchema;
-import se.sics.kompics.address.Address;
 
 /**
  *
@@ -96,7 +95,7 @@ public class LUTWorkingBuffer {
                         index++;
                         return addr;
                     }
-                    
+
                     @Override
                     public void remove() {
                         throw new UnsupportedOperationException();
@@ -153,7 +152,7 @@ public class LUTWorkingBuffer {
                         index++;
                         return repSet;
                     }
-                    
+
                     @Override
                     public void remove() {
                         throw new UnsupportedOperationException();
@@ -209,7 +208,7 @@ public class LUTWorkingBuffer {
             putRepGroup(k, index);
         }
     }
-    
+
     public SingleSchema getSchema(ByteBuffer id) {
         if (schemaUpdates.containsKey(id)) {
             return schemaUpdates.get(id);
@@ -221,11 +220,11 @@ public class LUTWorkingBuffer {
         }
         return null;
     }
-    
+
     public void addSchema(SingleSchema schema) {
         schemaUpdates.put(schema.id, schema);
     }
-    
+
     public void removeSchema(String name) {
         ByteBuffer id = lut.schemas().schemaIDs.get(name);
         if (id != null) {
@@ -245,13 +244,14 @@ public class LUTWorkingBuffer {
         }
         return new LUTUpdate(lut.versionId, lut.versionId + 1, actions.toArray(new Action[0]));
     }
-    
+
     private void getActions(List<Action> actions) {
         schemaActions(actions); // don't reorder these!
         hostActions(actions);
         repSetActions(actions);
         repGroupActions(actions);
     }
+
     private void hostActions(List<Action> actions) {
         if (hostUpdates.isEmpty()) {
             return;
@@ -287,7 +287,7 @@ public class LUTWorkingBuffer {
             actions.add(new PutReplicationGroup(e.getKey(), e.getValue()));
         }
     }
-    
+
     private void schemaActions(List<Action> actions) {
         for (Entry<ByteBuffer, SingleSchema> e : schemaUpdates.entrySet()) {
             if (e.getValue() == null) {
@@ -354,6 +354,6 @@ public class LUTWorkingBuffer {
     }
 
     private int nextRSId() {
-        return Math.max(lut.replicationSets().size()-1, repSetUpdates.lastKey()) + 1;
+        return Math.max(lut.replicationSets().size() - 1, repSetUpdates.lastKey()) + 1;
     }
 }

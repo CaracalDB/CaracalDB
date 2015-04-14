@@ -34,6 +34,7 @@ import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.bootstrap.BootUp;
@@ -58,7 +59,6 @@ import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
@@ -247,7 +247,7 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(Schema.CreateReq event) {
-            if (!event.orig.equals(event.src)) {
+            if (!event.getOrigin().equals(event.getSource())) {
                 LOG.info("{}: Taking note of pending Schema.CreateReq: {}", self, event);
                 // TODO check if there needs to be some check about existance of nodes in the LUT here
                 outstandingSchemaChanges.add(event);
@@ -259,7 +259,7 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(Schema.DropReq event) {
-            if (!event.orig.equals(event.src)) {
+            if (!event.getOrigin().equals(event.getSource())) {
                 LOG.info("{}: Taking note of pending Schema.DropReq: {}", self, event);
                 // TODO check if there needs to be some check about existance of nodes in the LUT here
                 outstandingSchemaChanges.add(event);
@@ -271,9 +271,9 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(BootstrapRequest event) {
-            if (!event.origin.equals(event.src)) { // hasn't been forwarded to masters, yet
+            if (!event.getOrigin().equals(event.getSource())) { // hasn't been forwarded to masters, yet
                 // TODO check if there needs to be some check about existance of nodes in the LUT here
-                outstandingJoins.add(event.origin);
+                outstandingJoins.add(event.getOrigin());
             }
             // Ignore, since it will be forwarded again (just to avoid duplication)
         }

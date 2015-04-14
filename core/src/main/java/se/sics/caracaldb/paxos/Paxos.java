@@ -37,6 +37,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.View;
 import se.sics.caracaldb.fd.EventualFailureDetector;
@@ -60,8 +62,6 @@ import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stopped;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.Transport;
 import se.sics.kompics.network.netty.serialization.Serializers;
@@ -550,39 +550,13 @@ public class Paxos extends ComponentDefinition {
     }
 
     // Other Classes
-    public static class Forward implements Msg {
-
-        public final Address src;
-        public final Address dst;
-        public final Address orig;
-        public final Transport protocol = Transport.TCP;
+    public static class Forward extends BaseMessage {
+        
         public final Value p;
 
         public Forward(Address src, Address dst, Address orig, Value p) {
-            this.src = src;
-            this.dst = dst;
-            this.orig = orig;
+            super(src, dst, orig, Transport.TCP);
             this.p = p;
-        }
-
-        @Override
-        public Address getSource() {
-            return this.src;
-        }
-
-        @Override
-        public Address getDestination() {
-            return this.dst;
-        }
-
-        @Override
-        public Address getOrigin() {
-            return this.orig;
-        }
-
-        @Override
-        public Transport getProtocol() {
-            return this.protocol;
         }
     }
 
@@ -630,38 +604,13 @@ public class Paxos extends ComponentDefinition {
     }
 
     // Messages
-    public static abstract class PaxosMsg implements Msg {
-
-        public final Address src;
-        public final Address dst;
-        public final Transport protocol = Transport.TCP;
+    public static abstract class PaxosMsg extends BaseMessage {
 
         public final int ballot;
 
         public PaxosMsg(Address src, Address dst, int ballot) {
-            this.src = src;
-            this.dst = dst;
+            super(src, dst, Transport.TCP);
             this.ballot = ballot;
-        }
-
-        @Override
-        public Address getSource() {
-            return src;
-        }
-
-        @Override
-        public Address getDestination() {
-            return dst;
-        }
-
-        @Override
-        public Address getOrigin() {
-            return src;
-        }
-
-        @Override
-        public Transport getProtocol() {
-            return protocol;
         }
     }
 

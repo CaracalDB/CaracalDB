@@ -31,7 +31,7 @@ import java.util.Map.Entry;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.persistence.Batch;
 import se.sics.caracaldb.persistence.Persistence;
-import se.sics.caracaldb.utils.ByteArrayRef;
+import com.larskroll.common.ByteArrayRef;
 
 /**
  *

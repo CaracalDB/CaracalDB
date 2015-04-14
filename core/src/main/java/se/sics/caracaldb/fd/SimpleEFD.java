@@ -27,15 +27,18 @@ import java.util.HashSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
+import se.sics.caracaldb.CoreSerializer;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.Message;
 import se.sics.kompics.network.Network;
+import se.sics.kompics.network.Transport;
+import se.sics.kompics.network.netty.serialization.Serializers;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
 import se.sics.kompics.timer.Timeout;
@@ -46,7 +49,7 @@ import se.sics.kompics.timer.Timer;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class SimpleEFD extends ComponentDefinition {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(SimpleEFD.class);
     // PORTS
     Negative<EventualFailureDetector> fd = provides(EventualFailureDetector.class);
@@ -56,12 +59,17 @@ public class SimpleEFD extends ComponentDefinition {
     private long period;
     private Address self;
     private HashSet<Address> liveSet = new HashSet<Address>();
-    private LinkedListMultimap<Address, SubscribeNodeStatus> subscriptions =
-            LinkedListMultimap.create();
+    private LinkedListMultimap<Address, SubscribeNodeStatus> subscriptions
+            = LinkedListMultimap.create();
     private HashSet<Address> activeSet = new HashSet<Address>();
     private HashSet<Address> lastActiveSet = new HashSet<Address>();
     private UUID timeoutId = null;
     private HashSet<Address> broadcastSet = new HashSet<Address>();
+
+    static {
+        Serializers.register(CoreSerializer.SFD.instance, "sfdS");
+        Serializers.register(Heartbeat.class, "sfdS");
+    }
 
     public SimpleEFD(Init init) {
         this.period = init.timeout / 2l;
@@ -142,7 +150,7 @@ public class SimpleEFD extends ComponentDefinition {
 //                return;
 //            }
         }
-        
+
     };
     Handler<EFDTimeout> timeoutHandler = new Handler<EFDTimeout>() {
 
@@ -181,10 +189,10 @@ public class SimpleEFD extends ComponentDefinition {
         }
     }
 
-    public static class Heartbeat extends Message {
+    public static class Heartbeat extends BaseMessage {
 
         public Heartbeat(Address source, Address dest) {
-            super(source, dest);
+            super(source, dest, Transport.TCP);
         }
     }
 

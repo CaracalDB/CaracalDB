@@ -20,21 +20,21 @@
  */
 package se.sics.caracaldb.operations;
 
+import se.sics.caracaldb.Address;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.View;
 import se.sics.kompics.Init;
-import se.sics.kompics.address.Address;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class Meth extends Init<MethCat> {
+
     public final Address self;
     public final KeyRange responsibility;
     public final View view;
     public final long statsPeriod;
-    
 
     public Meth(Address self, KeyRange responsibility, View view, long statsPeriod) {
         this.self = self;

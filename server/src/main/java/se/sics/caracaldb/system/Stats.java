@@ -21,6 +21,8 @@
 package se.sics.caracaldb.system;
 
 import com.google.common.base.Optional;
+import com.larskroll.common.ExtremeKMap;
+import com.larskroll.common.TopKMap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.io.IOException;
@@ -29,24 +31,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 import org.hyperic.sigar.Mem;
 import org.hyperic.sigar.Sigar;
 import org.hyperic.sigar.SigarException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.AddressSerializer;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.global.NodeStats;
 import se.sics.caracaldb.utils.CustomSerialisers;
-import se.sics.caracaldb.utils.ExtremeKMap;
-import se.sics.caracaldb.utils.TopKMap;
-import se.sics.kompics.address.Address;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
  *
@@ -139,7 +135,7 @@ public class Stats {
     public static long floorDiv(long a, int b) {
         double aD = (double) a;
         double bD = (double) b;
-        double cD = aD/bD;
+        double cD = aD / bD;
         return (long) Math.floor(cD);
     }
 
@@ -217,7 +213,7 @@ public class Stats {
         public byte[] serialise() throws IOException {
             ByteBuf buf = Unpooled.buffer();
 
-            SpecialSerializers.AddressSerializer.INSTANCE.toBinary(atHost, buf);
+            AddressSerializer.INSTANCE.toBinary(atHost, buf);
             buf.writeDouble(memoryUsage);
             buf.writeDouble(cpuUsage);
             buf.writeInt(numberOfVNodes);
@@ -243,7 +239,7 @@ public class Stats {
         public static Report deserialise(byte[] bytes) throws IOException {
             ByteBuf buf = Unpooled.wrappedBuffer(bytes);
 
-            Address atHost = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+            Address atHost = (Address) AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
             double memoryUsage = buf.readDouble();
             double cpuUsage = buf.readDouble();
             int numberOfVNodes = buf.readInt();

@@ -20,14 +20,15 @@
  */
 package se.sics.caracaldb.global;
 
-import se.sics.kompics.address.Address;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author lkroll
  */
-public class LUTOutdated extends Message {
+public class LUTOutdated extends BaseMessage implements LookupMessage {
     
     public final long newerlutversion;
 

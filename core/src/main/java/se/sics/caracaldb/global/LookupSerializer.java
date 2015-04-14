@@ -22,21 +22,22 @@ package se.sics.caracaldb.global;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
+import com.larskroll.common.BitBuffer;
 import io.netty.buffer.ByteBuf;
 import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.AddressSerializer;
 import se.sics.caracaldb.CoreSerializer;
 import se.sics.caracaldb.Key;
+import se.sics.caracaldb.MessageSerializationUtil;
+import se.sics.caracaldb.MessageSerializationUtil.MessageFields;
 import se.sics.caracaldb.global.SchemaData.SingleSchema;
 import static se.sics.caracaldb.global.SchemaData.deserialiseSchema;
 import se.sics.caracaldb.utils.CustomSerialisers;
-import se.sics.kompics.address.Address;
 import se.sics.kompics.network.netty.serialization.Serializer;
 import se.sics.kompics.network.netty.serialization.Serializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.BitBuffer;
-import se.sics.kompics.network.netty.serialization.SpecialSerializers.MessageSerializationUtil.MessageFields;
 
 /**
  *
@@ -70,14 +71,14 @@ public class LookupSerializer implements Serializer {
     public void toBinary(Object o, ByteBuf buf) {
         if (o instanceof ForwardMessage) {
             ForwardMessage msg = (ForwardMessage) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, FORWARD[0], FORWARD[1]);
+            MessageSerializationUtil.msgToBinary(msg, buf, FORWARD[0], FORWARD[1]);
             CustomSerialisers.serialiseKey(msg.forwardTo, buf);
             Serializers.toBinary(msg.msg, buf);
             return;
         }
         if (o instanceof SampleRequest) {
             SampleRequest msg = (SampleRequest) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SAMPLE[0], SAMPLE[1]);
+            MessageSerializationUtil.msgToBinary(msg, buf, SAMPLE[0], SAMPLE[1]);
             BitBuffer flags = BitBuffer.create(SREQ); // 0 and 1
             flags.write(msg.schemas); // 2
             flags.write(msg.lut); // 3
@@ -89,13 +90,13 @@ public class LookupSerializer implements Serializer {
         }
         if (o instanceof Sample) {
             Sample msg = (Sample) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SAMPLE[0], SAMPLE[1]);
+            MessageSerializationUtil.msgToBinary(msg, buf, SAMPLE[0], SAMPLE[1]);
             BitBuffer flags = BitBuffer.create(SRESP);
             byte[] flagsB = flags.finalise();
             buf.writeBytes(flagsB);
             buf.writeInt(msg.nodes.size());
             for (Address addr : msg.nodes) {
-                SpecialSerializers.AddressSerializer.INSTANCE.toBinary(addr, buf);
+                AddressSerializer.INSTANCE.toBinary(addr, buf);
             }
             if (msg.schemaData == null) {
                 buf.writeInt(-1);
@@ -107,7 +108,7 @@ public class LookupSerializer implements Serializer {
         }
         if (o instanceof Schema.CreateReq) {
             Schema.CreateReq msg = (Schema.CreateReq) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
+            MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
             BitBuffer flags = BitBuffer.create(CREATE);
             byte[] flagsB = flags.finalise();
             buf.writeBytes(flagsB);
@@ -116,7 +117,7 @@ public class LookupSerializer implements Serializer {
         }
         if (o instanceof Schema.DropReq) {
             Schema.DropReq msg = (Schema.DropReq) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
+            MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
             BitBuffer flags = BitBuffer.create(DROP);
             byte[] flagsB = flags.finalise();
             buf.writeBytes(flagsB);
@@ -127,7 +128,7 @@ public class LookupSerializer implements Serializer {
         }
         if (o instanceof Schema.Response) {
             Schema.Response msg = (Schema.Response) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
+            MessageSerializationUtil.msgToBinary(msg, buf, SCHEMA[0], SCHEMA[1]);
             BitBuffer flags = BitBuffer.create(RESP);
             flags.write(msg.success);
             byte[] flagsB = flags.finalise();
@@ -152,7 +153,7 @@ public class LookupSerializer implements Serializer {
         }
         if (o instanceof LUTOutdated) {
             LUTOutdated msg = (LUTOutdated) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, LUT[0], LUT[1]);
+            MessageSerializationUtil.msgToBinary(msg, buf, LUT[0], LUT[1]);
             BitBuffer flags = BitBuffer.create(LOUTDATED);
             byte[] flagsB = flags.finalise();
             buf.writeBytes(flagsB);
@@ -161,7 +162,7 @@ public class LookupSerializer implements Serializer {
         }
         if (o instanceof LUTPart) {
             LUTPart msg = (LUTPart) o;
-            SpecialSerializers.MessageSerializationUtil.msgToBinary(msg, buf, LUT[0], LUT[1]);
+            MessageSerializationUtil.msgToBinary(msg, buf, LUT[0], LUT[1]);
             BitBuffer flags = BitBuffer.create(LPART);
             byte[] flagsB = flags.finalise();
             buf.writeBytes(flagsB);
@@ -173,7 +174,7 @@ public class LookupSerializer implements Serializer {
 
     @Override
     public Object fromBinary(ByteBuf buf, Optional<Object> hint) {
-        MessageFields fields = SpecialSerializers.MessageSerializationUtil.msgFromBinary(buf);
+        MessageFields fields = MessageSerializationUtil.msgFromBinary(buf);
         if (matches(fields, FORWARD)) {
             Key key = CustomSerialisers.deserialiseKey(buf);
             Forwardable msg = (Forwardable) Serializers.fromBinary(buf, Optional.absent());
@@ -192,7 +193,7 @@ public class LookupSerializer implements Serializer {
                 int size = buf.readInt();
                 ImmutableSet.Builder<Address> builder = ImmutableSet.builder();
                 for (int i = 0; i < size; i++) {
-                    Address addr = (Address) SpecialSerializers.AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
+                    Address addr = (Address) AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
                     builder.add(addr);
                 }
                 int schemaL = buf.readInt();

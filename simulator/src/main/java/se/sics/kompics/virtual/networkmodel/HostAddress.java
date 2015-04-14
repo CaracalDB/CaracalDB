@@ -20,29 +20,31 @@
  */
 package se.sics.kompics.virtual.networkmodel;
 
-import com.google.common.base.Objects;
 import java.io.Serializable;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import se.sics.kompics.address.Address;
+import se.sics.kompics.network.Address;
 
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class HostAddress implements Serializable, Comparable<HostAddress> {
-    public final InetAddress ip;
-    public final int port;
+public class HostAddress implements Serializable, Comparable<HostAddress>, Address {
+
+    public final InetSocketAddress isa;
+
+    public HostAddress(InetSocketAddress isa) {
+        this.isa = isa;
+    }
 
     public HostAddress(InetAddress ip, int port) {
-        this.ip = ip;
-        this.port = port;
+        this.isa = new InetSocketAddress(ip, port);
     }
 
     public HostAddress(Address addr) {
-        ip = addr.getIp();
-        port = addr.getPort();
+        this(addr.asSocket());
     }
 
     /*
@@ -53,64 +55,40 @@ public class HostAddress implements Serializable, Comparable<HostAddress> {
     @Override
     public final String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(ip.getHostAddress());
+        sb.append(isa.getAddress().getHostAddress());
         sb.append(':');
-        sb.append(port);
+        sb.append(isa.getPort());
 
         return sb.toString();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#hashCode()
-     */
     @Override
-    public final int hashCode() {
-        final int prime = 31;
-        int result;
-        result = prime + ((ip == null) ? 0 : byteHashCode(ip.getAddress()));
-        result = prime * result + port;
-        return result;
+    public int hashCode() {
+        int hash = 3;
+        hash = 11 * hash + (this.isa != null ? this.isa.hashCode() : 0);
+        return hash;
     }
 
-    private int byteHashCode(byte[] bytes) {
-        final int prime = 47;
-        int result = prime;
-        for (int i = 0; i < bytes.length; i++) {
-            result = prime * result + bytes[i];
-        }
-        return result;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
-    public final boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
+    public boolean equals(Object obj) {
         if (obj == null) {
             return false;
         }
         if (getClass() != obj.getClass()) {
             return false;
         }
-        HostAddress other = (HostAddress) obj;
-        if (!Objects.equal(ip, other.ip)) {
+        final HostAddress other = (HostAddress) obj;
+        if (this.isa != other.isa && (this.isa == null || !this.isa.equals(other.isa))) {
             return false;
         }
-        return Objects.equal(port, other.port);
+        return true;
     }
 
     @Override
     public int compareTo(HostAddress that) {
-        ByteBuffer thisIpBytes = ByteBuffer.wrap(this.ip.getAddress()).order(
+        ByteBuffer thisIpBytes = ByteBuffer.wrap(this.isa.getAddress().getAddress()).order(
                 ByteOrder.BIG_ENDIAN);
-        ByteBuffer thatIpBytes = ByteBuffer.wrap(that.ip.getAddress()).order(
+        ByteBuffer thatIpBytes = ByteBuffer.wrap(that.isa.getAddress().getAddress()).order(
                 ByteOrder.BIG_ENDIAN);
 
         int ipres = thisIpBytes.compareTo(thatIpBytes);
@@ -118,7 +96,27 @@ public class HostAddress implements Serializable, Comparable<HostAddress> {
             return ipres;
         }
 
-        return this.port - that.port;
+        return this.isa.getPort() - that.isa.getPort();
 
+    }
+
+    @Override
+    public InetAddress getIp() {
+        return this.isa.getAddress();
+    }
+
+    @Override
+    public int getPort() {
+        return this.isa.getPort();
+    }
+
+    @Override
+    public InetSocketAddress asSocket() {
+        return this.isa;
+    }
+
+    @Override
+    public boolean sameHostAs(Address other) {
+        return other.asSocket().equals(this.asSocket());
     }
 }

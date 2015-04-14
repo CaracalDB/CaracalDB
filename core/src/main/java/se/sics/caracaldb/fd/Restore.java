@@ -20,8 +20,8 @@
  */
 package se.sics.caracaldb.fd;
 
+import se.sics.caracaldb.Address;
 import se.sics.kompics.Response;
-import se.sics.kompics.address.Address;
 
 /**
  *
