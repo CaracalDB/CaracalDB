@@ -21,7 +21,9 @@
 package se.sics.caracaldb.client;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.locks.ReadWriteLock;
 import se.sics.caracaldb.Address;
+import se.sics.caracaldb.global.ReadOnlyLUT;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.kompics.Init;
 
@@ -34,13 +36,15 @@ public class ClientWorkerInit extends Init<ClientWorker> {
     public final Address self;
     public final Address bootstrapServer;
     public final int sampleSize;
-    public final boolean fetchLUT;
+    public final ReadOnlyLUT lut;
+    public final ReadWriteLock lutLock;
     
-    public ClientWorkerInit(BlockingQueue<CaracalResponse> q, Address self, Address bootstrapServer, int sampleSize, boolean fetchLUT) {
+    public ClientWorkerInit(BlockingQueue<CaracalResponse> q, Address self, Address bootstrapServer, int sampleSize, ReadOnlyLUT lut, ReadWriteLock lutLock) {
         this.q = q;
         this.self = self;
         this.bootstrapServer = bootstrapServer;
         this.sampleSize = sampleSize;
-        this.fetchLUT = fetchLUT;
+        this.lut = lut;
+        this.lutLock = lutLock;
     }
 }

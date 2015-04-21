@@ -93,6 +93,7 @@ public class ReadOnlyLUT {
                             askForUpdatesTo(update.version, false);
                             return true;
                         }
+                        LOG.debug("Applying update:\n {}", update);
                         ROCallbacks chc = new ROCallbacks();
                         update.apply(lut, chc);
                         stalledUpdates.remove(update.version);
@@ -100,6 +101,7 @@ public class ReadOnlyLUT {
                     applyStalledUpdates();
                 } catch (Exception ex) {
                     LOG.error("{}: Error during LUTUpdate deserialisation: \n {}", self, ex);
+                    ex.printStackTrace();
                 }
             }
             return true;

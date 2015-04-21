@@ -282,19 +282,22 @@ public class CatHerder extends ComponentDefinition {
 
         @Override
         public void handle(AppliedUpdate event) {
-            LOG.debug("{}: Got AppliedUpdate event...cleaning up local state...", self);
+            LOG.debug("{}: Got AppliedUpdate event v{}...cleaning up local state...", self, event.update.version);
             lutLock.readLock().lock();
-            HashSet<Schema.Req> addback = new HashSet<Schema.Req>();
             try {
+                HashSet<Schema.Req> addback = new HashSet<Schema.Req>();
+                LOG.trace("{}: There are {} schema changes outstanding.", self, outstandingSchemaChanges.size());
                 for (Schema.Req req : outstandingSchemaChanges) {
                     if (req instanceof Schema.CreateReq) {
                         Schema.CreateReq creq = (Schema.CreateReq) req;
                         ByteBuffer schemaId = lut.schemas().schemaIDs.get(creq.name);
                         if (schemaId == null) {
+                            LOG.trace("{}: Schema {} hasn't been created, yet.", self, creq.name);
                             addback.add(req);
                             continue;
                         }
                         if (event.isOwnUpdate) {
+                            LOG.trace("{}: Notifying {} that schema {} has been created", new Object[]{self, creq.getOrigin(), creq.name});
                             Schema.Response res = creq.reply(self, schemaId.array());
                             trigger(res, net);
                         }
@@ -302,10 +305,12 @@ public class CatHerder extends ComponentDefinition {
                         Schema.DropReq dreq = (Schema.DropReq) req;
                         ByteBuffer schemaId = lut.schemas().schemaIDs.get(dreq.name);
                         if (schemaId != null) {
+                            LOG.trace("{}: Schema {} hasn't been dropped, yet.", self, dreq.name);
                             addback.add(req);
                             continue;
                         }
                         if (event.isOwnUpdate) {
+                            LOG.trace("{}: Notifying {} that schema {} has been dropped", new Object[]{self, dreq.getOrigin(), dreq.name});
                             Schema.Response res = dreq.reply(self, null);
                             trigger(res, net);
                         }
@@ -313,6 +318,7 @@ public class CatHerder extends ComponentDefinition {
                 }
                 outstandingSchemaChanges.clear();
                 outstandingSchemaChanges.addAll(addback);
+                LOG.trace("{}: There are still {} schema changes outstanding.", self, outstandingSchemaChanges.size());
             } finally {
                 lutLock.readLock().unlock();
             }

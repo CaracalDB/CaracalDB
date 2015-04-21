@@ -77,6 +77,11 @@ public class LUTJsonProtocol {
         return GSON.toJson(schemata);
     }
 
+    public static SchemaObj json2Schema(String json) {
+        SchemaObj so = GSON.fromJson(json, SchemaObj.class);
+        return so;
+    }
+
     static Map<Integer, Address> prepareHosts(ArrayList<Address> hosts) {
         Map<Integer, Address> hostMap = new LinkedHashMap<Integer, Address>();
         for (int i = 0; i < hosts.size(); i++) {
@@ -154,13 +159,21 @@ public class LUTJsonProtocol {
                 replicationSetVersions, virtualHostGroups, virtualHostGroupVersions));
     }
 
-    static class SchemaObj {
+    public static class SchemaObj {
 
         String name;
         HashMap<String, String> meta = new HashMap<String, String>();
 
         public SchemaObj() {
 
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public ImmutableMap<String, String> getMeta() {
+            return ImmutableMap.copyOf(meta);
         }
 
         @Override

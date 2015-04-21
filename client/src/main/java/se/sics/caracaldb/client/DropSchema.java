@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.client;
 
+import com.google.common.util.concurrent.SettableFuture;
 import se.sics.caracaldb.global.Schema;
 import se.sics.kompics.KompicsEvent;
 
@@ -30,10 +31,10 @@ import se.sics.kompics.KompicsEvent;
 public class DropSchema implements KompicsEvent, SchemaOp {
 
     public final String name;
-    public final CaracalFuture<Schema.Response> future;
+    public final SettableFuture<Schema.Response> future;
 
     public DropSchema(String name) {
         this.name = name;
-        this.future = CaracalFuture.create();
+        this.future = SettableFuture.create();
     }
 }

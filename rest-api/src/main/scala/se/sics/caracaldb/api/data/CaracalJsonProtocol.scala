@@ -2,6 +2,8 @@ package se.sics.caracaldb.api.data
 
 import spray.json._
 import se.sics.caracaldb.operations.ResponseCode
+import se.sics.caracaldb.global.LUTJsonProtocol
+import se.sics.caracaldb.global.LUTJsonProtocol.SchemaObj
 
 object CaracalJsonProtocol extends DefaultJsonProtocol {
     import DefaultJsonProtocol._
@@ -29,4 +31,14 @@ object CaracalJsonProtocol extends DefaultJsonProtocol {
 
     implicit val entryFormat = jsonFormat2(Entry);
     implicit val operationFormat = jsonFormat1(Operation);
+    implicit val schemaResFormat = jsonFormat4(SchemaResponse);
+    
+    def json2Schema(json: String): Option[SchemaObj] = {
+        try {
+            return Some(LUTJsonProtocol.json2Schema(json));
+        } catch {
+            case _: IllegalAccessException => return None;
+            
+        }
+    }
 }

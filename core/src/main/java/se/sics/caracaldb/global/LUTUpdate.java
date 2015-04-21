@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
+import com.larskroll.common.ByteArrayFormatter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.nio.ByteBuffer;
@@ -170,6 +171,15 @@ public class LUTUpdate {
             a.fill(buf);
             return a;
         }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            stringRepresentation(sb);
+            return sb.toString();
+        }
+
+        public abstract void stringRepresentation(StringBuilder sb);
     }
 
     public static class CreateSchema extends Action {
@@ -204,6 +214,16 @@ public class LUTUpdate {
         public void fill(ByteBuf buf) {
             schema = SchemaData.deserialiseSchema(buf);
         }
+
+        @Override
+        public void stringRepresentation(StringBuilder sb) {
+            sb.append("+Schema \"");
+            sb.append(schema.name);
+            sb.append("\"");
+            sb.append(" (");
+            sb.append(ByteArrayFormatter.printFormat(schema.id.array()));
+            sb.append(")");
+        }
     }
 
     public static class DropSchema extends Action {
@@ -234,8 +254,8 @@ public class LUTUpdate {
         @Override
         public void serialise(ByteBuf buf) {
             buf.writeByte(code());
-            buf.writeInt(buf.array().length);
-            buf.writeBytes(buf.array());
+            buf.writeInt(id.array().length);
+            buf.writeBytes(id.array());
         }
 
         @Override
@@ -246,6 +266,12 @@ public class LUTUpdate {
             this.id = ByteBuffer.wrap(idB);
         }
 
+        @Override
+        public void stringRepresentation(StringBuilder sb) {
+            sb.append("-Schema ");
+            sb.append(ByteArrayFormatter.printFormat(id.array()));
+            sb.append("");
+        }
     }
 
     public static class PutHost extends Action {
@@ -284,6 +310,17 @@ public class LUTUpdate {
             addr = (Address) AddressSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         }
 
+        @Override
+        public void stringRepresentation(StringBuilder sb) {
+            if (addr == null) {
+                sb.append("-Host");
+            } else {
+                sb.append("+Host ");
+                sb.append(addr);
+            }
+            sb.append(" @");
+            sb.append(id);
+        }
     }
 
     public static class PutReplicationSet extends Action {
@@ -373,6 +410,31 @@ public class LUTUpdate {
             }
         }
 
+        @Override
+        public void stringRepresentation(StringBuilder sb) {
+            if (hosts == null) {
+                sb.append("-RepSet");
+            } else {
+                if (version == 0) {
+                    sb.append("+RepSet");
+                } else {
+                    sb.append("*RepSet");
+                }
+                sb.append(" [");
+                for (int i = 0; i < hosts.length; i++) {
+                    sb.append(hosts[i]);
+                    if (i < (hosts.length - 1)) {
+                        sb.append(", ");
+                    }
+                }
+                sb.append(" ]");
+            }
+            sb.append(" @");
+            sb.append(id);
+            sb.append(" v");
+            sb.append(version);
+        }
+
     }
 
     public static class PutReplicationGroup extends Action {
@@ -399,8 +461,10 @@ public class LUTUpdate {
                 call.startVNode(key); // newly added
             } else {
                 int posOld = LookupTable.positionInSet(oldHosts, call.getAddressId());
-                if ((replicationSet == null) && (posOld >= 0)) {
-                    call.killVNode(key); // totally removed vnode
+                if (replicationSet == null) {
+                    if (posOld >= 0) {
+                        call.killVNode(key); // totally removed vnode
+                    } // else simply ignore since I never had this node
                 } else {
                     Integer[] newHosts = lut.replicationSets().get(replicationSet);
                     int posNew = LookupTable.positionInSet(newHosts, call.getAddressId());
@@ -443,6 +507,18 @@ public class LUTUpdate {
                 replicationSet = null;
             }
         }
+
+        @Override
+        public void stringRepresentation(StringBuilder sb) {
+            if (replicationSet == null) {
+                sb.append("-RepGroup");
+            } else {
+                sb.append("*RepGroup ");
+                sb.append(replicationSet);
+            }
+            sb.append(" @");
+            sb.append(key);
+        }
     }
 
     public static interface Callbacks {
@@ -456,5 +532,22 @@ public class LUTUpdate {
         public void startVNode(Key k);
 
         public void reconf(Key key, View v, int quorum, KeyRange range);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("LUTUpdate ");
+        sb.append(previousVersion);
+        sb.append(" -> ");
+        sb.append(version);
+        sb.append(" {\n");
+        for (Action a : diff) {
+            sb.append("   ");
+            a.stringRepresentation(sb);
+            sb.append("\n");
+        }
+        sb.append("}\n");
+        return sb.toString();
     }
 }

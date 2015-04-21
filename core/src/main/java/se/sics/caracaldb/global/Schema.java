@@ -33,6 +33,11 @@ import se.sics.kompics.network.Transport;
  * @author lkroll
  */
 public abstract class Schema {
+    
+    public static final String EXISTS = "Schema already exists.";
+    public static final String NOT_EXISTS = "Schema doesn't exist.";
+    public static final String CREATED = "Schema created.";
+    public static final String DROPPED = "Schema dropped.";
 
     public static interface Req extends Msg<Address, Header>, LookupMessage {
 

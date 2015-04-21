@@ -22,6 +22,7 @@
 package se.sics.caracaldb.client;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.util.concurrent.SettableFuture;
 import se.sics.caracaldb.global.Schema;
 import se.sics.kompics.KompicsEvent;
 
@@ -32,11 +33,11 @@ import se.sics.kompics.KompicsEvent;
 public class CreateSchema implements KompicsEvent, SchemaOp {
     public final String name;
     public final ImmutableMap<String, String> metaData;
-    public final CaracalFuture<Schema.Response> future;
+    public final SettableFuture<Schema.Response> future;
     
     public CreateSchema(String name, ImmutableMap<String, String> metaData) {
         this.name = name;
         this.metaData = metaData;
-        this.future = CaracalFuture.create();
+        this.future = SettableFuture.create();
     }
 }

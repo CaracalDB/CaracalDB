@@ -467,7 +467,7 @@ public class LookupTable {
         return data;
     }
 
-    public static LookupTable deserialise(byte[] bytes) throws IOException {
+    public synchronized static LookupTable deserialise(byte[] bytes) throws IOException {
 
         ByteBuf buf = Unpooled.wrappedBuffer(bytes);
 

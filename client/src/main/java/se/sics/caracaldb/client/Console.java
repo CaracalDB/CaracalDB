@@ -21,6 +21,7 @@
 package se.sics.caracaldb.client;
 
 import com.google.common.collect.ImmutableMap;
+import com.larskroll.common.ByteArrayFormatter;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
@@ -45,7 +46,6 @@ import se.sics.caracaldb.global.Schema;
 import se.sics.caracaldb.operations.GetResponse;
 import se.sics.caracaldb.operations.RangeResponse;
 import se.sics.caracaldb.operations.ResponseCode;
-import com.larskroll.common.ByteArrayFormatter;
 import util.log4j.ColoredPatternLayout;
 
 /**
@@ -478,8 +478,11 @@ public class Console {
             }
             String[] cmdline = line.split(" ", 2);
             String cmd = cmdline[0];
-            cmd = cmd.toLowerCase();
             Command c = commands.get(cmd);
+            if (c == null) {
+                cmd = cmd.toLowerCase();
+                c = commands.get(cmd);
+            }
             if (c != null) {
                 if (!c.execute(cmdline, worker)) {
                     out.print("Usage: ");

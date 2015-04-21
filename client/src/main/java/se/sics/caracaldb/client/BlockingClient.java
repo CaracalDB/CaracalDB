@@ -22,9 +22,9 @@ package se.sics.caracaldb.client;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.util.concurrent.ListenableFuture;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,13 +219,13 @@ public class BlockingClient {
         }
     }
 
-    public Future<Schema.Response> createSchema(String name, ImmutableMap<String, String> metaData) {
+    public ListenableFuture<Schema.Response> createSchema(String name, ImmutableMap<String, String> metaData) {
         CreateSchema cs = new CreateSchema(name, metaData);
         worker.triggerOnSelf(cs);
         return cs.future;
     }
 
-    public Future<Schema.Response> dropSchema(String name) {
+    public ListenableFuture<Schema.Response> dropSchema(String name) {
         DropSchema ds = new DropSchema(name);
         worker.triggerOnSelf(ds);
         return ds.future;

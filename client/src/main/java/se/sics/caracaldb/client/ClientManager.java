@@ -25,14 +25,21 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Address;
 import se.sics.caracaldb.MessageRegistrator;
+import se.sics.caracaldb.global.LUTPart;
+import se.sics.caracaldb.global.ReadOnlyLUT;
+import se.sics.caracaldb.global.SampleRequest;
+import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.CaracalResponse;
 import se.sics.caracaldb.system.ComponentProxy;
 import se.sics.caracaldb.utils.TimestampIdFactory;
@@ -62,20 +69,25 @@ import se.sics.kompics.timer.java.JavaTimer;
  */
 public class ClientManager extends ComponentDefinition {
 
+    private static final Random RAND = new Random();
+    private static final Logger LOG = LoggerFactory.getLogger(ClientManager.class);
     private static ClientManager INSTANCE;
+    // Ports
+    Positive<Network> net = requires(Network.class);
     // Components
     Component network;
     Component timer;
     VirtualNetworkChannel vnc;
     // Instance
-    private final boolean fetchLUT;
+    private final boolean useLUT;
     private final int sampleSize;
     private static Config conf = null;
     private final Address bootstrapServer;
     private final Address self;
     private final SortedSet<Address> vNodes = new TreeSet<Address>();
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private static final BlockingQueue<Boolean> startedQ = new LinkedBlockingQueue<Boolean>(1);
+    private final ReadOnlyLUT lut;
+    private final ReadWriteLock lutLock = new ReentrantReadWriteLock();
 
     static {
         MessageRegistrator.register();
@@ -139,7 +151,7 @@ public class ClientManager extends ComponentDefinition {
             conf = ConfigFactory.load();
         }
         sampleSize = conf.getInt("bootstrap.sampleSize");
-        fetchLUT = conf.getBoolean("client.fetchLUT");
+        useLUT = conf.getBoolean("client.fetchLUT");
         String ipStr = conf.getString("bootstrap.address.hostname");
         String localHost = conf.getString("client.address.hostname");
         int bootPort = conf.getInt("bootstrap.address.port");
@@ -156,22 +168,67 @@ public class ClientManager extends ComponentDefinition {
         self = new Address(localIP, localPort, null);
         TimestampIdFactory.init(self);
 
+        lut = new ReadOnlyLUT(self, RAND);
+
         network = create(NettyNetwork.class, new NettyInit(self));
         timer = create(JavaTimer.class, Init.NONE);
         vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
+        vnc.addConnection(null, net.getPair());
 
-        subscribe(new Handler<Start>() {
-
-            @Override
-            public void handle(Start event) {
-                try {
-                    startedQ.put(true);
-                } catch (InterruptedException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-        }, control);
+        subscribe(startHandler, control);
+        subscribe(partHandler, net);
+        subscribe(responseHandler, net);
     }
+
+    Handler<Start> startHandler = new Handler<Start>() {
+
+        @Override
+        public void handle(Start event) {
+            try {
+                startedQ.put(true);
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
+            LOG.debug("Starting ClientManager {} with LUT? {}", self, useLUT);
+            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, useLUT, -1);
+            trigger(req, net);
+        }
+    };
+    Handler<LUTPart> partHandler = new Handler<LUTPart>() {
+
+        @Override
+        public void handle(LUTPart event) {
+            LOG.trace("{}: Got LUTPart!", self);
+            lutLock.writeLock().lock();
+            try {
+                lut.collect(event);
+            } finally {
+                lutLock.writeLock().unlock();
+            }
+        }
+    };
+    Handler<CaracalMsg> responseHandler = new Handler<CaracalMsg>() {
+        @Override
+        public void handle(CaracalMsg event) {
+            LOG.debug("Handling Message {}", event);
+            if (event.op instanceof CaracalResponse) {
+                CaracalResponse resp = (CaracalResponse) event.op;
+                lutLock.writeLock().lock();
+                try {
+                    if (lut.collect(resp)) { // Might be a piece of a LUTUpdate
+                        while (lut.hasMessages()) {
+                            trigger(lut.pollMessages(), net);
+                        }
+                        return;
+                    }
+                } finally {
+                    lutLock.writeLock().unlock();
+                }
+                LOG.error("Sending requests to clients is doing it wrong! {}", event);
+            }
+        }
+
+    };
 
     public static ClientManager getInstance() {
         if (INSTANCE == null) { // Not the nicest singleton solution but fine for this
@@ -209,24 +266,21 @@ public class ClientManager extends ComponentDefinition {
     }
 
     public BlockingClient addClient() {
-        lock.writeLock().lock();
-        try {
+        synchronized (this) {
             Address adr = addVNode();
             BlockingQueue<CaracalResponse> q = new LinkedBlockingQueue<CaracalResponse>();
-            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, adr, bootstrapServer, sampleSize, fetchLUT));
+            Component cw = create(ClientWorker.class, new ClientWorkerInit(q, adr, bootstrapServer, sampleSize, lut, lutLock));
             vnc.addConnection(adr.getId(), cw.getNegative(Network.class));
             connect(timer.getPositive(Timer.class), cw.getNegative(Timer.class));
             trigger(Start.event, cw.control());
             ClientWorker worker = (ClientWorker) cw.getComponent();
             return new BlockingClient(q, worker);
-        } finally {
-            lock.writeLock().unlock();
         }
     }
 
     public void addCustomClient(ClientHook hook) {
-        lock.writeLock().lock();
-        try {
+
+        synchronized (this) {
             Address vadd = addVNode();
             ClientSharedComponents sharedComponents = new ClientSharedComponents(vadd.getId());
             sharedComponents.setNetwork(vnc);
@@ -236,14 +290,12 @@ public class ClientManager extends ComponentDefinition {
             sharedComponents.setSampleSize(sampleSize);
 
             hook.setUp(sharedComponents, proxy);
-        } finally {
-            lock.writeLock().unlock();
         }
     }
 
     private Address addVNode() {
-        lock.writeLock().lock();
-        try {
+
+        synchronized (this) {
             if (vNodes.isEmpty()) {
                 Address adr = self.newVirtual(Ints.toByteArray(0));
                 vNodes.add(adr);
@@ -255,8 +307,6 @@ public class ClientManager extends ComponentDefinition {
             Address adr = self.newVirtual(Ints.toByteArray(newId));
             vNodes.add(adr);
             return adr;
-        } finally {
-            lock.writeLock().unlock();
         }
     }
 }

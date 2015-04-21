@@ -73,6 +73,14 @@ trait ServiceRouter extends HttpService with CORSDirectives {
                             listSchemas();
                         }
                     }
+                } ~ (put | post) {
+                    entity(as[FormattedResponse]) { value =>
+                        detachAndRespond { ctx =>
+                            ctx.complete {
+                                createSchema(value.str);
+                            }
+                        }
+                    }
                 }
             } ~ path("hosts") {
                 get {
@@ -95,6 +103,12 @@ trait ServiceRouter extends HttpService with CORSDirectives {
                     detachAndRespond { ctx =>
                         ctx.complete {
                             rangeOp(schema, null, null);
+                        }
+                    }
+                } ~ delete {
+                    detachAndRespond { ctx =>
+                        ctx.complete {
+                            dropSchema(schema);
                         }
                     }
                 }
@@ -202,6 +216,31 @@ trait ServiceRouter extends HttpService with CORSDirectives {
         val f = workers ? Schemas();
         val res = Await.result(f, 10 seconds).asInstanceOf[FormattedResponse];
         return res;
+    }
+
+    private def createSchema(properties: String): SchemaResponse = {
+        val schema = CaracalJsonProtocol.json2Schema(properties);
+        schema match {
+            case Some(s) => {
+                try {
+                    val f = workers ? CreateSchema(s);
+                    Await.result(f, 120 seconds).asInstanceOf[SchemaResponse];
+                } catch {
+                    case e: TimeoutException => SchemaResponse(s.getName, None, false, Some("Couldn't get response in time."));
+                }
+            }
+            case None => SchemaResponse("unknown", None, false, Some("Couldn't interpret schema definition."));
+        }
+    }
+
+    private def dropSchema(name: String): SchemaResponse = {
+        try {
+            val f = workers ? DropSchema(name);
+            val res = Await.result(f, 120 seconds).asInstanceOf[SchemaResponse];
+            return res;
+        } catch {
+            case e: TimeoutException => SchemaResponse(name, None, false, Some("Couldn't get response in time."));
+        }
     }
 
     private def getLUT(): FormattedResponse = {

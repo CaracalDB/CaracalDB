@@ -36,12 +36,18 @@ public class RangeResponse extends CaracalResponse {
     public final TreeMap<Key, byte[]> results;
     public final KeyRange initRange;
     public final KeyRange coveredRange;
+    private final transient int numRes;
 
     public RangeResponse(UUID id, KeyRange initRange, ResponseCode code, KeyRange coveredRange, TreeMap<Key, byte[]> results) {
         super(id, code);
         this.initRange = initRange;
         this.coveredRange = coveredRange;
         this.results = results;
+        if (this.results != null) {
+            numRes = results.size();
+        } else {
+            numRes = -1;
+        }
     }
     
     @Override
@@ -51,7 +57,7 @@ public class RangeResponse extends CaracalResponse {
                 .add("code", this.code)
                 .add("initRange", this.initRange)
                 .add("coveredRange", this.coveredRange)
-                .add("#results", results.size()).toString();
+                .add("#results", numRes).toString();
     }
 
 }

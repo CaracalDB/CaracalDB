@@ -21,6 +21,7 @@
 package se.sics.caracaldb.client;
 
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.util.concurrent.SettableFuture;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -29,7 +30,6 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Address;
@@ -37,7 +37,6 @@ import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.global.ForwardMessage;
 import se.sics.caracaldb.global.LUTOutdated;
-import se.sics.caracaldb.global.LUTPart;
 import se.sics.caracaldb.global.LookupTable;
 import se.sics.caracaldb.global.ReadOnlyLUT;
 import se.sics.caracaldb.global.Sample;
@@ -78,30 +77,29 @@ public class ClientWorker extends ComponentDefinition {
     private final Address bootstrapServer;
     private final SortedSet<Address> knownNodes = new TreeSet<Address>();
     private final int sampleSize;
-    private final boolean useLUT;
+    
     private UUID currentRequestId = new UUID(-1, -1);
     private RangeQuery.SeqCollector col;
-    private final Map<String, CaracalFuture<Schema.Response>> ongoingSchemaRequests
-            = new HashMap<String, CaracalFuture<Schema.Response>>();
+    private final Map<String, SettableFuture<Schema.Response>> ongoingSchemaRequests
+            = new HashMap<String, SettableFuture<Schema.Response>>();
     private volatile boolean connectionEstablished = false;
     private volatile SchemaData schemas;
     private final ReadOnlyLUT lut;
-    private final ReadWriteLock lutLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock lutLock;
 
     public ClientWorker(ClientWorkerInit init) {
         responseQ = init.q;
         self = init.self;
         bootstrapServer = init.bootstrapServer;
         sampleSize = init.sampleSize;
-        useLUT = init.fetchLUT;
-        lut = new ReadOnlyLUT(self, RAND);
+        lut = init.lut;
+        lutLock = init.lutLock;
         knownNodes.add(bootstrapServer);
 
         // Subscriptions
         subscribe(startHandler, control);
         subscribe(sampleHandler, net);
         subscribe(outdatedHandler, net);
-        subscribe(partHandler, net);
         subscribe(schemaCreateHandler, client);
         subscribe(schemaDropHandler, client);
         subscribe(multiOpHandler, client);
@@ -114,8 +112,8 @@ public class ClientWorker extends ComponentDefinition {
     Handler<Start> startHandler = new Handler<Start>() {
         @Override
         public void handle(Start event) {
-            LOG.debug("Starting new worker {} with LUT? {}", self, useLUT);
-            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, useLUT, lutversion());
+            LOG.debug("Starting new worker {}", self);
+            SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, false, lutversion());
             trigger(req, net);
         }
     };
@@ -140,19 +138,6 @@ public class ClientWorker extends ComponentDefinition {
                 }
             } finally {
                 lutLock.readLock().unlock();
-            }
-        }
-    };
-    Handler<LUTPart> partHandler = new Handler<LUTPart>() {
-
-        @Override
-        public void handle(LUTPart event) {
-            LOG.trace("{}: Got LUTPart!", self);
-            lutLock.writeLock().lock();
-            try {
-                lut.collect(event);
-            } finally {
-                lutLock.writeLock().unlock();
             }
         }
     };
@@ -251,17 +236,17 @@ public class ClientWorker extends ComponentDefinition {
             LOG.debug("Handling Message {}", event);
             if (event.op instanceof CaracalResponse) {
                 CaracalResponse resp = (CaracalResponse) event.op;
-                lutLock.writeLock().lock();
-                try {
-                    if (lut.collect(resp)) { // Might be a piece of a LUTUpdate
-                        while (lut.hasMessages()) {
-                            trigger(lut.pollMessages(), net);
-                        }
-                        return;
-                    }
-                } finally {
-                    lutLock.writeLock().unlock();
-                }
+//                lutLock.writeLock().lock();
+//                try {
+//                    if (lut.collect(resp)) { // Might be a piece of a LUTUpdate
+//                        while (lut.hasMessages()) {
+//                            trigger(lut.pollMessages(), net);
+//                        }
+//                        return;
+//                    }
+//                } finally {
+//                    lutLock.writeLock().unlock();
+//                }
                 if (!resp.id.equals(currentRequestId)) {
                     LOG.debug("Ignoring {} as it has already been received.", resp);
                     return;
@@ -295,7 +280,7 @@ public class ClientWorker extends ComponentDefinition {
 
         @Override
         public void handle(Schema.Response event) {
-            CaracalFuture<Schema.Response> f = ongoingSchemaRequests.remove(event.name);
+            SettableFuture<Schema.Response> f = ongoingSchemaRequests.remove(event.name);
             if (f != null) {
                 if (event.success) { // request a new sample to update schemas
                     SampleRequest req = new SampleRequest(self, bootstrapServer, sampleSize, true, false, lutversion());

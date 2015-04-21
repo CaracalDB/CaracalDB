@@ -43,6 +43,14 @@ public class SampleRequest extends BaseMessage  implements LookupMessage {
         this.lut = lut;
         this.lutversion = lutversion;
     }
+    
+    public SampleRequest(Address src, Address dest, int n, boolean schema, boolean lut) {
+        this(src, dest, n, schema, lut, -1);
+    }
+    
+    public SampleRequest(Address src, Address dest, int n, boolean schema) {
+        this(src, dest, n, schema, false, -1);
+    }
 
     public Sample reply(ImmutableSet<Address> nodes, SchemaData schemaData) {
         if (schemas) {

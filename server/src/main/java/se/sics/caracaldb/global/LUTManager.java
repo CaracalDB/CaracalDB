@@ -20,9 +20,11 @@
  */
 package se.sics.caracaldb.global;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Longs;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -371,6 +373,12 @@ public class LUTManager extends ComponentDefinition {
         @Override
         public void handle(Schema.CreateReq event) {
             LOG.trace("{}: Got Schema.CreateReq: {}", self, event);
+            ByteBuffer id = lut.schemas().schemaIDs.get(event.name);
+            if (id != null) {
+                ImmutableMap<String, String> meta = lut.schemas().metaData.get(id);
+                trigger(new Schema.Response(self, event.getOrigin(), event.name, id.array(), meta.equals(event.metaData), Schema.EXISTS), net);
+                return;
+            }
             if (event.getOrigin().equals(event.getSource())) { // hasn't been forwarded to masters, yet
                 LOG.debug("{}: Forwarding Schema.CreateReq to masters: {}", self, masterGroup);
                 for (Address addr : masterGroup) {
@@ -389,6 +397,11 @@ public class LUTManager extends ComponentDefinition {
         @Override
         public void handle(Schema.DropReq event) {
             LOG.trace("{}: Got Schema.DropReq: {}", self, event);
+            ByteBuffer id = lut.schemas().schemaIDs.get(event.name);
+            if (id == null) {
+                trigger(new Schema.Response(self, event.getOrigin(), event.name, null, true, Schema.NOT_EXISTS), net);
+                return;
+            }
             if (event.getOrigin().equals(event.getSource())) { // hasn't been forwarded to masters, yet
                 LOG.debug("{}: Forwarding Schema.DropReq to masters: {}", self, masterGroup);
                 for (Address addr : masterGroup) {
@@ -417,9 +430,15 @@ public class LUTManager extends ComponentDefinition {
                     return;
                 }
                 boolean masterBefore = checkMaster();
-                ManagerCallbacks chc = new ManagerCallbacks();
-                update.apply(lut, chc);
-                chc.commit();
+                lutLock.writeLock().lock();
+                try {
+                    LOG.debug("{}: Applying update:\n {}", self, update);
+                    ManagerCallbacks chc = new ManagerCallbacks();
+                    update.apply(lut, chc);
+                    chc.commit();
+                } finally {
+                    lutLock.writeLock().unlock();
+                }
                 LOG.info("{}: Applied LUTUpdate to version: {}", self, update.version);
                 StringBuilder sb = new StringBuilder();
                 lut.printFormat(sb);
@@ -451,6 +470,7 @@ public class LUTManager extends ComponentDefinition {
                 col.processResponse(op);
                 if (col.isDone()) {
                     collectors.remove(op.id);
+                    lutLock.writeLock().lock();
                     try {
                         boolean masterBefore = checkMaster();
                         for (Entry<Key, byte[]> e : col.getResult().getValue1().entrySet()) {
@@ -460,6 +480,7 @@ public class LUTManager extends ComponentDefinition {
                                 askForUpdatesTo(update.version, false);
                                 return;
                             }
+                            LOG.debug("{}: Applying update:\n {}", self, update);
                             ManagerCallbacks chc = new ManagerCallbacks();
                             update.apply(lut, chc);
                             chc.commit();
@@ -475,6 +496,8 @@ public class LUTManager extends ComponentDefinition {
                         }
                     } catch (Exception ex) {
                         LOG.error("{}: Error during LUTUpdate deserialisation: \n {}", self, ex);
+                    } finally {
+                        lutLock.writeLock().unlock();
                     }
                 }
             }
