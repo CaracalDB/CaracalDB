@@ -737,8 +737,8 @@ public class LookupTable {
 
     public static int positionInSet(Integer[] set, Integer id) {
         int index = 0;
-        for (int i : set) {
-            if (i == id) {
+        for (Integer i : set) {
+            if (i.equals(id)) {
                 return index;
             }
             index++;

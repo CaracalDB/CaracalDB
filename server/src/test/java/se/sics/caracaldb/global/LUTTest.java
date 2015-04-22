@@ -31,6 +31,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -39,6 +40,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import junit.framework.Assert;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -60,7 +62,7 @@ import se.sics.caracaldb.utils.HashIdGenerator;
 @RunWith(JUnit4.class)
 public class LUTTest {
 
-    private static final Random RAND = new Random(1);
+    private final Random RAND = new Random(0);
     private static final int MAX_PORT = 2 ^ 16;
 
     @Before
@@ -82,6 +84,27 @@ public class LUTTest {
         assertEquals(addrs.size(), lut.numHosts());
         //assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationSets());
 
+        for (int i = 0; i < lut.numReplicationSets(); i++) {
+            for (int j = 0; j < lut.numReplicationSets(); j++) {
+
+                Integer[] seti = lut.replicationSets().get(i);
+                Integer[] setj = lut.replicationSets().get(j);
+                boolean equal = Arrays.equals(seti, setj);
+                if (j != i) {
+                    if (equal) {
+                        System.out.println("Testing " + i + "@" + Arrays.toString(seti) + " vs " + j + "@" + Arrays.toString(setj));
+                    }
+                    assertFalse(equal);
+                } else {
+                    if (!equal) {
+                        System.out.println("Testing " + i + "@" + Arrays.toString(seti) + " vs " + j + "@" + Arrays.toString(setj));
+
+                    }
+                    assertTrue(equal);
+                }
+            }
+        }
+
         for (int i = 0; i < 6; i++) {
             try {
                 assertNotNull("Should find responsible for any Key", lut.virtualHostsGetResponsible(randomKey(4, lut.schemas().schemaNames.keySet())));
@@ -98,8 +121,33 @@ public class LUTTest {
         Configuration conf = Launcher.config().setValue("caracal.scatterWidth", 20).finalise();
         LookupTable lut = LUTGenerator.generateInitial(addrs, conf, addrs.first());
 
+        
+        System.out.println("%%%%%%% Generated LUT: %%%%%%%%\n");
+        StringBuilder sb = new StringBuilder();
+        lut.printFormat(sb);
+        System.out.println(sb);
+        
         assertEquals(addrs.size(), lut.numHosts());
         //assertEquals(LookupTable.INIT_REP_FACTOR * addrs.size(), lut.numReplicationSets());
+        for (int i = 0; i < lut.numReplicationSets(); i++) {
+            for (int j = 0; j < lut.numReplicationSets(); j++) {
+                Integer[] seti = lut.replicationSets().get(i);
+                Integer[] setj = lut.replicationSets().get(j);
+                boolean equal = Arrays.equals(seti, setj);
+                if (j != i) {
+                    if (equal) {
+                        System.out.println("Testing " + i + "@" + Arrays.toString(seti) + " vs " + j + "@" + Arrays.toString(setj));
+                    }
+                    assertFalse(equal);
+                } else {
+                    if (!equal) {
+                        System.out.println("Testing " + i + "@" + Arrays.toString(seti) + " vs " + j + "@" + Arrays.toString(setj));
+
+                    }
+                    assertTrue(equal);
+                }
+            }
+        }
 
         for (int i = 0; i < 600; i++) {
             try {
@@ -108,11 +156,6 @@ public class LUTTest {
                 Assert.fail(ex.getMessage());
             }
         }
-
-        System.out.println("%%%%%%% Generated LUT: %%%%%%%%\n");
-        StringBuilder sb = new StringBuilder();
-        lut.printFormat(sb);
-        System.out.println(sb);
     }
 
     @Test

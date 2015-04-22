@@ -28,6 +28,7 @@ import com.google.common.primitives.UnsignedLong;
 import com.larskroll.common.J6;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -45,8 +46,7 @@ import se.sics.caracaldb.system.Configuration;
  * @author lkroll
  */
 public class LUTGenerator {
-    
-    
+
     public static LookupTable generateInitial(Set<Address> hosts, Configuration config, Address self) {
         LookupTable lut = new LookupTable();
         lut.setScatterWidth(config.getInt("caracal.scatterWidth"));
@@ -122,23 +122,43 @@ public class LUTGenerator {
         }
         System.out.println("INFO: Using " + numberOfPermutations + " permutations to generate initial replication sets.");
         List<Integer> nats = naturals(hosts.size());
-        HashSet<TreeSet<Integer>> copysets = new HashSet<TreeSet<Integer>>();
+        Set<Set<Integer>> copysets = new HashSet<Set<Integer>>();
         int p = 0;
         while (p < numberOfPermutations) {
             List<Integer> perm = new ArrayList<Integer>(nats);
             Collections.shuffle(perm, RAND);
             // split permutation into sets of size rfactor
-            List<TreeSet<Integer>> permSets = new ArrayList<TreeSet<Integer>>(perm.size() / rfactor);
+            List<Set<Integer>> permSets = new ArrayList<Set<Integer>>(perm.size() / rfactor);
             boolean invalidPerm = false;
             for (int i = 0; i <= perm.size() - rfactor; i += rfactor) {
-                TreeSet<Integer> set = new TreeSet<Integer>();
+                Set<Integer> set = new HashSet<Integer>();
                 for (int j = 0; j < rfactor; j++) {
                     set.add(perm.get(i + j));
                 }
                 if (copysets.contains(set)) { // if we create duplicate sets we need to generate another permutation
+                    //System.out.println("Duplicate set " + set + " detected by HashSet.contains!");
                     invalidPerm = true;
                     break;
                 }
+// The code below was for testing if set.contains works properly...apparantly it does...leaving it here for reference
+//                for (Set<Integer> existing : copysets) {
+//                    if (existing.equals(set)) {
+//                        System.out.println("Duplicate set " + set + " - " + existing + "was not detected by HashSet.contains!");
+//                        invalidPerm = true;
+//                        break;
+//                    }
+//                    boolean same = true;
+//                    for (Integer val : existing) {
+//                        if (!set.contains(val)) {
+//                            same = false;
+//                        }
+//                    }
+//                    if (same) {
+//                        System.out.println("Duplicate set " + set + " - " + existing + "was not detected by TreeSet.equals!");
+//                        invalidPerm = true;
+//                        break;
+//                    }
+//                }
                 permSets.add(set);
             }
             if (invalidPerm) {
@@ -147,10 +167,12 @@ public class LUTGenerator {
             copysets.addAll(permSets);
             p++;
         }
-        ArrayList<Integer[]> res = new ArrayList<Integer[]>();
-        for (TreeSet<Integer> copyset : copysets) {
+        ArrayList<Integer[]> res = new ArrayList<Integer[]>(copysets.size());
+        for (Set<Integer> copyset : copysets) {
             Integer[] set = new Integer[copyset.size()];
             copyset.toArray(set);
+            Arrays.sort(set);
+            //System.out.println(copyset+" -> " + Arrays.toString(set));
             res.add(set);
         }
         return res;
@@ -247,7 +269,7 @@ public class LUTGenerator {
 
     private static void fixRepSetsToIncludeBootstrapNodeInMasterGroup(LookupTable lut, Address self) {
         int index = 0;
-        int selfId = -1;
+        Integer selfId = -1;
         for (Address addr : lut.hosts()) {
             if (addr.equals(self)) {
                 selfId = index;
@@ -283,10 +305,10 @@ public class LUTGenerator {
         }
         // and switch the target with pos 0
         Integer[] tmp = lut.replicationSets().get(target);
-        lut.replicationSets().set(0, lut.replicationSets().get(0));
+        lut.replicationSets().set(target, lut.replicationSets().get(0));
         lut.replicationSets().set(0, tmp);
     }
-    
+
     private static List<Integer> naturals(int upTo) {
         ArrayList<Integer> nats = new ArrayList<Integer>(upTo);
         for (int i = 0; i < upTo; i++) {
