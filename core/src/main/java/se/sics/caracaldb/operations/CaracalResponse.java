@@ -40,8 +40,4 @@ public class CaracalResponse extends CaracalOp {
         return "EmptyResponse(" + id + ", " + code.name() + ")";
     }
 
-    @Override
-    public boolean affectedBy(CaracalOp op) {
-        throw new UnsupportedOperationException("Not supported on Response");
-    }
 }

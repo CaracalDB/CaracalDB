@@ -21,28 +21,31 @@
 
 package se.sics.caracaldb.flow;
 
+import com.larskroll.common.DataRef;
 import java.util.UUID;
-import se.sics.kompics.Event;
+import se.sics.kompics.KompicsEvent;
 
 /**
  *
  * @author lkroll
  */
-public class DataMessage extends Event {
+public class DataMessage implements KompicsEvent {
     
     public final UUID flowId;
     public final int clearId;
-    public final byte[] data;
+    public final DataRef data;
+    public final CollectorDescriptor collector;
     public final boolean isfinal;
     
-    public DataMessage(UUID flowId, int clearId, byte[] data) {
-        this(flowId, clearId, data, false);
+    public DataMessage(UUID flowId, int clearId, DataRef data, CollectorDescriptor collector) {
+        this(flowId, clearId, data, collector, false);
     }
     
-    public DataMessage(UUID flowId, int clearId, byte[] data, boolean isfinal) {
+    public DataMessage(UUID flowId, int clearId, DataRef data, CollectorDescriptor collector, boolean isfinal) {
         this.flowId = flowId;
         this.data = data;
         this.clearId = clearId;
+        this.collector = collector;
         this.isfinal = isfinal;
     }
     

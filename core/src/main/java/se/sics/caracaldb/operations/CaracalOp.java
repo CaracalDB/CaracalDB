@@ -36,12 +36,4 @@ public abstract class CaracalOp implements KompicsEvent {
         this.id = id;
     }
     
-    /**
-     * Return true if execution of op before this operation will affect this
-     * operations result.
-     * 
-     * @param op
-     * @return 
-     */
-    public abstract boolean affectedBy(CaracalOp op);
 }

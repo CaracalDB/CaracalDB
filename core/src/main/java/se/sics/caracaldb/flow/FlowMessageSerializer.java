@@ -21,7 +21,7 @@
 package se.sics.caracaldb.flow;
 
 import com.google.common.base.Optional;
-import com.larskroll.common.ByteArrayRef;
+import com.larskroll.common.DataRef;
 import io.netty.buffer.ByteBuf;
 import java.util.UUID;
 import org.javatuples.Pair;
@@ -33,6 +33,7 @@ import se.sics.caracaldb.flow.FlowManager.CTS;
 import se.sics.caracaldb.flow.FlowManager.Chunk;
 import se.sics.caracaldb.flow.FlowManager.RTS;
 import se.sics.kompics.network.netty.serialization.Serializer;
+import se.sics.kompics.network.netty.serialization.Serializers;
 import se.sics.kompics.network.netty.serialization.SpecialSerializers;
 
 /**
@@ -87,12 +88,12 @@ public class FlowMessageSerializer implements Serializer {
     private void rtsToBinary(RTS rts, ByteBuf buf) {
         MessageSerializationUtil.msgToBinary(rts, buf, RTS.getValue0(), RTS.getValue1());
         SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(rts.flowId, buf);
-        buf.writeInt(rts.hint);
+        buf.writeLong(rts.hint);
     }
 
     private RTS rtsFromBinary(ByteBuf buf, MessageFields fields) {
         UUID flowId = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
-        int hint = buf.readInt();
+        long hint = buf.readLong();
         return new RTS(fields.src, fields.dst, fields.proto, flowId, hint);
     }
 
@@ -100,38 +101,48 @@ public class FlowMessageSerializer implements Serializer {
         MessageSerializationUtil.msgToBinary(cts, buf, CTS.getValue0(), CTS.getValue1());
         SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(cts.flowId, buf);
         buf.writeInt(cts.clearId);
-        buf.writeInt(cts.allowance);
+        buf.writeLong(cts.allowance);
         buf.writeLong(cts.validThrough);
     }
 
     private CTS ctsFromBinary(ByteBuf buf, MessageFields fields) {
         UUID flowId = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         int clearId = buf.readInt();
-        int allowance = buf.readInt();
+        long allowance = buf.readLong();
         long valid = buf.readLong();
         return new CTS(fields.src, fields.dst, fields.proto, flowId, clearId, allowance, valid);
     }
 
     private void chunkToBinary(Chunk chunk, ByteBuf buf) {
-        boolean full = chunk.data.length == FlowManager.CHUNK_SIZE;
+        int length = (int) chunk.data.size();  // must be < CHUNK_SIZE which is int
+        boolean full = length == FlowManager.CHUNK_SIZE;
         MessageSerializationUtil.msgToBinary(chunk, buf, CHUNK.getValue0(), full);
         SpecialSerializers.UUIDSerializer.INSTANCE.toBinary(chunk.flowId, buf);
         buf.writeInt(chunk.clearId);
-        buf.writeInt(chunk.chunkNo);
-        buf.writeInt(chunk.bytes);
-        ByteArrayRef data = chunk.data;
+        buf.writeLong(chunk.chunkNo);
+        buf.writeLong(chunk.bytes);
+        DataRef data = chunk.data;
         if (!full) {
-            buf.writeInt(data.length);
+            buf.writeInt(length);
             buf.writeBoolean(chunk.isFinal);
         }
-        buf.writeBytes(data.getBackingArray(), data.begin, data.length);
+        Serializers.toBinary(chunk.collector, buf);
+        int startx = buf.writerIndex();
+        data.copyTo(buf);
+        int endx = buf.writerIndex();
+        int diff = endx - startx;
+        if (diff != length) {
+            FlowManager.LOG.error("Should have written {}bytes but only wrote {}bytes for chunk#: {}",
+                    new Object[]{length, diff, chunk.chunkNo});
+            System.exit(1);
+        }
     }
 
     private Chunk chunkFromBinary(ByteBuf buf, MessageFields fields) {
         UUID flowId = (UUID) SpecialSerializers.UUIDSerializer.INSTANCE.fromBinary(buf, Optional.absent());
         int clearId = buf.readInt();
-        int chunkNo = buf.readInt();
-        int bytes = buf.readInt();
+        long chunkNo = buf.readLong();
+        long bytes = buf.readLong();
         int length = FlowManager.CHUNK_SIZE;
         boolean isFinal = false;
         if (!fields.flag2) {
@@ -139,12 +150,19 @@ public class FlowMessageSerializer implements Serializer {
             isFinal = buf.readBoolean();
         }
         ClearFlowId id = new ClearFlowId(flowId, clearId);
+        CollectorDescriptor cd = (CollectorDescriptor) Serializers.fromBinary(buf, Optional.absent());
         ChunkCollector coll = ChunkCollector.collectors.get(id);
         if (coll == null) {
-            coll = new ChunkCollector(flowId, clearId, bytes);
+            coll = cd.create(flowId, clearId);
             ChunkCollector.collectors.put(id, coll);
         }
-        ByteArrayRef data = coll.readChunk(chunkNo, length, buf);
-        return new Chunk(fields.src, fields.dst, fields.proto, flowId, clearId, chunkNo, bytes, data, isFinal);
+
+        if (buf.readableBytes() < length) {
+            FlowManager.LOG.error("Expected to read {}, but only have {} in buffer. Chunk#{}",
+                    new Object[]{length, buf.readableBytes(), chunkNo});
+            System.exit(1); // no point in continuing from here
+        }
+        DataRef data = coll.readChunk(chunkNo, length, buf);
+        return new Chunk(fields.src, fields.dst, fields.proto, flowId, clearId, chunkNo, bytes, data, isFinal, cd);
     }
 }

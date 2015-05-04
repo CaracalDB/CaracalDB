@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableSet;
 import java.util.UUID;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
-import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.MultiOp;
 
 /**
@@ -82,38 +81,5 @@ public class MultiOpRequest extends CaracalOp {
         return null;
     }
 
-    @Override
-    public boolean affectedBy(CaracalOp op) {
-        ImmutableSet.Builder<Key> readKeysB = ImmutableSet.builder();
-        for (MultiOp.Condition c : conditions) {
-            readKeysB.add(c.on());
-        }
-        ImmutableSet<Key> readKeys = readKeysB.build();
-        if (op instanceof PutRequest) {
-            PutRequest put = (PutRequest) op;
-            return readKeys.contains(put.key);
-        }
-        if (op instanceof RangeQuery.Request) {
-            RangeQuery.Request rqr = (RangeQuery.Request) op;
-            if (!(rqr.action instanceof ActionFactory.Noop)) {
-                for (Key k : readKeys) {
-                    if (rqr.subRange.contains(k)) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        }
-        if (op instanceof MultiOpRequest) {
-            MultiOpRequest mor = (MultiOpRequest) op;
-            for (Key k : readKeys) {
-                    if (mor.writesTo(k)) {
-                        return true;
-                    }
-                }
-                return false;
-        }
-        return false;
-    }
 
 }

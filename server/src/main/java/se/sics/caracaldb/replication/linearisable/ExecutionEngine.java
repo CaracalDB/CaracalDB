@@ -551,9 +551,14 @@ public class ExecutionEngine extends ComponentDefinition {
             Map<String, Object> metadata = new HashMap<String, Object>();
             metadata.put("snapshotId", lastSnapshotId);
             metadata.put("versionId", versionId);
+//            final Component sender = create(DataSender.class,
+//                    new DataSenderInit(id, init.range, self, dst,
+//                            2 * init.keepAlivePeriod, metadata));
             final Component sender = create(DataSender.class,
-                    new DataSenderInit(id, init.range, self, dst,
+                    new DataSenderInit(id, self, dst,
                             2 * init.keepAlivePeriod, metadata));
+
+            //FIXME add data source
             connect(sender.getNegative(Network.class), net, new TransferFilter(id));
             connect(sender.getNegative(Timer.class), timer);
             connect(sender.getNegative(Store.class), store);

@@ -20,7 +20,8 @@
  */
 package se.sics.caracaldb.datatransfer;
 
-import java.util.Map;
+import com.google.common.collect.ImmutableMap;
+import java.util.Map.Entry;
 import java.util.UUID;
 import se.sics.caracaldb.Address;
 
@@ -30,10 +31,29 @@ import se.sics.caracaldb.Address;
  */
 public class InitiateTransfer extends TransferMessage {
     
-    public final Map<String, Object> metadata;
+    public final ImmutableMap<String, Object> metadata;
     
-    public InitiateTransfer(Address src, Address dst, UUID id, Map<String, Object> metadata) {
+    public InitiateTransfer(Address src, Address dst, UUID id, ImmutableMap<String, Object> metadata) {
         super(src, dst, id);
         this.metadata = metadata;
+    }
+    
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append("InitiateTransfer(");
+        sb.append("id: ");
+        sb.append(this.id);
+        sb.append(", meta: \n");
+        for (Entry<String, Object> e : metadata.entrySet()) {
+            sb.append("   ");
+            sb.append(e.getKey());
+            sb.append(" -> ");
+            sb.append(e.getValue());
+            sb.append("\n");
+        }
+        sb.append(")");
+        return sb.toString();
     }
 }

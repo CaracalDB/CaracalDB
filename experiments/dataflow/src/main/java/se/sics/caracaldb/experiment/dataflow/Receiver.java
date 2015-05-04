@@ -1,0 +1,125 @@
+/*
+ * This file is part of the CaracalDB distributed storage system.
+ *
+ * Copyright (C) 2009 Swedish Institute of Computer Science (SICS) 
+ * Copyright (C) 2009 Royal Institute of Technology (KTH)
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+package se.sics.caracaldb.experiment.dataflow;
+
+import com.google.common.hash.HashCode;
+import java.io.File;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import se.sics.caracaldb.datatransfer.Completed;
+import se.sics.caracaldb.datatransfer.DataReceiver;
+import se.sics.caracaldb.datatransfer.DataReceiverInit;
+import se.sics.caracaldb.datatransfer.DataSink;
+import se.sics.caracaldb.datatransfer.DataTransfer;
+import se.sics.caracaldb.datatransfer.InitiateTransfer;
+import se.sics.caracaldb.flow.DataFlow;
+import se.sics.caracaldb.flow.FlowManager;
+import se.sics.caracaldb.flow.FlowManagerInit;
+import se.sics.kompics.Component;
+import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.Handler;
+import se.sics.kompics.Init;
+import se.sics.kompics.Kill;
+import se.sics.kompics.Positive;
+import se.sics.kompics.Start;
+import se.sics.kompics.network.Network;
+import se.sics.kompics.network.netty.NettyInit;
+import se.sics.kompics.network.netty.NettyNetwork;
+import se.sics.kompics.network.virtual.VirtualNetworkChannel;
+import se.sics.kompics.timer.Timer;
+import se.sics.kompics.timer.java.JavaTimer;
+
+/**
+ *
+ * @author lkroll
+ */
+public class Receiver extends ComponentDefinition {
+
+    static final Logger LOG = LoggerFactory.getLogger(Receiver.class);
+    // Components
+    private final Component netC;
+    private final Component flowC;
+    private final Component timeC;
+    // Ports
+    Positive<Network> net = requires(Network.class);
+    // Instance
+    private final VirtualNetworkChannel vnc;
+    
+    public Receiver() {
+        timeC = create(JavaTimer.class, Init.NONE);
+        netC = create(NettyNetwork.class, new NettyInit(Main.self));
+        connect(net.getPair(), netC.getPositive(Network.class));
+        vnc = VirtualNetworkChannel.connect(net);
+        flowC = create(FlowManager.class, new FlowManagerInit(Main.bufferSize, Main.minAlloc, Main.protocol, Main.self));
+        vnc.addConnection(null, flowC.getNegative(Network.class));
+        connect(flowC.getNegative(Timer.class), timeC.getPositive(Timer.class));
+        
+        // subscriptions
+        subscribe(initHandler, net);
+        subscribe(startHandler, control);
+    }
+    
+    Handler<Start> startHandler = new Handler<Start>() {
+
+        @Override
+        public void handle(Start event) {
+            LOG.info("{}: Waitinf for incoming data transfer.", Main.self);
+        }
+    };
+    
+    Handler<InitiateTransfer> initHandler = new Handler<InitiateTransfer>(){
+
+        @Override
+        public void handle(InitiateTransfer event) {
+            LOG.info("{}: Initiating transfer: {}", Main.self, event);
+            final File f = new File((String) event.metadata.get("filename"));
+            final HashCode hash = (HashCode) event.metadata.get("filehash");
+            final long filesize = (Long)event.metadata.get("filesize");
+            final Component sinkC = create(FileTransferAdapter.class, 
+                    new FileTransferAdapter.Init(f, FileTransferAdapter.Mode.SINK, hash));
+            final Component drecv = create(DataReceiver.class, new DataReceiverInit(event));
+            connect(drecv.getNegative(Network.class), net);
+            connect(drecv.getNegative(Timer.class), timeC.getPositive(Timer.class));
+            connect(drecv.getNegative(DataFlow.class), flowC.getPositive(DataFlow.class));
+            connect(drecv.getNegative(DataSink.class), sinkC.getPositive(DataSink.class));
+            final long startt = System.currentTimeMillis();
+            final Handler<Completed> cH = new Handler<Completed>(){
+
+                @Override
+                public void handle(Completed event) {
+                    long endt = System.currentTimeMillis();
+                    long difft = endt-startt;
+                    double diffs = (double)difft/1000.0;
+                    double fsizekb = (double)filesize/1024.0;
+                    double avg = fsizekb/diffs; // in kb/s
+                    LOG.info("Data Transfer {} completed. {}kb in {}s (avg. throughput {}kb/s)", new Object[]{event.id, fsizekb, diffs, avg});
+                    trigger(Kill.event, drecv.control());
+                    trigger(Kill.event, sinkC.control());
+                    Main.completed();
+                }
+            };
+            subscribe(cH, drecv.getPositive(DataTransfer.class));
+            trigger(Start.event, sinkC.control());
+            trigger(Start.event, drecv.control());
+        }
+    };
+    
+}

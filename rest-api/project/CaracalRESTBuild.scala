@@ -23,6 +23,8 @@ object CaracalRESTBuild extends Build {
       publishTo := Some(Resolver.sftp("SICS Snapshot Repository", "kompics.i.sics.se", "/home/maven/snapshotrepository")),
       //scalacOptions += "-Ydependent-method-types",
       scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-language:postfixOps", "-language:implicitConversions"),
+      resolvers += "Kompics Releases" at "http://kompics.sics.se/maven/repository/",
+      resolvers += "Kompics Snapshots" at "http://kompics.sics.se/maven/snapshotrepository/",
       resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases",
       resolvers += "spray repo" at "http://repo.spray.io",
       resolvers += "spray nightly repo" at "http://nightlies.spray.io",

@@ -20,6 +20,7 @@
  */
 package se.sics.caracaldb.flow;
 
+import com.larskroll.common.DataRef;
 import java.util.UUID;
 import se.sics.caracaldb.Address;
 import se.sics.kompics.Direct;
@@ -35,7 +36,7 @@ public class ClearToSend implements Direct.Response, Cloneable {
 
     private Address destination;
     private Address source;
-    private int quota;
+    private long quota;
     private UUID flowId;
     private int clearId;
 
@@ -49,7 +50,7 @@ public class ClearToSend implements Direct.Response, Cloneable {
      * Used by Network implementation!
      *
      */
-    void setQuota(int quota) {
+    void setQuota(long quota) {
         this.quota = quota;
     }
 
@@ -69,7 +70,7 @@ public class ClearToSend implements Direct.Response, Cloneable {
         return this.source;
     }
 
-    public int getQuota() {
+    public long getQuota() {
         return this.quota;
     }
 
@@ -112,11 +113,11 @@ public class ClearToSend implements Direct.Response, Cloneable {
         return cts;
     }
 
-    public DataMessage constructMessage(byte[] data) {
-        return new DataMessage(flowId, clearId, data);
+    public DataMessage constructMessage(DataRef data, CollectorDescriptor collector) {
+        return new DataMessage(flowId, clearId, data, collector);
     }
 
-    public DataMessage constructFinalMessage(byte[] data) {
-        return new DataMessage(flowId, clearId, data, true);
+    public DataMessage constructFinalMessage(DataRef data, CollectorDescriptor collector) {
+        return new DataMessage(flowId, clearId, data, collector, true);
     }
 }

@@ -20,20 +20,12 @@
  */
 package se.sics.caracaldb.datatransfer;
 
-import java.io.IOException;
-import java.util.Map.Entry;
-import java.util.SortedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Address;
-import se.sics.caracaldb.Key;
 import se.sics.caracaldb.flow.DataMessage;
-import se.sics.caracaldb.persistence.Batch;
-import se.sics.caracaldb.persistence.Persistence;
-import se.sics.caracaldb.store.BatchWrite;
-import se.sics.caracaldb.store.StorageRequest;
-import se.sics.caracaldb.store.StorageResponse;
 import se.sics.kompics.Handler;
+import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 
 /**
@@ -41,21 +33,23 @@ import se.sics.kompics.Start;
  * @author Lars Kroll <lkroll@sics.se>
  */
 public class DataReceiver extends DataTransferComponent {
-    
+  
     private static final Logger LOG = LoggerFactory.getLogger(DataReceiver.class);
+    
+    // Ports
+    Positive<DataSink> sink = requires(DataSink.class);
+    // Instance
     private final Address self;
     private final Address source;
-    private final int versionId;
     
     public DataReceiver(DataReceiverInit init) {
         super(init.event.id);
         self = init.event.getDestination();
         source = init.event.getSource();
-        versionId = (Integer) init.event.metadata.get("versionId");
 
         // subscriptions
         subscribe(startHandler, control);
-        subscribe(dataHandler, net);
+        subscribe(dataHandler, flow);
     }
     Handler<Start> startHandler = new Handler<Start>() {
         @Override
@@ -67,47 +61,15 @@ public class DataReceiver extends DataTransferComponent {
     Handler<DataMessage> dataHandler = new Handler<DataMessage>() {
         @Override
         public void handle(DataMessage event) {
+            if (event.data.size() == 0) {
+                return;
+            }
+            trigger(new Data.Reference(event.data, event.collector, event.isfinal), sink);
+            trigger(new AllReceived(self, source, id), net);
             if (event.isfinal) {
                 trigger(new Completed(id), transfer);
                 state = State.DONE;
             }
-            if (event.data.length == 0) {
-                return;
-            }
-            SortedMap<Key, byte[]> data = null;
-            try {
-                data = deserialise(event.data);
-                    trigger(new BatchWrite(data, versionId), store);
-            } catch (IOException ex) {
-                LOG.error("Could not deserialise data. Ignoring message!", ex);
-            }
         }
     };
-    
-    public static class PutBlob extends StorageRequest {
-        
-        private final int snapshotId;
-        private final SortedMap<Key, byte[]> data;
-        
-        public PutBlob(SortedMap<Key, byte[]> data, int snapshotId) {
-            this.snapshotId = snapshotId;
-            this.data = data;
-        }
-        
-        @Override
-        public StorageResponse execute(Persistence store) {
-            Batch b = store.createBatch();
-            try {
-                for (Entry<Key, byte[]> e : data.entrySet()) {
-                    Key k = e.getKey();
-                    byte[] val = e.getValue();
-                    b.put(k.getArray(), val, snapshotId);
-                }
-                store.writeBatch(b);
-            } finally {
-                b.close();
-            }
-            return null;
-        }
-    }
 }

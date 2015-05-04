@@ -21,62 +21,35 @@
 package se.sics.caracaldb.flow;
 
 import com.google.common.collect.ComparisonChain;
+import com.larskroll.common.DataRef;
 import io.netty.buffer.ByteBuf;
-import java.util.TreeSet;
+import java.util.SortedSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import com.larskroll.common.ByteArrayRef;
-import se.sics.caracaldb.flow.FlowManager.Chunk;
 
 /**
  *
  * @author lkroll
+ * @param <Ref>
  */
-public class ChunkCollector {
+public abstract class ChunkCollector<Ref extends DataRef> {
 
     public static final ConcurrentMap<ClearFlowId, ChunkCollector> collectors = new ConcurrentSkipListMap<ClearFlowId, ChunkCollector>();
 
     public final ClearFlowId id;
-    /**
-     * Don't write into that array!
-     */
-    public final byte[] data;
-    private final TreeSet<Integer> receivedChunks = new TreeSet<Integer>();
-    private final int numberOfChunks;
 
-    public ChunkCollector(UUID flowId, int clearId, int bytes) {
+    public ChunkCollector(UUID flowId, int clearId) {
         id = new ClearFlowId(flowId, clearId);
-        data = new byte[bytes];
-        numberOfChunks = Chunk.numberOfChunks(bytes);
     }
-
-    public synchronized boolean isComplete() {
-        return receivedChunks.size() == numberOfChunks;
-    }
-
-    public synchronized TreeSet<Integer> getMissingChunks() {
-        TreeSet<Integer> missing = new TreeSet<Integer>();
-        if (isComplete()) {
-            return missing;
-        }
-        int last = -1;
-        for (Integer cur : receivedChunks) {
-            for (int i = last + 1; i < cur; i++) {
-                missing.add(i);
-            }
-            last = cur;
-        }
-
-        return missing;
-    }
-
-    public synchronized ByteArrayRef readChunk(int chunkNo, int length, ByteBuf buf) {
-        int offset = chunkNo * FlowManager.CHUNK_SIZE;
-        buf.readBytes(data, offset, length);
-        receivedChunks.add(chunkNo);
-        return new ByteArrayRef(offset, length, data);
-    }
+    
+    public abstract boolean isComplete();
+    
+    public abstract SortedSet<Long> getMissingChunks();
+    
+    public abstract Ref readChunk(long chunkNo, int length, ByteBuf buf);
+    
+    public abstract Ref getResult();
 
     public static ClearFlowId getIdFor(UUID flowId, int clearId) {
         return new ClearFlowId(flowId, clearId);

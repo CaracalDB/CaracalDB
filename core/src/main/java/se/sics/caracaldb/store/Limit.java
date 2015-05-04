@@ -20,8 +20,8 @@
  */
 package se.sics.caracaldb.store;
 
-import java.io.Serializable;
 import com.larskroll.common.ByteArrayRef;
+import java.io.Serializable;
 
 /**
  *
@@ -34,7 +34,7 @@ public abstract class Limit {
         return new NoLimit();
     }
 
-    public static LimitTracker toBytes(int number) {
+    public static LimitTracker toBytes(long number) {
         return new ByteSize(number);
     }
 
@@ -117,9 +117,9 @@ public abstract class Limit {
 
     private static class ByteSize implements LimitTracker, Serializable {
 
-        private int byteSize;
+        private long byteSize;
 
-        public ByteSize(int byteSize) {
+        public ByteSize(long byteSize) {
             this.byteSize = byteSize;
         }
 

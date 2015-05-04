@@ -22,8 +22,6 @@ package se.sics.caracaldb.operations;
 
 import java.util.UUID;
 import se.sics.caracaldb.Key;
-import se.sics.caracaldb.KeyRange;
-import se.sics.caracaldb.store.ActionFactory;
 
 /**
  *
@@ -43,23 +41,4 @@ public final class GetRequest extends CaracalOp {
         return "GetRequest(" + id + ", " + key + ")";
     }
 
-    @Override
-    public boolean affectedBy(CaracalOp op) {
-        // Remember to update this when adding new ops
-        if (op instanceof PutRequest) {
-            PutRequest req = (PutRequest) op;
-            return req.key.equals(this.key);
-        }
-        if (op instanceof RangeQuery.Request) {
-            RangeQuery.Request rqr = (RangeQuery.Request) op;
-            if (!(rqr.action instanceof ActionFactory.Noop)) {
-                return rqr.subRange.contains(key);
-            }
-        }
-        if (op instanceof MultiOpRequest) {
-            MultiOpRequest mor = (MultiOpRequest) op;
-            return mor.writesTo(key);
-        }
-        return false;
-    }
 }

@@ -33,13 +33,13 @@ import se.sics.kompics.Request;
  */
 public class RequestToSend extends Request {
     private ClearToSend event;
-    public final int hint;
+    public final long hint;
     
     public RequestToSend() {
         hint = -1;
     }
     
-    public RequestToSend(int hint) {
+    public RequestToSend(long hint) {
         this.hint = hint;
     }
     
@@ -59,5 +59,16 @@ public class RequestToSend extends Request {
         return this.event;
     }
     
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("RequestToSend(");
+        sb.append("hint: ");
+        sb.append(hint);
+        sb.append(", cts:\n");
+        sb.append(event);
+        sb.append("\n)");
+        return sb.toString();
+    }
 }
 

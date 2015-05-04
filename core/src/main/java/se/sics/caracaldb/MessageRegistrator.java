@@ -20,6 +20,8 @@
  */
 package se.sics.caracaldb;
 
+import se.sics.caracaldb.datatransfer.TransferMessage;
+import se.sics.caracaldb.flow.CollectorDescriptor;
 import se.sics.caracaldb.global.ForwardMessage;
 import se.sics.caracaldb.global.LookupMessage;
 import se.sics.caracaldb.global.Schema;
@@ -58,5 +60,11 @@ public abstract class MessageRegistrator {
         //
         Serializers.register(CoreSerializer.COND.instance, "condS");
         Serializers.register(MultiOp.Condition.class, "condS");
+        //
+        Serializers.register(CoreSerializer.DTS.instance, "transferS");
+        Serializers.register(TransferMessage.class, "transferS");
+        //
+        Serializers.register(CoreSerializer.CDS.instance, "collectorS");
+        Serializers.register(CollectorDescriptor.class, "collectorS");
     }
 }

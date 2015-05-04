@@ -20,18 +20,9 @@
  */
 package se.sics.caracaldb.datatransfer;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import java.io.IOException;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.UUID;
 import se.sics.caracaldb.Address;
-import se.sics.caracaldb.Key;
 import se.sics.caracaldb.flow.DataFlow;
-import se.sics.caracaldb.store.Store;
-import se.sics.caracaldb.utils.CustomSerialisers;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
@@ -59,12 +50,9 @@ abstract class DataTransferComponent extends ComponentDefinition {
     Positive<DataFlow> flow = requires(DataFlow.class);
     Positive<Network> net = requires(Network.class);
     Positive<Timer> timer = requires(Timer.class);
-    Positive<Store> store = requires(Store.class);
 
     protected final UUID id;
     protected State state;
-
-    protected Key lastKey;
 
     // statistics
     protected long dataSent = 0;
@@ -99,37 +87,11 @@ abstract class DataTransferComponent extends ComponentDefinition {
         }
     }
 
-    protected static byte[] serialise(SortedMap<Key, byte[]> result) throws IOException {
-        ByteBuf buf = Unpooled.buffer();
+    public static class AllReceived extends TransferMessage {
 
-        buf.writeInt(result.size());
-        for (Map.Entry<Key, byte[]> e : result.entrySet()) {
-            Key k = e.getKey();
-            byte[] val = e.getValue();
-            CustomSerialisers.serialiseKey(k, buf);
-            buf.writeInt(val.length);
-            buf.writeBytes(val);
+        public AllReceived(Address src, Address dst, UUID id) {
+            super(src, dst, id);
         }
-        byte[] data = new byte[buf.readableBytes()];
-        buf.readBytes(data);
-        buf.release();
-        return data;
     }
 
-    protected static SortedMap<Key, byte[]> deserialise(byte[] data) throws IOException {
-        ByteBuf buf = Unpooled.wrappedBuffer(data);
-
-        int size = buf.readInt();
-        TreeMap<Key, byte[]> map = new TreeMap<Key, byte[]>();
-        for (int i = 0; i < size; i++) {
-            Key k = CustomSerialisers.deserialiseKey(buf);
-            int valsize = buf.readInt();
-            byte[] valdata = new byte[valsize];
-            buf.readBytes(valdata);
-            map.put(k, valdata);
-        }
-        buf.release();
-
-        return map;
-    }
 }

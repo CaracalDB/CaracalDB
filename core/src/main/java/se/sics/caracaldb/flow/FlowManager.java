@@ -21,20 +21,21 @@
 package se.sics.caracaldb.flow;
 
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.math.IntMath;
+import com.google.common.math.LongMath;
+import com.larskroll.common.DataRef;
 import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
+import java.util.SortedSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sics.caracaldb.CoreSerializer;
-import com.larskroll.common.ByteArrayRef;
 import se.sics.caracaldb.Address;
 import se.sics.caracaldb.BaseMessage;
+import se.sics.caracaldb.CoreSerializer;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Negative;
@@ -59,7 +60,7 @@ public class FlowManager extends ComponentDefinition {
     static final Logger LOG = LoggerFactory.getLogger(FlowManager.class);
     static final long LEASE_TIME = 10 * 60 * 1000; // 10min
     static final long CLEANUP_PERIOD = 60 * 1000; // 1min
-    static final int CHUNK_SIZE = 65000;
+    public static final int CHUNK_SIZE = 65000;
 
     static {
         Serializers.register(CoreSerializer.FLOW.instance, "flowS");
@@ -73,9 +74,9 @@ public class FlowManager extends ComponentDefinition {
     // Instance
     private Address self;
     private Transport protocol;
-    private int minAlloc;
-    private int bufferSize;
-    private int freeBuffer;
+    private long minAlloc;
+    private long bufferSize;
+    private long freeBuffer;
     private final Map<UUID, ClearToSend> requestedFlows = new HashMap<UUID, ClearToSend>();
     private final Queue<RTS> openRequests = new LinkedList<RTS>();
     private final Queue<CTS> openClears = new LinkedList<CTS>();
@@ -143,6 +144,7 @@ public class FlowManager extends ComponentDefinition {
 
         @Override
         public void handle(RequestToSend e) {
+            LOG.info("Asking for space for: {}", e);
             ClearToSend cts = e.getEvent();
             requestedFlows.put(cts.getFlowId(), cts);
             Address src = (cts.getSource() == null) ? self : cts.getSource();
@@ -154,27 +156,24 @@ public class FlowManager extends ComponentDefinition {
 
         @Override
         public void handle(DataMessage e) {
-            byte[] data = e.data;
-            int numberOfChunks = Chunk.numberOfChunks(data.length);
-            int fullChunks = numberOfChunks - 1;
+            LOG.info("Got data to chunk: {}", e);
+            long numberOfChunks = Chunk.numberOfChunks(e.data.size());
             Address dst = requestedFlows.get(e.flowId).getDestination();
-            for (int i = 0; i < fullChunks; i++) {
-                ByteArrayRef p = new ByteArrayRef(i * CHUNK_SIZE, CHUNK_SIZE, data);
-                Chunk c = new Chunk(self, dst, protocol, e.flowId, e.clearId, i, data.length, p, false);
+            long i = 0;
+            Iterator<DataRef> it = e.data.split(numberOfChunks, CHUNK_SIZE).iterator();
+            while (it.hasNext()) {
+                DataRef part = it.next();
+                Chunk c = new Chunk(self, dst, protocol, e.flowId, e.clearId, i, e.data.size(), part, !it.hasNext() && e.isfinal, e.collector);
                 MessageNotify.Req req = MessageNotify.create(c);
                 pendingChunks.put(req.getMsgId(), c);
                 trigger(req, net);
+                i++;
             }
-            int remainder = data.length - fullChunks * CHUNK_SIZE;
-            ByteArrayRef p = new ByteArrayRef(fullChunks * CHUNK_SIZE, remainder, data);
-            Chunk c = new Chunk(self, dst, protocol, e.flowId, e.clearId, fullChunks, data.length, p, e.isfinal);
-            MessageNotify.Req req = MessageNotify.create(c);
-            pendingChunks.put(req.getMsgId(), c);
-            trigger(req, net);
+            LOG.debug("Got {} outstanding chunks to be sent.", pendingChunks.size());
             if (!e.isfinal) { // Request new space immediately
                 ClearToSend ctsE = requestedFlows.get(e.flowId);
                 Address src = (ctsE.getSource() == null) ? self : ctsE.getSource();
-                RTS rts = new RTS(src, ctsE.getDestination(), protocol, ctsE.getFlowId(), data.length);
+                RTS rts = new RTS(src, ctsE.getDestination(), protocol, ctsE.getFlowId(), e.data.size());
                 trigger(rts, net);
             }
         }
@@ -187,6 +186,7 @@ public class FlowManager extends ComponentDefinition {
                 clearIds.put(e.flowId, 0);
             }
             openRequests.offer(e); // Assign requests in FIFO order
+            LOG.debug("Got {}. Trying to assign space...");
             tryAssigningRequests();
         }
     };
@@ -201,6 +201,7 @@ public class FlowManager extends ComponentDefinition {
                         e.getSource(), e.getDestination());
             }
             openClears.offer(e); // Assign clears in FIFO order
+            LOG.debug("Got {}. Trying to assign space...");
             tryAssigningClears();
         }
     };
@@ -209,7 +210,9 @@ public class FlowManager extends ComponentDefinition {
         @Override
         public void handle(MessageNotify.Resp e) {
             Chunk c = pendingChunks.remove(e.msgId);
-            freeBuffer += c.data.length;
+            freeBuffer += c.data.size();
+            LOG.debug("Got {} outstanding chunks to be sent and {}bytes free space", pendingChunks.size(), freeBuffer);
+            c.data.release();
             tryAssigningClears();
             if (c.isLast()) { // After the last piece assign remote requests if there is buffer left
                 tryAssigningRequests();
@@ -229,9 +232,14 @@ public class FlowManager extends ComponentDefinition {
                 }
                 if (!coll.isComplete()) {
                     LOG.error("Got the last message on a clearId but Collector does not report complete!");
+                    SortedSet<Long> missing = coll.getMissingChunks();
+                    LOG.debug("Missing chunks:");
+                    for (Long l : missing) {
+                        LOG.debug("Chunk# {}", l);
+                    }
                     return;
                 }
-                DataMessage dm = new DataMessage(e.flowId, e.clearId, coll.data, e.isFinal);
+                DataMessage dm = new DataMessage(e.flowId, e.clearId, coll.getResult(), e.collector, e.isFinal);
                 trigger(dm, flow);
             }
             // TODO consider if handling lost messages is worth the effort}
@@ -239,7 +247,7 @@ public class FlowManager extends ComponentDefinition {
     };
 
     private void assignSpace(RTS rts) { // remote assign
-        int allowance;
+        long allowance;
         if (rts.hint > 0) { // Need finite amount of space
             if (rts.hint <= freeBuffer) { // amount fits into free space
                 allowance = Math.max(rts.hint, minAlloc);
@@ -259,17 +267,19 @@ public class FlowManager extends ComponentDefinition {
         CTS cts = new CTS(self, rts.getSource(), protocol, rts.flowId, clearId, allowance, validThrough);
         promises.put(rts.flowId, cts);
         trigger(cts, net);
+        LOG.debug("Assigned {}bytes (remaining: {}bytes) to {}", allowance, freeBuffer, cts);
     }
 
     private void assignSpace(CTS cts) {
         try {
             // local assign
-            int allowance = Math.min(freeBuffer, cts.allowance);
+            long allowance = Math.min(freeBuffer, cts.allowance);
             freeBuffer -= allowance;
             ClearToSend clear = (ClearToSend) requestedFlows.get(cts.flowId).clone();
             clear.setClearId(cts.clearId);
             clear.setQuota(allowance);
             trigger(clear, flow);
+            LOG.debug("Assigned {}bytes to {}", allowance, cts);
         } catch (CloneNotSupportedException ex) {
             LOG.warn("Clould not clone CTS!", ex);
         }
@@ -286,8 +296,10 @@ public class FlowManager extends ComponentDefinition {
         while ((freeBuffer >= minAlloc) && !openClears.isEmpty()) {
             CTS cts = openClears.poll();
             if (cts.validThrough > time) {
+                LOG.debug("Assigning space to {}", cts);
                 assignSpace(cts);
             } else { // Request a more up to date CTS
+                LOG.debug("{} has been invalidated. Requesting new one.", cts);
                 ClearToSend ctsE = requestedFlows.get(cts.flowId);
                 Address src = (ctsE.getSource() == null) ? self : ctsE.getSource();
                 RTS rts = new RTS(src, ctsE.getDestination(), protocol, ctsE.getFlowId(), cts.allowance);
@@ -298,7 +310,6 @@ public class FlowManager extends ComponentDefinition {
 
     public static abstract class FlowMessage extends BaseMessage {
 
-
         public final UUID flowId;
 
         public FlowMessage(Address src, Address dst, Transport protocol, UUID flowId) {
@@ -306,61 +317,122 @@ public class FlowManager extends ComponentDefinition {
             this.flowId = flowId;
         }
 
+        protected void headerToString(StringBuilder sb) {
+            sb.append("Header(src: ");
+            sb.append(this.getSource());
+            sb.append(", dst: ");
+            sb.append(this.getDestination());
+            sb.append(", protocol: ");
+            sb.append(this.getProtocol().name());
+            sb.append(") on flow ");
+            sb.append(flowId);
+        }
+        
     }
 
     public static class RTS extends FlowMessage {
 
-        public final int hint;
+        public final long hint;
 
-        public RTS(Address src, Address dst, Transport protocol, UUID flowId, int hint) {
+        public RTS(Address src, Address dst, Transport protocol, UUID flowId, long hint) {
             super(src, dst, protocol, flowId);
             this.hint = hint;
+        }
+        
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("RTS(\n");
+            headerToString(sb);
+            sb.append("\n hint: ");
+            sb.append(hint);
+            sb.append(")");
+            return sb.toString();
         }
     }
 
     public static class CTS extends FlowMessage {
 
         public final int clearId;
-        public final int allowance;
+        public final long allowance;
         public final long validThrough;
 
-        public CTS(Address src, Address dst, Transport protocol, UUID flowId, int clearId, int allowance, long validThrough) {
+        public CTS(Address src, Address dst, Transport protocol, UUID flowId, int clearId, long allowance, long validThrough) {
             super(src, dst, protocol, flowId);
             this.clearId = clearId;
             this.allowance = allowance;
             this.validThrough = validThrough;
+        }
+    
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("CTS(\n");
+            headerToString(sb);
+            sb.append("\n clearId: ");
+            sb.append(clearId);
+            sb.append(", allowance: ");
+            sb.append(allowance);
+            sb.append("bytes, validThrough: ");
+            sb.append(validThrough);
+            sb.append(")");
+            return sb.toString();
         }
     }
 
     public static class Chunk extends FlowMessage {
 
         public final int clearId;
-        public final int chunkNo; // number of this chunk
-        public final int bytes; // overall bytes on this clearId
-        public final ByteArrayRef data;
+        public final long chunkNo; // number of this chunk
+        public final long bytes; // overall bytes on this clearId
+        public final DataRef data;
         public final boolean isFinal;
+        public final CollectorDescriptor collector;
 
-        public Chunk(Address src, Address dst, Transport protocol, UUID flowId, int clearId, int chunkNo, int bytes, ByteArrayRef data, boolean isFinal) {
+        public Chunk(Address src, Address dst, Transport protocol, UUID flowId, int clearId, long chunkNo, long bytes, DataRef data, boolean isFinal, CollectorDescriptor collector) {
             super(src, dst, protocol, flowId);
             this.clearId = clearId;
             this.chunkNo = chunkNo;
             this.bytes = bytes;
             this.data = data;
             this.isFinal = isFinal;
+            this.collector = collector;
         }
 
-        public int numberOfChunks() {
+        public long numberOfChunks() {
             return Chunk.numberOfChunks(bytes);
         }
 
-        public static int numberOfChunks(int bytes) {
-            return IntMath.divide(bytes, FlowManager.CHUNK_SIZE, RoundingMode.UP);
+        public static long numberOfChunks(long bytes) {
+            return LongMath.divide(bytes, FlowManager.CHUNK_SIZE, RoundingMode.UP);
         }
 
         public boolean isLast() {
             return chunkNo == (numberOfChunks() - 1);
         }
 
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Chunk(\n");
+            headerToString(sb);
+            sb.append("\n clearId: ");
+            sb.append(clearId);
+            sb.append(", chunk#: ");
+            sb.append(chunkNo);
+            sb.append(", bytes: ");
+            sb.append(bytes);
+            if (isFinal) {
+                sb.append(", final");
+            } else {
+                sb.append(", not final");
+            }
+            sb.append(", collector: \n");
+            sb.append(collector);
+            sb.append("\n)");
+            return sb.toString();
+        }
+        
     }
 
     public static class FreeTime extends Timeout {

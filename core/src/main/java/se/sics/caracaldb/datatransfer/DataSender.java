@@ -20,24 +20,18 @@
  */
 package se.sics.caracaldb.datatransfer;
 
-import java.io.IOException;
+import com.google.common.collect.ImmutableMap;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Address;
-import se.sics.caracaldb.KeyRange;
 import se.sics.caracaldb.flow.ClearToSend;
 import se.sics.caracaldb.flow.DataMessage;
 import se.sics.caracaldb.flow.RequestToSend;
-import se.sics.caracaldb.store.ActionFactory;
-import se.sics.caracaldb.store.Limit;
-import se.sics.caracaldb.store.RangeReq;
-import se.sics.caracaldb.store.RangeResp;
-import se.sics.caracaldb.store.TFFactory;
 import se.sics.kompics.Handler;
+import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
@@ -50,32 +44,33 @@ public class DataSender extends DataTransferComponent {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataSender.class);
 
-    // instance
-    private final KeyRange range;
+    // Ports
+    Positive<DataSource> source = requires(DataSource.class);
+    // instance   
     private final Address self;
     private final Address destination;
     private final long retryTime;
-    private final Map<String, Object> metadata;
+    private final ImmutableMap<String, Object> metadata;
     private UUID timeoutId;
     private ClearToSend activeCTS;
     private final Queue<ClearToSend> pendingCTS = new LinkedList<ClearToSend>();
-    private int versionId;
+    private long minQuota = -1;
 
     public DataSender(DataSenderInit init) {
         super(init.id);
-        range = init.range;
         self = init.self;
         destination = init.destination;
         retryTime = init.retryTime;
-        metadata = init.metadata;
-        versionId = (Integer) metadata.get("versionId");
+        metadata = ImmutableMap.copyOf(init.metadata);
         // subscriptions
         subscribe(startHandler, control);
         subscribe(timeoutHandler, timer);
         subscribe(ackHandler, net);
-        subscribe(ctsHandler, net);
-        subscribe(responseHandler, store);
+        subscribe(ctsHandler, flow);
+        subscribe(dataHandler, source);
+        subscribe(requirementsHandler, source);
         subscribe(statusHandler, transfer);
+        subscribe(receivedHandler, net);
     }
     Handler<Start> startHandler = new Handler<Start>() {
         @Override
@@ -85,6 +80,7 @@ public class DataSender extends DataTransferComponent {
                     = new SchedulePeriodicTimeout(0, retryTime);
             RetryTimeout timeoutEvent = new RetryTimeout(spt);
             spt.setTimeoutEvent(timeoutEvent);
+            timeoutId = timeoutEvent.getTimeoutId();
             trigger(spt, timer);
         }
     };
@@ -101,11 +97,12 @@ public class DataSender extends DataTransferComponent {
         public void handle(Ack event) {
             if (state == State.INITIALISING) {
                 state = State.WAITING;
-                ClearToSend cts = new ClearToSend(destination, self, id);
-                RequestToSend rts = new RequestToSend();
+                ClearToSend cts = new ClearToSend(self, destination, id);
+                RequestToSend rts = new RequestToSend(minQuota);
                 rts.setEvent(cts);
-                trigger(rts, net);
+                trigger(rts, flow);
                 trigger(new CancelPeriodicTimeout(timeoutId), timer);
+                LOG.info("Got Ack. WAITING for CTS.");
             }
         }
     };
@@ -119,62 +116,52 @@ public class DataSender extends DataTransferComponent {
             }
             activeCTS = event;
             state = State.TRANSFERRING;
-            requestData(event.getQuota());
+            LOG.debug("Requesting data: {}", event);
+            trigger(new Data.Request(event.getQuota()), source);
         }
     };
-    Handler<RangeResp> responseHandler = new Handler<RangeResp>() {
+    Handler<Data.Requirements> requirementsHandler = new Handler<Data.Requirements>() {
+
         @Override
-        public void handle(RangeResp event) {
-            if (state != State.TRANSFERRING) {
+        public void handle(Data.Requirements event) {
+            LOG.info("Transfer requires {}bytes of allocated space", event.minQuota);
+            minQuota = event.minQuota;
+        }
+    };
+    Handler<AllReceived> receivedHandler = new Handler<AllReceived>() {
+
+        @Override
+        public void handle(AllReceived event) {
+            trigger(new Completed(id), transfer);
+        }
+    };
+    Handler<Data.Reference> dataHandler = new Handler<Data.Reference>() {
+
+        @Override
+        public void handle(Data.Reference event) {
+            if (state != DataTransferComponent.State.TRANSFERRING) {
                 LOG.warn("Got {} while not transferring. Something is out of place!", event);
                 return;
             }
-            if (event.result.isEmpty()) {
-                DataMessage finalMsg = activeCTS.constructFinalMessage(new byte[0]);
-                trigger(finalMsg, net);
-                trigger(new Completed(id), transfer);
-                state = State.DONE;
-                return;
+            DataMessage msg;
+            if (event.isFinal) {
+                msg = activeCTS.constructFinalMessage(event.data, event.collector);
+                state = DataTransferComponent.State.DONE;
+            } else {
+                msg = activeCTS.constructMessage(event.data, event.collector);
             }
-            lastKey = event.result.lastKey();
-            try {
-                byte[] data = serialise(event.result);
-                DataMessage msg;
-                if (data.length < activeCTS.getQuota()) {
-                    msg = activeCTS.constructFinalMessage(data);
-                    trigger(new Completed(id), transfer);
-                    state = State.DONE;
-                } else { // It might actually still be final, but we can't really figure that out without trying again
-                    msg = activeCTS.constructMessage(data);
-                }
-                trigger(msg, net);
-                dataSent += data.length;
-                itemsSent += event.result.size();
-            } catch (IOException ex) {
-                LOG.error("Could not serialise {}. Ignoring!", event);
-            }
+            trigger(msg, flow);
+            LOG.debug("Sending data to flow: {}", msg);
+            dataSent += event.data.size();
             ClearToSend next = pendingCTS.poll();
             if (next != null) {
                 activeCTS = next;
-                requestData(next.getQuota());
+                trigger(new Data.Request(next.getQuota()), source);
             } else {
                 activeCTS = null;
-                state = State.WAITING;
+                state = DataTransferComponent.State.WAITING;
             }
         }
     };
 
-    private void requestData(int quota) {
-        if (lastKey == null) {
-            RangeReq rr = new RangeReq(range, Limit.toBytes(quota), TFFactory.tombstoneFilter(), ActionFactory.noop(), -1);
-            rr.setMaxVersionId(versionId);
-            trigger(rr, store);
-            return;
-        }
-
-        KeyRange subRange = KeyRange.open(lastKey).endFrom(range);
-        RangeReq rr = new RangeReq(subRange, Limit.toBytes(quota), TFFactory.tombstoneFilter(), ActionFactory.noop(), -1);
-        rr.setMaxVersionId(versionId);
-        trigger(rr, store);
-    }
 }

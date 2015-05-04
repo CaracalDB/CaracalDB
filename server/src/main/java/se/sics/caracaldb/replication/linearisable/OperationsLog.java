@@ -61,21 +61,6 @@ public interface OperationsLog extends Iterable<Value> {
      */
     public boolean isEmpty();
 
-    /**
-     * Compiles a list of operations that change the result of op since the
-     * lastSnapshot and if op were inserted at pos.
-     * <p>
-     * <p>
-     * To define which operations affect which other operations see
-     * {@link CaracalOp#affectsResult(CaracalOp)}. This method only considers
-     * gap free prefixes.
-     * <p>
-     * @param pos
-     * @param op
-     * @param lastSnapshot
-     * @return
-     */
-    public List<CaracalOp> getApplicableForOp(long pos, CaracalOp op, long lastSnapshot);
 
     /**
      * Get a list of committable operations since lastSnapshot.

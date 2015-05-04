@@ -27,7 +27,6 @@ import java.util.UUID;
 import org.javatuples.Pair;
 import se.sics.caracaldb.Key;
 import se.sics.caracaldb.KeyRange;
-import se.sics.caracaldb.store.ActionFactory;
 import se.sics.caracaldb.store.Limit;
 import se.sics.caracaldb.store.RangeAction;
 import se.sics.caracaldb.store.RangeResp;
@@ -82,24 +81,6 @@ public class RangeQuery {
             return "RangeQuery Request(" + id + ", " + initRange.toString() + ", " + subRange.toString() + ")";
         }
 
-        @Override
-        public boolean affectedBy(CaracalOp op) {
-            if (op instanceof PutRequest) {
-                PutRequest put = (PutRequest) op;
-                return subRange.contains(put.key);
-            }
-            if (op instanceof RangeQuery.Request) {
-                RangeQuery.Request rqr = (RangeQuery.Request) op;
-                if (!(rqr.action instanceof ActionFactory.Noop)) {
-                    return KeyRange.overlap(subRange, rqr.subRange);
-                }
-            }
-            if (op instanceof MultiOpRequest) {
-                MultiOpRequest mor = (MultiOpRequest) op;
-                return mor.isInRange(subRange);
-            }
-            return false;
-        }
 
         public Request subRange(KeyRange newSubRange) {
             return new Request(id, newSubRange, initRange, limitTracker, transFilter, action, execType);

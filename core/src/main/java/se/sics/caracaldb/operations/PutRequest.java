@@ -20,9 +20,9 @@
  */
 package se.sics.caracaldb.operations;
 
+import com.larskroll.common.ByteArrayFormatter;
 import java.util.UUID;
 import se.sics.caracaldb.Key;
-import com.larskroll.common.ByteArrayFormatter;
 
 /**
  *
@@ -44,8 +44,4 @@ public final class PutRequest extends CaracalOp {
         return "PutRequest(" + id + ", " + key + ", " + ByteArrayFormatter.toHexString(data) + ")";
     }
 
-    @Override
-    public boolean affectedBy(CaracalOp op) {
-        return false; // Remember to update this when adding new ops
-    }
 }

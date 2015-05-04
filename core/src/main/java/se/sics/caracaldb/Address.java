@@ -26,8 +26,10 @@ import com.larskroll.common.ByteArrayFormatter;
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -108,6 +110,23 @@ public class Address implements se.sics.kompics.network.virtual.Address, Seriali
         ByteArrayFormatter.printFormat(id, sb);
 
         return sb.toString();
+    }
+    
+    public static Address parseString(String str) throws UnknownHostException, ParseException {
+        String[] ipPortid = str.split(":");
+        if (ipPortid.length != 2) {
+            throw new ParseException("Address format should be ip:port[/id]! String was: " + str, str.length());
+        }
+        InetAddress addr = InetAddress.getByName(ipPortid[0]);
+        String[] portId = ipPortid[1].split("/");
+        int port = Integer.parseInt(portId[0]);
+        InetSocketAddress isa = new InetSocketAddress(addr, port);
+        if (portId.length > 1) {
+            byte[] id = ByteArrayFormatter.fromHexString(portId[1]);
+            return new Address(isa, id);
+        } else {
+            return new Address(isa, null);
+        }
     }
 
     /*

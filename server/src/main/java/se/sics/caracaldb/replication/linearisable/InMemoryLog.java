@@ -24,7 +24,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.SortedMap;
 import java.util.TreeMap;
 import org.javatuples.Pair;
 import se.sics.caracaldb.operations.CaracalOp;
@@ -79,21 +78,6 @@ public class InMemoryLog implements OperationsLog {
     @Override
     public boolean isEmpty() {
         return log.isEmpty() && gapLog.isEmpty();
-    }
-
-    @Override
-    public List<CaracalOp> getApplicableForOp(long pos, CaracalOp op, long lastSnapshot) {
-        SortedMap<Long, Value> newMap = log.tailMap(lastSnapshot, false).headMap(pos);
-        List<CaracalOp> ops = new LinkedList<CaracalOp>();
-        for (Value v : newMap.values()) {
-            if (v instanceof SMROp) {
-                CaracalOp otherOp = ((SMROp) v).op;
-                if (op.affectedBy(otherOp)) {
-                    ops.add(otherOp);
-                }
-            }
-        }
-        return ops;
     }
 
     @Override

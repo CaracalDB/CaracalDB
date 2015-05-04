@@ -30,12 +30,12 @@ import se.sics.kompics.network.Transport;
  * @author lkroll
  */
 public class FlowManagerInit extends Init<FlowManager> {
-    public final int bufferSize;
-    public final int minAlloc;
+    public final long bufferSize;
+    public final long minAlloc;
     public final Transport protocol;
     public final Address self;
     
-    public FlowManagerInit(int bufferSize, int minAlloc, Transport protocol, Address self) {
+    public FlowManagerInit(long bufferSize, long minAlloc, Transport protocol, Address self) {
         this.bufferSize = bufferSize;
         this.minAlloc = minAlloc;
         this.protocol = protocol;
