@@ -27,6 +27,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.datatransfer.Data;
@@ -109,13 +112,18 @@ public class FileTransferAdapter extends ComponentDefinition {
                         target = new File(target.getCanonicalPath() + ".moved");
                         LOG.info("File {} exists. Moving data to new file: {}", file.getCanonicalPath());
                     }
-                    RandomAccessFile raf = new RandomAccessFile(target, "rws");
+                    //RandomAccessFile raf = new RandomAccessFile(target, "rws");
                     PartialFileRef pfr = (PartialFileRef) event.data; // this better work^^
-                    RAFileRef rafr = new RAFileRef(target, raf);
+                    RAFileRef rafr = pfr.fileRef();
+                    Path src = rafr.getFile().toPath();
+                    Path tgt = target.toPath();
+                    //RAFileRef rafr = new RAFileRef(target, raf);
                     LOG.info("Copying tmp data to final location {}...", target.getCanonicalPath());
-                    pfr.copyTo(rafr, 0);
+                    //pfr.copyTo(rafr, 0);
                     pfr.release();
                     rafr.release();
+                    //LOG.error("RAFR still has RC = " + rafr.rc());
+                    Files.move(src, tgt, REPLACE_EXISTING);                    
                     LOG.info("Finished copying tmp data to final location {}...", target.getCanonicalPath());
                     HashCode newHash = Main.getHash(target);
                     if (hash.equals(newHash)) {
@@ -123,6 +131,7 @@ public class FileTransferAdapter extends ComponentDefinition {
                     } else {
                         LOG.warn("Hashcodes do not match, file has been corrupted during transfer!");
                     }
+                    trigger(Data.AllWritten.event, sink);
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }

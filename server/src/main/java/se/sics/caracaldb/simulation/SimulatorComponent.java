@@ -221,6 +221,7 @@ public class SimulatorComponent extends ComponentDefinition {
 
         @Override
         public void handle(OpCmd op) {
+            System.out.println("Timestamp: " + System.currentTimeMillis());
             trigger(op, expExecutor);
         }
     };

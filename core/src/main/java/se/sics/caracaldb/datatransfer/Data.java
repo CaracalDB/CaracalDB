@@ -59,4 +59,11 @@ public abstract class Data {
             this.minQuota = minQuota;
         }
     }
+    
+    public static class AllWritten implements KompicsEvent {
+        public static final AllWritten event = new AllWritten();
+        
+        private AllWritten() {
+        }
+    }
 }

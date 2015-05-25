@@ -27,6 +27,7 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.SortedSet;
@@ -74,8 +75,9 @@ public class FlowManager extends ComponentDefinition {
     // Instance
     private Address self;
     private Transport protocol;
-    private long minAlloc;
-    private long bufferSize;
+    private final long minAlloc;
+    private final long bufferSize;
+    private final long maxAlloc;
     private long freeBuffer;
     private final Map<UUID, ClearToSend> requestedFlows = new HashMap<UUID, ClearToSend>();
     private final Queue<RTS> openRequests = new LinkedList<RTS>();
@@ -88,6 +90,7 @@ public class FlowManager extends ComponentDefinition {
     public FlowManager(FlowManagerInit init) {
         // Init
         minAlloc = init.minAlloc;
+        maxAlloc = init.maxAlloc;
         bufferSize = init.bufferSize;
         freeBuffer = bufferSize;
         protocol = init.protocol;
@@ -157,6 +160,8 @@ public class FlowManager extends ComponentDefinition {
         @Override
         public void handle(DataMessage e) {
             LOG.info("Got data to chunk: {}", e);
+            long wastedAllowance = e.allowance - e.data.size();
+            freeBuffer += wastedAllowance;
             long numberOfChunks = Chunk.numberOfChunks(e.data.size());
             Address dst = requestedFlows.get(e.flowId).getDestination();
             long i = 0;
@@ -186,7 +191,7 @@ public class FlowManager extends ComponentDefinition {
                 clearIds.put(e.flowId, 0);
             }
             openRequests.offer(e); // Assign requests in FIFO order
-            LOG.debug("Got {}. Trying to assign space...");
+            LOG.debug("Got {}. Trying to assign space...available: {}", e, freeBuffer);
             tryAssigningRequests();
         }
     };
@@ -201,7 +206,7 @@ public class FlowManager extends ComponentDefinition {
                         e.getSource(), e.getDestination());
             }
             openClears.offer(e); // Assign clears in FIFO order
-            LOG.debug("Got {}. Trying to assign space...");
+            LOG.debug("Got {}. Trying to assign space...avilable: {}", e, freeBuffer);
             tryAssigningClears();
         }
     };
@@ -224,6 +229,7 @@ public class FlowManager extends ComponentDefinition {
         @Override
         public void handle(Chunk e) {
             LOG.debug("Got chunk {}" + e);
+            e.data.release(); // don't need this anymore...collector should retain if it needs it
             if (e.isLast()) { // Only act on getting the last chunk for a datamessage
                 ChunkCollector coll = ChunkCollector.collectors.remove(ChunkCollector.getIdFor(e.flowId, e.clearId));
                 if (coll == null) {
@@ -239,8 +245,18 @@ public class FlowManager extends ComponentDefinition {
                     }
                     return;
                 }
-                DataMessage dm = new DataMessage(e.flowId, e.clearId, coll.getResult(), e.collector, e.isFinal);
+                List<CTS> clears = promises.get(e.flowId);
+                for (Iterator<CTS> it = clears.iterator(); it.hasNext();) {
+                    CTS v = it.next();
+                    if (v.clearId == e.clearId) {
+                        freeBuffer += v.allowance;
+                        it.remove();
+                    }
+                }
+                DataMessage dm = new DataMessage(e.flowId, e.clearId, coll.getResult(), -1, e.collector, e.isFinal);
                 trigger(dm, flow);
+                //freeBuffer += dm.data.size();
+                LOG.info("Got final piece for {}. Free space is now: {}bytes", e.flowId, freeBuffer);
             }
             // TODO consider if handling lost messages is worth the effort}
         }
@@ -250,12 +266,12 @@ public class FlowManager extends ComponentDefinition {
         long allowance;
         if (rts.hint > 0) { // Need finite amount of space
             if (rts.hint <= freeBuffer) { // amount fits into free space
-                allowance = Math.max(rts.hint, minAlloc);
+                allowance = Math.min(rts.hint, maxAlloc);
             } else { // need more space than available
                 allowance = freeBuffer; //TODO maybe come up with a better strategy
             }
         } else { // Need unkown amount of space
-            allowance = freeBuffer; //TODO maybe come up with a better strategy
+            allowance = maxAlloc; //TODO maybe come up with a better strategy
         }
         freeBuffer -= allowance;
         long validThrough = System.currentTimeMillis() + LEASE_TIME;
@@ -273,7 +289,7 @@ public class FlowManager extends ComponentDefinition {
     private void assignSpace(CTS cts) {
         try {
             // local assign
-            long allowance = Math.min(freeBuffer, cts.allowance);
+            long allowance = Math.min(maxAlloc, cts.allowance);
             freeBuffer -= allowance;
             ClearToSend clear = (ClearToSend) requestedFlows.get(cts.flowId).clone();
             clear.setClearId(cts.clearId);
@@ -327,7 +343,7 @@ public class FlowManager extends ComponentDefinition {
             sb.append(") on flow ");
             sb.append(flowId);
         }
-        
+
     }
 
     public static class RTS extends FlowMessage {
@@ -338,7 +354,7 @@ public class FlowManager extends ComponentDefinition {
             super(src, dst, protocol, flowId);
             this.hint = hint;
         }
-        
+
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
@@ -363,7 +379,7 @@ public class FlowManager extends ComponentDefinition {
             this.allowance = allowance;
             this.validThrough = validThrough;
         }
-    
+
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
@@ -432,7 +448,7 @@ public class FlowManager extends ComponentDefinition {
             sb.append("\n)");
             return sb.toString();
         }
-        
+
     }
 
     public static class FreeTime extends Timeout {

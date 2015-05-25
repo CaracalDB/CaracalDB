@@ -28,4 +28,5 @@ import se.sics.kompics.PortType;
  */
 public class DataSink extends PortType {{
     request(Data.Reference.class);
+    indication(Data.AllWritten.class);
 }}

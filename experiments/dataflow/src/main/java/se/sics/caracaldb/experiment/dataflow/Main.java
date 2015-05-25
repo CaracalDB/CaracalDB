@@ -24,14 +24,12 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
 import se.sics.caracaldb.Address;
-import se.sics.caracaldb.MessageRegistrator;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.network.Transport;
 
@@ -44,11 +42,18 @@ public class Main {
     public static volatile Address self;
     public static volatile long bufferSize = 1000 * 1000 * 1000; // 1GB
     public static volatile long minAlloc = 100 * 1000 * 1000; //100MB
+    public static volatile long maxAlloc = 512 * 1000 * 1000; //512MB
     public static volatile long retryTime = 1000; // 1s
     public static volatile Transport protocol = Transport.TCP;
     public static volatile Sender sender = null;
+    public static final BlockingQueue<TransferStats> resultQ = new LinkedBlockingQueue<TransferStats>(1);
 
     public static void main(String[] args) {
+        String proto = System.getProperty("protocol");
+        if (proto != null) {
+            protocol = Transport.valueOf(proto);
+        }
+        System.out.println("\n******* Using " + protocol + " ************\n");
         if (args.length > 0) {
             if (args[0].equalsIgnoreCase("receive")) {
                 if (args.length == 2) {
@@ -101,14 +106,26 @@ public class Main {
     }
 
     public static void startReceiver() {
-        MessageRegistrator.register();
-        Kompics.createAndStart(Receiver.class);
+        try {
+            MessageRegistrator.register();
+            Kompics.createAndStart(Receiver.class);
+            cleanup(resultQ.take());
+        } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     public static void startSender(File f, Address dst) {
         MessageRegistrator.register();
         Kompics.createAndStart(Sender.class);
-        sender.startTransfer(f, dst);
+        ListenableFuture<StatsWithRTTs> promise = sender.startTransfer(f, dst);
+        try {
+            cleanup(promise.get().stats);
+        } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+        } catch (ExecutionException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     static HashCode getHash(File f) {
@@ -123,24 +140,37 @@ public class Main {
         }
     }
 
-    static void completed() {
-        ListeningExecutorService service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(10));
-        ListenableFuture term = service.submit(new Callable() {
-            @Override
-            public Object call() {
-                System.out.print("Nothing left to do...");
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException ex) {
-                    System.out.println("");
-                }
-                System.out.println("shutting down Kompics.");
-                Kompics.shutdown();
-                System.out.println("Kompics shut down. Exiting...");
-                System.exit(0);
-                return null;
-            }
-        });
-
+    private static void cleanup(TransferStats ts) {
+        System.out.println("Finished transfer " + ts + " cleaning up...");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException ex) {
+            System.out.println(ex);
+        }
+        System.out.println("Shutting down Kompics...");
+        Kompics.shutdown();
+        System.out.println("Kompics shut down. Exiting...");
+        System.exit(0);
     }
+
+//    static void completed() {
+//        ListeningExecutorService service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(10));
+//        ListenableFuture term = service.submit(new Callable() {
+//            @Override
+//            public Object call() {
+//                System.out.print("Nothing left to do...");
+//                try {
+//                    Thread.sleep(5000);
+//                } catch (InterruptedException ex) {
+//                    System.out.println("");
+//                }
+//                System.out.println("shutting down Kompics.");
+//                Kompics.shutdown();
+//                System.out.println("Kompics shut down. Exiting...");
+//                System.exit(0);
+//                return null;
+//            }
+//        });
+//
+//    }
 }

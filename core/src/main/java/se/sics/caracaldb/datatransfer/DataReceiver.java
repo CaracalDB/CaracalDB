@@ -50,6 +50,7 @@ public class DataReceiver extends DataTransferComponent {
         // subscriptions
         subscribe(startHandler, control);
         subscribe(dataHandler, flow);
+        subscribe(writtenHandler, sink);
     }
     Handler<Start> startHandler = new Handler<Start>() {
         @Override
@@ -67,9 +68,15 @@ public class DataReceiver extends DataTransferComponent {
             trigger(new Data.Reference(event.data, event.collector, event.isfinal), sink);
             trigger(new AllReceived(self, source, id), net);
             if (event.isfinal) {
-                trigger(new Completed(id), transfer);
                 state = State.DONE;
             }
+        }
+    };
+    Handler<Data.AllWritten> writtenHandler = new Handler<Data.AllWritten>(){
+
+        @Override
+        public void handle(Data.AllWritten event) {
+            trigger(new Completed(id), transfer);
         }
     };
 }

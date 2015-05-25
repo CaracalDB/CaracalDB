@@ -114,10 +114,10 @@ public class ClearToSend implements Direct.Response, Cloneable {
     }
 
     public DataMessage constructMessage(DataRef data, CollectorDescriptor collector) {
-        return new DataMessage(flowId, clearId, data, collector);
+        return new DataMessage(flowId, clearId, data, quota, collector);
     }
 
     public DataMessage constructFinalMessage(DataRef data, CollectorDescriptor collector) {
-        return new DataMessage(flowId, clearId, data, collector, true);
+        return new DataMessage(flowId, clearId, data, quota, collector, true);
     }
 }

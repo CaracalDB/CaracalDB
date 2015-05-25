@@ -21,9 +21,13 @@
 package se.sics.caracaldb.experiment.dataflow;
 
 import com.google.common.hash.HashCode;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,15 +44,19 @@ import se.sics.caracaldb.flow.FlowManagerInit;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
-import se.sics.kompics.Init;
 import se.sics.kompics.Kill;
 import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
+import se.sics.kompics.Stop;
 import se.sics.kompics.network.Network;
+import se.sics.kompics.network.Transport;
 import se.sics.kompics.network.netty.NettyInit;
 import se.sics.kompics.network.netty.NettyNetwork;
 import se.sics.kompics.network.virtual.VirtualNetworkChannel;
+import se.sics.kompics.timer.CancelPeriodicTimeout;
+import se.sics.kompics.timer.SchedulePeriodicTimeout;
+import se.sics.kompics.timer.Timeout;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.timer.java.JavaTimer;
 
@@ -59,43 +67,127 @@ import se.sics.kompics.timer.java.JavaTimer;
 public class Sender extends ComponentDefinition {
 
     static final Logger LOG = LoggerFactory.getLogger(Receiver.class);
+    static final long PINGTIME = 100;
     // Components
     private final Component netC;
     private final Component flowC;
     private final Component timeC;
     // Ports
     Positive<Network> net = requires(Network.class);
+    Positive<Timer> timer = requires(Timer.class);
     // Instance
     private final VirtualNetworkChannel vnc;
+    private final Address self;
+    private final Map<UUID, SettableFuture<StatsWithRTTs>> promises = new HashMap<UUID, SettableFuture<StatsWithRTTs>>();
+    private final Transport pingProtocol;
+    private final Map<UUID, Address> pingees = new HashMap<UUID, Address>();
+    private final Map<UUID, Integer> pingNum = new HashMap<UUID, Integer>();
+    private final Map<UUID, ArrayList<Long>> pongstats = new HashMap<UUID, ArrayList<Long>>();
+    private UUID timeoutId;
 
     public Sender() {
+        this(new Init(Main.self, Main.bufferSize, Main.minAlloc, Main.maxAlloc, Main.protocol, null));
+    }
+
+    public Sender(Init init) {
         Main.sender = this; // FIXME make this nice
 
+        self = init.self;
+        pingProtocol = init.pingProtocol;
+
         timeC = create(JavaTimer.class, Init.NONE);
-        netC = create(NettyNetwork.class, new NettyInit(Main.self));
+        connect(timer.getPair(), timeC.getPositive(Timer.class));
+        netC = create(NettyNetwork.class, new NettyInit(init.self));
         connect(net.getPair(), netC.getPositive(Network.class));
         vnc = VirtualNetworkChannel.connect(net);
-        flowC = create(FlowManager.class, new FlowManagerInit(Main.bufferSize, Main.minAlloc, Main.protocol, Main.self));
+        flowC = create(FlowManager.class, new FlowManagerInit(init.bufferSize, init.minAlloc, init.maxAlloc, init.protocol, init.self));
         vnc.addConnection(null, flowC.getNegative(Network.class));
         connect(flowC.getNegative(Timer.class), timeC.getPositive(Timer.class));
 
         // subscriptions
+        subscribe(startHandler, control);
+        subscribe(stopHandler, control);
+        subscribe(pingHandler, timer);
+        subscribe(pongHandler, net);
+        subscribe(pingstartHandler, loopback);
         subscribe(transferHandler, loopback);
+        subscribe(statsHandler, net);
     }
+
+    Handler<Start> startHandler = new Handler<Start>() {
+
+        @Override
+        public void handle(Start event) {
+            if (pingProtocol != null) {
+                SchedulePeriodicTimeout spt
+                        = new SchedulePeriodicTimeout(0, PINGTIME);
+                PingTimeout timeoutEvent = new PingTimeout(spt);
+                spt.setTimeoutEvent(timeoutEvent);
+                timeoutId = timeoutEvent.getTimeoutId();
+                trigger(spt, timer);
+            }
+        }
+    };
+    Handler<Stop> stopHandler = new Handler<Stop>() {
+
+        @Override
+        public void handle(Stop event) {
+            if (timeoutId != null) {
+                trigger(new CancelPeriodicTimeout(timeoutId), timer);
+            }
+        }
+
+    };
+    Handler<PingTimeout> pingHandler = new Handler<PingTimeout>() {
+
+        @Override
+        public void handle(PingTimeout event) {
+            long ts = System.currentTimeMillis();
+            for (Entry<UUID, Address> e : pingees.entrySet()) {
+                trigger(new Control.Ping(self, e.getValue(), pingProtocol, e.getKey(), ts), net);
+            }
+        }
+    };
+    Handler<Control.Pong> pongHandler = new Handler<Control.Pong>() {
+
+        @Override
+        public void handle(Control.Pong event) {
+            long ts = System.currentTimeMillis();
+            long diff = ts - event.ts;
+            ArrayList<Long> pstats = pongstats.get(event.id);
+            pstats.add(diff);
+            Integer num = pingNum.get(event.id);
+            if ((num != null) && (num <= pstats.size())) { // enough pings
+                pingNum.remove(event.id);
+                pingees.remove(event.id);
+                pongstats.remove(event.id);
+                SettableFuture<StatsWithRTTs> promise = promises.remove(event.id);
+
+                if (promises == null) {
+                    LOG.error("Got pings for a transfer that never started: {} -> {}", event.id, pstats);
+                } else {
+                    promise.set(new StatsWithRTTs(null, pstats));
+                }
+            }
+        }
+    };
 
     Handler<StartTransfer> transferHandler = new Handler<StartTransfer>() {
 
         @Override
         public void handle(StartTransfer event) {
             HashCode hash = Main.getHash(event.f);
-            final Component sourceC = create(FileTransferAdapter.class, 
+            final Component sourceC = create(FileTransferAdapter.class,
                     new FileTransferAdapter.Init(event.f, Mode.SOURCE, hash));
-            UUID id = UUID.randomUUID();
+            final UUID id = UUID.randomUUID();
+            promises.put(id, event.promise);
+            pingees.put(id, event.dst);
+            pongstats.put(id, new ArrayList<Long>());
             Map<String, Object> metadata = new HashMap<String, Object>();
             metadata.put("filename", event.f.getName());
             metadata.put("filehash", hash);
             metadata.put("filesize", event.f.length());
-            final DataSenderInit init = new DataSenderInit(id, Main.self, event.dst, Main.retryTime, metadata);
+            final DataSenderInit init = new DataSenderInit(id, self, event.dst, Main.retryTime, metadata);
             final Component senderC = create(DataSender.class, init);
             connect(senderC.getNegative(Network.class), net);
             connect(senderC.getNegative(Timer.class), timeC.getPositive(Timer.class));
@@ -105,10 +197,10 @@ public class Sender extends ComponentDefinition {
 
                 @Override
                 public void handle(Completed event) {
+                    pingees.remove(id);
                     LOG.info("Data Transfer complete: {}", event.id);
                     trigger(Kill.event, senderC.control());
                     trigger(Kill.event, sourceC.control());
-                    Main.completed();
                 }
             };
             subscribe(cH, senderC.getPositive(DataTransfer.class));
@@ -116,17 +208,49 @@ public class Sender extends ComponentDefinition {
             trigger(Start.event, senderC.control());
         }
     };
+    Handler<StartPings> pingstartHandler = new Handler<StartPings>() {
 
-    void startTransfer(File f, Address dst) {
-        trigger(new StartTransfer(f, dst), onSelf);
+        @Override
+        public void handle(StartPings event) {
+            final UUID id = UUID.randomUUID();
+            promises.put(id, event.promise);
+            pingees.put(id, event.dst);
+            pongstats.put(id, new ArrayList<Long>());
+            pingNum.put(id, event.num);
+        }
+    };
+    Handler<TSMessage> statsHandler = new Handler<TSMessage>() {
+
+        @Override
+        public void handle(TSMessage event) {
+            SettableFuture<StatsWithRTTs> promise = promises.remove(event.id);
+
+            ArrayList<Long> pstats = pongstats.remove(event.id);
+            if (promises == null) {
+                LOG.error("Got stats for a transfer that never started: {} -> {}", event.id, event.stats);
+            } else {
+                promise.set(new StatsWithRTTs(event.stats, pstats));
+            }
+        }
+    };
+
+    public ListenableFuture<StatsWithRTTs> startTransfer(File f, Address dst) {
+        StartTransfer st = new StartTransfer(f, dst);
+        trigger(st, onSelf);
+        return st.promise;
     }
 
-
+    public ListenableFuture<StatsWithRTTs> startPingOnly(Address dst, int num) {
+        StartPings sp = new StartPings(dst, num);
+        trigger(sp, onSelf);
+        return sp.promise;
+    }
 
     public static class StartTransfer implements KompicsEvent {
 
         public final File f;
         public final Address dst;
+        public final SettableFuture<StatsWithRTTs> promise = SettableFuture.create();
 
         private StartTransfer(File f, Address dst) {
             this.f = f;
@@ -134,4 +258,42 @@ public class Sender extends ComponentDefinition {
         }
     }
 
+    public static class StartPings implements KompicsEvent {
+
+        public final Address dst;
+        public final int num;
+        public final SettableFuture<StatsWithRTTs> promise = SettableFuture.create();
+
+        private StartPings(Address dst, int num) {
+            this.dst = dst;
+            this.num = num;
+        }
+    }
+
+    public static class PingTimeout extends Timeout {
+
+        public PingTimeout(SchedulePeriodicTimeout request) {
+            super(request);
+        }
+
+    }
+
+    public static final class Init extends se.sics.kompics.Init<Sender> {
+
+        public final Address self;
+        public final long bufferSize;
+        public final long minAlloc;
+        public final long maxAlloc;
+        public final Transport protocol;
+        public final Transport pingProtocol;
+
+        public Init(Address self, long bufferSize, long minAlloc, long maxAlloc, Transport protocol, Transport pingProtocol) {
+            this.self = self;
+            this.bufferSize = bufferSize;
+            this.minAlloc = minAlloc;
+            this.maxAlloc = maxAlloc;
+            this.protocol = protocol;
+            this.pingProtocol = pingProtocol;
+        }
+    }
 }

@@ -18,37 +18,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+package se.sics.caracaldb.experiment.dataflow;
 
-package se.sics.caracaldb.flow;
-
-import com.larskroll.common.DataRef;
 import java.util.UUID;
-import se.sics.kompics.KompicsEvent;
+import se.sics.caracaldb.Address;
+import se.sics.caracaldb.BaseMessage;
+import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author lkroll
  */
-public class DataMessage implements KompicsEvent {
+public class TSMessage extends BaseMessage {
+    public final TransferStats stats;
+    public final UUID id;
     
-    public final UUID flowId;
-    public final int clearId;
-    public final DataRef data;
-    public final CollectorDescriptor collector;
-    public final boolean isfinal;
-    public final long allowance;
-    
-    public DataMessage(UUID flowId, int clearId, DataRef data, long allowance, CollectorDescriptor collector) {
-        this(flowId, clearId, data, allowance, collector, false);
+
+    public TSMessage(Address src, Address dst, TransferStats stats, UUID id) {
+        super(src, dst, Transport.TCP);
+        this.stats = stats;
+        this.id = id;
     }
-    
-    public DataMessage(UUID flowId, int clearId, DataRef data, long allowance, CollectorDescriptor collector, boolean isfinal) {
-        this.flowId = flowId;
-        this.data = data;
-        this.clearId = clearId;
-        this.allowance = allowance;
-        this.collector = collector;
-        this.isfinal = isfinal;
-    }
-    
+
 }

@@ -18,29 +18,46 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+package se.sics.caracaldb.experiment.dataflow;
 
-package se.sics.caracaldb.flow;
-
+import java.util.UUID;
 import se.sics.caracaldb.Address;
-import se.sics.kompics.Init;
+import se.sics.caracaldb.BaseMessage;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author lkroll
  */
-public class FlowManagerInit extends Init<FlowManager> {
-    public final long bufferSize;
-    public final long minAlloc;
-    public final long maxAlloc;
-    public final Transport protocol;
-    public final Address self;
+public abstract class Control {
+
+    public abstract static class Msg extends BaseMessage {
+
+        public final UUID id;
+        public final long ts;
+
+        public Msg(Address src, Address dst, Transport protocol, UUID id, long ts) {
+            super(src, dst, protocol);
+            this.id = id;
+            this.ts = ts;
+        }
+    }
+
+    public static class Ping extends Msg {
+
+        public Ping(Address src, Address dst, Transport protocol, UUID id, long ts) {
+            super(src, dst, protocol, id, ts);
+        }
+        
+        public Pong reply() {
+            return new Pong(this.getDestination(), this.getSource(), this.getProtocol(), id, ts);
+        }
+    }
     
-    public FlowManagerInit(long bufferSize, long minAlloc, long maxAlloc, Transport protocol, Address self) {
-        this.bufferSize = bufferSize;
-        this.minAlloc = minAlloc;
-        this.maxAlloc = maxAlloc;
-        this.protocol = protocol;
-        this.self = self;
+    public static class Pong extends Msg {
+
+        public Pong(Address src, Address dst, Transport protocol, UUID id, long ts) {
+            super(src, dst, protocol, id, ts);
+        }
     }
 }
