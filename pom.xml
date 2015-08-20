@@ -4,7 +4,7 @@
     <groupId>se.sics.caracaldb</groupId>
     <artifactId>caracaldb-parent-pom</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.7-SNAPSHOT</version>
+    <version>0.0.8</version>
 
     <name>CaracalDB</name>
     <!-- <url>http://kompics.sics.se</url> //-->
@@ -31,9 +31,9 @@
     </licenses>
         
     <properties>
-        <java.compiler.version>1.6</java.compiler.version>
+        <java.compiler.version>1.7</java.compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <kompics.version>0.8.1-SNAPSHOT</kompics.version>
+        <kompics.version>0.8.2-SNAPSHOT</kompics.version>
     </properties>
 
     <modules>
@@ -42,7 +42,7 @@
         <module>client</module>
         <module>simulator</module>
         <module>experiments</module>
-  </modules>
+    </modules>
 
     <dependencies>
         <dependency>
@@ -78,7 +78,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>17.0</version>
+            <version>18.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.gag</groupId>
@@ -125,6 +125,25 @@
 
     <build>
         <plugins>
+            <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.7.5.201505241946</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>prepare-agent</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>report</id>
+                    <phase>prepare-package</phase>
+                    <goals>
+                        <goal>report</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
             <plugin>
                 <inherited>true</inherited>
                 <groupId>org.apache.maven.plugins</groupId>

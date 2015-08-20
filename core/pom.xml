@@ -4,7 +4,7 @@
     <parent>
         <groupId>se.sics.caracaldb</groupId>
         <artifactId>caracaldb-parent-pom</artifactId>
-        <version>0.0.7-SNAPSHOT</version>
+        <version>0.0.8</version>
     </parent>
 
     <artifactId>caracaldb-core</artifactId>
@@ -45,7 +45,7 @@
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>caracaldb-simulator</artifactId>
-            <version>0.0.7-SNAPSHOT</version>
+            <version>0.0.8</version>
             <scope>compile</scope>
         </dependency>
         <dependency>

@@ -4,7 +4,7 @@
     <parent>
         <groupId>se.sics.caracaldb</groupId>
         <artifactId>caracaldb-parent-pom</artifactId>
-        <version>0.0.7-SNAPSHOT</version>
+        <version>0.0.8</version>
     </parent>
     
     <properties>
@@ -23,13 +23,13 @@
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>caracaldb-core</artifactId>
-            <version>0.0.7-SNAPSHOT</version>
+            <version>0.0.8</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>se.sics.caracaldb</groupId>
             <artifactId>caracaldb-simulator</artifactId>
-            <version>0.0.7-SNAPSHOT</version>
+            <version>0.0.8</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -42,10 +42,35 @@
             <artifactId>sigar</artifactId>
             <version>${sigar.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>3.0.0</version>
+        </dependency>
     </dependencies>
     
     <build>
         <plugins>
+            <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.7.5.201505241946</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>prepare-agent</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>report</id>
+                    <phase>prepare-package</phase>
+                    <goals>
+                        <goal>report</goal>
+                    </goals>
+                </execution>
+            </executions>
+
+        </plugin>
             <plugin>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
@@ -144,7 +169,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <forkMode>once</forkMode>
-                    <argLine>-Djava.library.path=${sigar-dist.unpack.directory}/${sigar-dist.classpath.directory}</argLine>
+                    <argLine>${argLine} -Djava.library.path=${sigar-dist.unpack.directory}/${sigar-dist.classpath.directory}</argLine>
                     <workingDirectory>target</workingDirectory>
                 </configuration>
             </plugin>
