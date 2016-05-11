@@ -20,17 +20,10 @@
  */
 package se.sics.kompics.virtual.simulator;
 
-import se.sics.kompics.virtual.networkmodel.NetworkModel;
-
 import se.sics.kompics.Init;
-
-import se.sics.kompics.virtual.networkmodel.NetworkModel;
-
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
-
-import se.sics.kompics.simulation.SimulatorScheduler;
-
-import se.sics.kompics.virtual.simulator.VirtualSimulator;
+import se.sics.kompics.simulator.scheduler.SimulationScheduler;
+import se.sics.kompics.virtual.networkmodel.NetworkModel;
 
 /**
  *
@@ -38,14 +31,14 @@ import se.sics.kompics.virtual.simulator.VirtualSimulator;
  *
  *
  *
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  *
  * @version $Id: P2pSimulatorInit.java 1102 2009-08-31 13:23:16Z Cosmin $
  *
  */
 public final class VirtualSimulatorInit extends Init<VirtualSimulator> {
 
-    private final SimulatorScheduler scheduler;
+    private final SimulationScheduler scheduler;
 
     private final SimulationScenario scenario;
 
@@ -53,7 +46,7 @@ public final class VirtualSimulatorInit extends Init<VirtualSimulator> {
 
     public final boolean serialize;
 
-    public VirtualSimulatorInit(SimulatorScheduler scheduler,
+    public VirtualSimulatorInit(SimulationScheduler scheduler,
             SimulationScenario scenario, NetworkModel networkModel) {
 
         super();
@@ -68,7 +61,7 @@ public final class VirtualSimulatorInit extends Init<VirtualSimulator> {
 
     }
 
-    public VirtualSimulatorInit(SimulatorScheduler scheduler,
+    public VirtualSimulatorInit(SimulationScheduler scheduler,
             SimulationScenario scenario, NetworkModel networkModel, boolean serialize) {
 
         super();
@@ -83,7 +76,7 @@ public final class VirtualSimulatorInit extends Init<VirtualSimulator> {
 
     }
 
-    public final SimulatorScheduler getScheduler() {
+    public final SimulationScheduler getScheduler() {
 
         return scheduler;
 

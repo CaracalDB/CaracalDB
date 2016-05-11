@@ -9,7 +9,7 @@ object CaracalRESTBuild extends Build {
 
   val sprayV = "1.3.3"
   val akkaV = "2.3.9"
-  val caracalV = "0.0.7-SNAPSHOT"
+  val caracalV = "0.0.9-SNAPSHOT"
 
   lazy val caracalREST = Project(
     id = "caracal-rest-api",
@@ -17,7 +17,7 @@ object CaracalRESTBuild extends Build {
     settings = Project.defaultSettings ++ Seq(
       name := "CaracalDB REST API",
       organization := "se.sics",
-      version := "0.5-SNAPSHOT",
+      version := "0.9-SNAPSHOT",
       scalaVersion := "2.11.6",
       publishMavenStyle := true,
       publishTo := Some(Resolver.sftp("SICS Snapshot Repository", "kompics.i.sics.se", "/home/maven/snapshotrepository")),

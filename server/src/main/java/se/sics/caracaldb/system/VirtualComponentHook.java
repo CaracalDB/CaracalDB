@@ -20,6 +20,8 @@
  */
 package se.sics.caracaldb.system;
 
+import se.sics.kompics.ComponentProxy;
+
 /**
  *
  * @author Lars Kroll <lkroll@sics.se>

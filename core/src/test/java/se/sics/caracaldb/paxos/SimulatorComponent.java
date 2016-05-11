@@ -42,6 +42,7 @@ import se.sics.caracaldb.replication.log.Reconfigure;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
+import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
@@ -51,7 +52,7 @@ import se.sics.kompics.network.virtual.VirtualNetworkChannel;
 import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.virtual.networkmodel.HostAddress;
-import se.sics.kompics.virtual.simulator.MessageDestinationFilter;
+import se.sics.kompics.virtual.simulator.MessageDestinationSelector;
 
 /**
  *
@@ -180,15 +181,17 @@ public class SimulatorComponent extends ComponentDefinition {
 
     private void bootNode(Address netSelf, View view) {
 
-
+        Component deadLetterBox = create(VirtualNetworkChannel.DefaultDeadLetterComponent.class, Init.NONE);
         VirtualNetworkChannel vnc = VirtualNetworkChannel.connect(net,
-                new MessageDestinationFilter(new HostAddress(netSelf)));
+                deadLetterBox.getNegative(Network.class),
+                new MessageDestinationSelector(new HostAddress(netSelf)));
         Component manager = create(PaxosManager.class, new PaxosManagerInit(view, 100, netSelf, store));
         components.put(netSelf.getPort(), manager);
 
-        connect(manager.getNegative(Network.class), net, new MessageDestinationFilter(new HostAddress(netSelf)));
+        connect(manager.getNegative(Network.class), net, new MessageDestinationSelector(new HostAddress(netSelf)));
         connect(manager.getNegative(Timer.class), timer);
 
+        trigger(Start.event, deadLetterBox.control());
         trigger(Start.event, manager.control());
     }
 

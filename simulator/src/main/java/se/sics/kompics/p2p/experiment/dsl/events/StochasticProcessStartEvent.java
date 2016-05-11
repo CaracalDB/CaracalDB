@@ -25,7 +25,7 @@ import java.util.LinkedList;
 /**
  * The <code>StochasticProcessStartEvent</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id: StochasticProcessStartEvent.java 750 2009-04-02 09:55:01Z
  *          Cosmin $
  */

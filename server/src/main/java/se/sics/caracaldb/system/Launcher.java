@@ -28,7 +28,7 @@ import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Scheduler;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
-import se.sics.kompics.simulation.SimulatorScheduler;
+import se.sics.kompics.simulator.scheduler.BasicSimulationScheduler;
 
 /**
  *
@@ -151,7 +151,7 @@ public abstract class Launcher {
     //added by Alex
     public static void newSimulate(Class<? extends ComponentDefinition> simulatorClass, SimulationScenario scenario) {
         simulation = true;
-        scheduler = new SimulatorScheduler();
+        scheduler = new BasicSimulationScheduler();
         Launcher.scenario = scenario;
         Kompics.setScheduler(scheduler);
         Kompics.createAndStart(simulatorClass, 1);

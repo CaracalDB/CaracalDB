@@ -25,7 +25,7 @@ import java.io.Serializable;
 /**
  * The <code>SimulatorEvent</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public class SimulatorEvent implements Comparable<SimulatorEvent>, Serializable {

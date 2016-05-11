@@ -20,7 +20,7 @@
  */
 package se.sics.kompics.virtual.simulator;
 
-import se.sics.kompics.ChannelFilter;
+import se.sics.kompics.ChannelSelector;
 import se.sics.kompics.network.Address;
 import se.sics.kompics.network.Msg;
 import se.sics.kompics.virtual.networkmodel.HostAddress;
@@ -29,13 +29,13 @@ import se.sics.kompics.virtual.networkmodel.HostAddress;
  *
  * @author Lars Kroll <lkroll@sics.se>
  */
-public class MessageDestinationFilter extends ChannelFilter<Msg, HostAddress> {
+public class MessageDestinationSelector extends ChannelSelector<Msg, HostAddress> {
     
-    public MessageDestinationFilter(Address self) {
+    public MessageDestinationSelector(Address self) {
         super(Msg.class, new HostAddress(self), true);
     }
     
-    public MessageDestinationFilter(HostAddress self) {
+    public MessageDestinationSelector(HostAddress self) {
         super(Msg.class, self, true);
     }
 

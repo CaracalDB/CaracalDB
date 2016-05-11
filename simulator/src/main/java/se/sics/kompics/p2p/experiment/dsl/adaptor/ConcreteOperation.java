@@ -27,7 +27,7 @@ import se.sics.kompics.p2p.experiment.dsl.distribution.Distribution;
 /**
  * The <code>ConcreteOperation</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public class ConcreteOperation<E extends KompicsEvent, P1 extends Number, P2 extends Number, P3 extends Number, P4 extends Number, P5 extends Number>

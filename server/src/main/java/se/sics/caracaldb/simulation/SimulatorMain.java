@@ -29,7 +29,7 @@ import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Fault;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
-import se.sics.kompics.simulation.SimulatorScheduler;
+import se.sics.kompics.simulator.scheduler.SimulationScheduler;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.virtual.networkmodel.UniformRandomModel;
 import se.sics.kompics.virtual.simulator.VirtualSimulator;
@@ -50,7 +50,7 @@ public class SimulatorMain extends ComponentDefinition {
 
         // create
         Component simulator = create(VirtualSimulator.class,
-                new VirtualSimulatorInit((SimulatorScheduler) Launcher.getScheduler(),
+                new VirtualSimulatorInit((SimulationScheduler) Launcher.getScheduler(),
                 scenario, new UniformRandomModel(1, 10)));
         Component simulationComponent = create(SimulatorComponent.class,
                 new SimulatorComponentInit(Launcher.getConfig()));

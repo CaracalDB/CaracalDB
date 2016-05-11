@@ -27,7 +27,7 @@ import se.sics.kompics.KompicsEvent;
 /**
  * The <code>Operation3</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public interface Operation3<E extends KompicsEvent, P1 extends Number, P2 extends Number, P3 extends Number>

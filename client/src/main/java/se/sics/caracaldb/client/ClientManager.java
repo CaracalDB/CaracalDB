@@ -41,19 +41,12 @@ import se.sics.caracaldb.global.ReadOnlyLUT;
 import se.sics.caracaldb.global.SampleRequest;
 import se.sics.caracaldb.operations.CaracalMsg;
 import se.sics.caracaldb.operations.CaracalResponse;
-import se.sics.caracaldb.system.ComponentProxy;
 import se.sics.caracaldb.utils.TimestampIdFactory;
-import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
-import se.sics.kompics.ControlPort;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
-import se.sics.kompics.KompicsEvent;
-import se.sics.kompics.Negative;
-import se.sics.kompics.Port;
-import se.sics.kompics.PortType;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.network.Network;
@@ -93,54 +86,6 @@ public class ClientManager extends ComponentDefinition {
         MessageRegistrator.register();
     }
 
-    private ComponentProxy proxy = new ComponentProxy() {
-        @Override
-        public <P extends PortType> void trigger(KompicsEvent e, Port<P> p) {
-            ClientManager.this.trigger(e, p);
-        }
-
-        @Override
-        public void destroy(Component component) {
-            ClientManager.this.destroy(component);
-        }
-
-        @Override
-        public <P extends PortType> Channel<P> connect(Positive<P> positive, Negative<P> negative) {
-            return ClientManager.this.connect(positive, negative);
-        }
-
-        @Override
-        public <P extends PortType> Channel<P> connect(Negative<P> negative, Positive<P> positive) {
-            return ClientManager.this.connect(negative, positive);
-        }
-
-        @Override
-        public <P extends PortType> void disconnect(Negative<P> negative, Positive<P> positive) {
-            ClientManager.this.disconnect(negative, positive);
-        }
-
-        @Override
-        public <P extends PortType> void disconnect(Positive<P> positive, Negative<P> negative) {
-            ClientManager.this.disconnect(positive, negative);
-        }
-
-        @Override
-        public Negative<ControlPort> getControlPort() {
-            return ClientManager.this.control;
-        }
-
-        @Override
-        public <T extends ComponentDefinition> Component create(Class<T> definition, Init<T> initEvent) {
-            return ClientManager.this.create(definition, initEvent);
-        }
-
-        @Override
-        public <T extends ComponentDefinition> Component create(Class<T> definition, Init.None initEvent) {
-            return ClientManager.this.create(definition, initEvent);
-        }
-
-    };
-
     public ClientManager() {
         if (INSTANCE == null) {
             INSTANCE = this; // will work in Oracle JDK...Not sure about other implementations
@@ -172,7 +117,7 @@ public class ClientManager extends ComponentDefinition {
 
         network = create(NettyNetwork.class, new NettyInit(self));
         timer = create(JavaTimer.class, Init.NONE);
-        vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class));
+        vnc = VirtualNetworkChannel.connect(network.getPositive(Network.class), proxy);
         vnc.addConnection(null, net.getPair());
 
         subscribe(startHandler, control);

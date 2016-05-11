@@ -99,7 +99,7 @@ public class Sender extends ComponentDefinition {
         connect(timer.getPair(), timeC.getPositive(Timer.class));
         netC = create(NettyNetwork.class, new NettyInit(init.self));
         connect(net.getPair(), netC.getPositive(Network.class));
-        vnc = VirtualNetworkChannel.connect(net);
+        vnc = VirtualNetworkChannel.connect(net, proxy);
         flowC = create(FlowManager.class, new FlowManagerInit(init.bufferSize, init.minAlloc, init.maxAlloc, init.protocol, init.self));
         vnc.addConnection(null, flowC.getNegative(Network.class));
         connect(flowC.getNegative(Timer.class), timeC.getPositive(Timer.class));

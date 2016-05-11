@@ -27,7 +27,7 @@ import se.sics.kompics.KompicsEvent;
 /**
  * The <code>Operation</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public interface Operation<E extends KompicsEvent> extends Serializable {

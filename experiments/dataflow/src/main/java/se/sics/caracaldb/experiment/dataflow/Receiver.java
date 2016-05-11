@@ -80,7 +80,7 @@ public class Receiver extends ComponentDefinition {
         timeC = create(JavaTimer.class, Init.NONE);
         netC = create(NettyNetwork.class, new NettyInit(init.self));
         connect(net.getPair(), netC.getPositive(Network.class));
-        vnc = VirtualNetworkChannel.connect(net);
+        vnc = VirtualNetworkChannel.connect(net, proxy);
         flowC = create(FlowManager.class, new FlowManagerInit(init.bufferSize, init.minAlloc, init.maxAlloc, init.protocol, init.self));
         vnc.addConnection(null, flowC.getNegative(Network.class));
         connect(flowC.getNegative(Timer.class), timeC.getPositive(Timer.class));

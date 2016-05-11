@@ -21,13 +21,13 @@
 package se.sics.caracaldb.datatransfer;
 
 import java.util.UUID;
-import se.sics.kompics.ChannelFilter;
+import se.sics.kompics.ChannelSelector;
 
 /**
  *
  * @author lkroll
  */
-public class TransferFilter extends ChannelFilter<TransferMessage, UUID> {
+public class TransferFilter extends ChannelSelector<TransferMessage, UUID> {
 
     public TransferFilter(UUID val) {
         super(TransferMessage.class, val, true);

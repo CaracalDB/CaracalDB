@@ -23,7 +23,7 @@ package se.sics.kompics.p2p.experiment.dsl.events;
 /**
  * The <code>SimulationTerminatedEvent</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public final class SimulationTerminatedEvent extends SimulatorEvent {

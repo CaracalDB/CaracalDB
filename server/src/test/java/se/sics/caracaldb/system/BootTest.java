@@ -34,6 +34,7 @@ import se.sics.caracaldb.simulation.SimulationHelper;
 import se.sics.caracaldb.system.Configuration.NodePhase;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.ComponentProxy;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Start;

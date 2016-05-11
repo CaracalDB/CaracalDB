@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The <code>CodeInstrumenter</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public class CodeInstrumenter extends ExprEditor {

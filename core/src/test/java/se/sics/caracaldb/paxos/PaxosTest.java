@@ -39,7 +39,7 @@ import se.sics.kompics.Kompics;
 import se.sics.kompics.Scheduler;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
 import se.sics.kompics.p2p.experiment.dsl.adaptor.Operation;
-import se.sics.kompics.simulation.SimulatorScheduler;
+import se.sics.kompics.simulator.scheduler.BasicSimulationScheduler;
 
 /**
  *
@@ -268,7 +268,7 @@ public class PaxosTest {
     }
     
     private void simulate() {
-        scheduler = new SimulatorScheduler();
+        scheduler = new BasicSimulationScheduler();
         Kompics.setScheduler(scheduler);
         Kompics.createAndStart(SimulatorMain.class, 1);
     }

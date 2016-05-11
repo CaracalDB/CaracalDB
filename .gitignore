@@ -24,6 +24,7 @@ project/plugins/project/
 # Eclipse specific
 .settings
 .cache
+.cache-main
 
 # Other
 # src/main/resources/application.conf

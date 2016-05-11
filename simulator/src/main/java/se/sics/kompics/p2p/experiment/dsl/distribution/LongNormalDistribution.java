@@ -25,7 +25,7 @@ import java.util.Random;
 /**
  * The <code>LongNormalDistribution</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public class LongNormalDistribution extends Distribution<Long> {

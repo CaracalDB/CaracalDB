@@ -44,17 +44,9 @@ import se.sics.caracaldb.store.Store;
 import se.sics.caracaldb.system.Configuration.SystemPhase;
 import se.sics.caracaldb.vhostfd.VEPFDInit;
 import se.sics.caracaldb.vhostfd.VirtualEPFD;
-import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
-import se.sics.kompics.ControlPort;
 import se.sics.kompics.Handler;
-import se.sics.kompics.Init;
-import se.sics.kompics.Init.None;
-import se.sics.kompics.KompicsEvent;
-import se.sics.kompics.Negative;
-import se.sics.kompics.Port;
-import se.sics.kompics.PortType;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
@@ -76,52 +68,6 @@ public class HostManager extends ComponentDefinition {
     private Positive<Timer> timer;
     private Positive<EventualFailureDetector> fd;
     private Positive<Bootstrap> bootPort;
-    private ComponentProxy proxy = new ComponentProxy() {
-        @Override
-        public <P extends PortType> void trigger(KompicsEvent e, Port<P> p) {
-            HostManager.this.trigger(e, p);
-        }
-        
-        @Override
-        public void destroy(Component component) {
-            HostManager.this.destroy(component);
-        }
-        
-        @Override
-        public <P extends PortType> Channel<P> connect(Positive<P> positive, Negative<P> negative) {
-            return HostManager.this.connect(positive, negative);
-        }
-        
-        @Override
-        public <P extends PortType> Channel<P> connect(Negative<P> negative, Positive<P> positive) {
-            return HostManager.this.connect(negative, positive);
-        }
-        
-        @Override
-        public <P extends PortType> void disconnect(Negative<P> negative, Positive<P> positive) {
-            HostManager.this.disconnect(negative, positive);
-        }
-        
-        @Override
-        public <P extends PortType> void disconnect(Positive<P> positive, Negative<P> negative) {
-            HostManager.this.disconnect(positive, negative);
-        }
-        
-        @Override
-        public Negative<ControlPort> getControlPort() {
-            return HostManager.this.control;
-        }
-        
-        @Override
-        public <T extends ComponentDefinition> Component create(Class<T> definition, Init<T> initEvent) {
-            return HostManager.this.create(definition, initEvent);
-        }
-        
-        @Override
-        public <T extends ComponentDefinition> Component create(Class<T> definition, None initEvent) {
-            return HostManager.this.create(definition, initEvent);
-        }
-    };
     private Address netSelf;
     private boolean bootstrapped = false;
     private Component lutManager;

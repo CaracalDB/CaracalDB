@@ -46,6 +46,7 @@ import se.sics.caracaldb.utils.TimestampIdFactory;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
+import se.sics.kompics.Init;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
@@ -54,7 +55,7 @@ import se.sics.kompics.network.virtual.VirtualNetworkChannel;
 import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.virtual.networkmodel.HostAddress;
-import se.sics.kompics.virtual.simulator.MessageDestinationFilter;
+import se.sics.kompics.virtual.simulator.MessageDestinationSelector;
 
 /**
  * @author Lars Kroll <lkroll@sics.se>
@@ -110,7 +111,7 @@ public class SimulatorComponent extends ComponentDefinition {
             System.exit(1);
             return;
         }
-        connect(experimentExecutor.getNegative(Network.class), net, new MessageDestinationFilter(new HostAddress(receiver)));
+        connect(experimentExecutor.getNegative(Network.class), net, new MessageDestinationSelector(new HostAddress(receiver)));
         connect(expExecutor.getPair(), experimentExecutor.getPositive(ExperimentPort.class));
     }
 
@@ -162,12 +163,15 @@ public class SimulatorComponent extends ComponentDefinition {
 
         Address netSelf = new Address(myConf.getIp(), myConf.getPort(), null);
 
+        Component deadLetterBox = create(VirtualNetworkChannel.DefaultDeadLetterComponent.class, Init.NONE);
         VirtualNetworkChannel vnc = VirtualNetworkChannel.connect(net,
-                new MessageDestinationFilter(new HostAddress(netSelf)));
+                deadLetterBox.getNegative(Network.class),
+                new MessageDestinationSelector(new HostAddress(netSelf)));
         Component manager = create(HostManager.class, new HostManagerInit(myConf, netSelf, vnc));
 
         connect(manager.getNegative(Timer.class), timer);
 
+        trigger(Start.event, deadLetterBox.control());
         trigger(Start.event, manager.control());
         target = netSelf;
     }
@@ -180,12 +184,15 @@ public class SimulatorComponent extends ComponentDefinition {
 
         Address netSelf = new Address(myConf.getIp(), myConf.getPort(), null);
 
+        Component deadLetterBox = create(VirtualNetworkChannel.DefaultDeadLetterComponent.class, Init.NONE);
         VirtualNetworkChannel vnc = VirtualNetworkChannel.connect(net,
-                new MessageDestinationFilter(new HostAddress(netSelf)));
+                deadLetterBox.getNegative(Network.class),
+                new MessageDestinationSelector(new HostAddress(netSelf)));
         Component manager = create(HostManager.class, new HostManagerInit(myConf, netSelf, vnc));
 
         connect(manager.getNegative(Timer.class), timer);
 
+        trigger(Start.event, deadLetterBox.control());
         trigger(Start.event, manager.control());
     }
 

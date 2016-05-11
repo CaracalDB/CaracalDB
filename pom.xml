@@ -4,7 +4,7 @@
     <groupId>se.sics.caracaldb</groupId>
     <artifactId>caracaldb-parent-pom</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.8-SNAPSHOT</version>
+    <version>0.0.9-SNAPSHOT</version>
 
     <name>CaracalDB</name>
     <!-- <url>http://kompics.sics.se</url> //-->
@@ -33,7 +33,7 @@
     <properties>
         <java.compiler.version>1.7</java.compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <kompics.version>0.8.3-SNAPSHOT</kompics.version>
+        <kompics.version>0.9.2-SNAPSHOT</kompics.version>
     </properties>
 
     <modules>
@@ -69,27 +69,11 @@
             <version>1.7.5</version>
             <scope>compile</scope>
         </dependency>
-<!--         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>1.2.14</version>
-            <scope>compile</scope>
-        </dependency> -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>18.0</version>
-        </dependency>
         <dependency>
             <groupId>com.google.gag</groupId>
             <artifactId>gag</artifactId>
             <version>1.0.1</version>
         </dependency>
-<!--         <dependency>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>protobuf-java</artifactId>
-                <version>2.5.0</version>
-        </dependency> //-->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
@@ -102,11 +86,6 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>com.typesafe</groupId>
-            <artifactId>config</artifactId>
-            <version>1.2.1</version>
-        </dependency>
-        <dependency>
             <groupId>com.larskroll</groupId>
             <artifactId>fixed-integer</artifactId>
             <version>1.0-SNAPSHOT</version>
@@ -114,7 +93,7 @@
         <dependency>
             <groupId>com.larskroll</groupId>
             <artifactId>common-utils</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.1</version>
         </dependency>
         <dependency>
             <groupId>com.larskroll</groupId>
@@ -148,7 +127,7 @@
                 <inherited>true</inherited>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.1</version>
+                <version>3.5.1</version>
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <source>${java.compiler.version}</source>
@@ -160,7 +139,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-site-plugin</artifactId>
-                <version>3.2</version>
+                <version>3.5.1</version>
                 <configuration>
                     <locales>en</locales>
                 </configuration>
@@ -168,7 +147,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.1.1</version>
+                <version>3.0.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -182,7 +161,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.6.1</version>
+                <version>2.10.3</version>
                 <executions>
                     <!-- <execution> <id>attach-javadoc</id> <phase>verify</phase> <goals> 
               						<goal>jar</goal> </goals> </execution> -->
@@ -254,7 +233,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.6.1</version>
+                <version>2.10.3</version>
             </plugin>
             <!-- <plugin> <groupId>org.codehaus.mojo</groupId> <artifactId>findbugs-maven-plugin</artifactId> 
         				<configuration> <threshold>Normal</threshold> <linkXref>true</linkXref> </configuration> 
@@ -263,7 +242,7 @@
                 <inherited>true</inherited>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jxr-plugin</artifactId>
-                <version>LATEST</version>
+                <version>2.5</version>
                 <configuration>
                     <aggregate>true</aggregate>
                     <linkJavadoc>true</linkJavadoc>
@@ -274,7 +253,7 @@
                 <inherited>true</inherited>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-report-plugin</artifactId>
-                <version>LATEST</version>
+                <version>2.19.1</version>
                 <configuration>
                     <aggregate>true</aggregate>
                     <linkXRef>true</linkXRef>

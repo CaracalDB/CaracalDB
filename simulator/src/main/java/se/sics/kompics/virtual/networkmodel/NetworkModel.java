@@ -32,7 +32,7 @@ import se.sics.kompics.network.Msg;
 
  * 
 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
 
  * @version $Id: NetworkModel.java 1098 2009-08-31 12:50:15Z Cosmin $
 

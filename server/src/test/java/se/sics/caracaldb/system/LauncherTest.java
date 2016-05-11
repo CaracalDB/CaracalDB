@@ -40,6 +40,7 @@ import se.sics.caracaldb.system.Configuration.NodePhase;
 import se.sics.caracaldb.system.Configuration.SystemPhase;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.ComponentProxy;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Init;
 import se.sics.kompics.Positive;

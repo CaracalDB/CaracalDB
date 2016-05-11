@@ -49,9 +49,9 @@ import se.sics.kompics.p2p.experiment.dsl.events.StochasticProcessStartEvent;
 import se.sics.kompics.p2p.experiment.dsl.events.StochasticProcessTerminatedEvent;
 import se.sics.kompics.p2p.experiment.dsl.events.TakeSnapshotEvent;
 import se.sics.kompics.p2p.experiment.dsl.events.TerminateExperiment;
-import se.sics.kompics.simulation.Simulator;
-import se.sics.kompics.simulation.SimulatorScheduler;
-import se.sics.kompics.simulation.SimulatorSystem;
+import se.sics.kompics.simulator.core.Simulator;
+import se.sics.kompics.simulator.core.SimulatorSystem;
+import se.sics.kompics.simulator.scheduler.SimulationScheduler;
 import se.sics.kompics.timer.CancelPeriodicTimeout;
 import se.sics.kompics.timer.CancelTimeout;
 import se.sics.kompics.timer.SchedulePeriodicTimeout;
@@ -66,7 +66,7 @@ import se.sics.kompics.virtual.networkmodel.NetworkModel;
  * Taken mostly from VirtualSimulator with modifications for virtual node
  * support
  *
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @author Lars Kroll <lkroll@sics.se>
  * @version $Id: VirtualSimulator.java 3866 2010-12-13 14:11:30Z Cosmin $
  */
@@ -83,7 +83,7 @@ public final class VirtualSimulator extends ComponentDefinition implements
     Negative<?> simulationPort = negative(simulationPortType);
     Negative<Network> network = negative(Network.class);
     Negative<Timer> timer = negative(Timer.class);
-    private SimulatorScheduler scheduler;
+    private SimulationScheduler scheduler;
     private SimulationScenario scenario;
     private Simulator thisSimulator;
     private long CLOCK;

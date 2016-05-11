@@ -44,17 +44,9 @@ import se.sics.caracaldb.store.PersistentStore;
 import se.sics.caracaldb.store.PersistentStoreInit;
 import se.sics.caracaldb.store.Store;
 import se.sics.caracaldb.system.Configuration.NodePhase;
-import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
-import se.sics.kompics.ControlPort;
 import se.sics.kompics.Handler;
-import se.sics.kompics.Init;
-import se.sics.kompics.Init.None;
-import se.sics.kompics.KompicsEvent;
-import se.sics.kompics.Negative;
-import se.sics.kompics.Port;
-import se.sics.kompics.PortType;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.network.Network;
@@ -72,52 +64,6 @@ public class NodeManager extends ComponentDefinition {
     private Address self;
     private Positive<Network> networkPort;
     private Positive<MaintenanceService> maintenancePort;
-    private ComponentProxy proxy = new ComponentProxy() {
-        @Override
-        public <P extends PortType> void trigger(KompicsEvent e, Port<P> p) {
-            NodeManager.this.trigger(e, p);
-        }
-
-        @Override
-        public void destroy(Component component) {
-            NodeManager.this.destroy(component);
-        }
-
-        @Override
-        public <P extends PortType> Channel<P> connect(Positive<P> positive, Negative<P> negative) {
-            return NodeManager.this.connect(positive, negative);
-        }
-
-        @Override
-        public <P extends PortType> Channel<P> connect(Negative<P> negative, Positive<P> positive) {
-            return NodeManager.this.connect(negative, positive);
-        }
-
-        @Override
-        public <P extends PortType> void disconnect(Negative<P> negative, Positive<P> positive) {
-            NodeManager.this.disconnect(negative, positive);
-        }
-
-        @Override
-        public <P extends PortType> void disconnect(Positive<P> positive, Negative<P> negative) {
-            NodeManager.this.disconnect(positive, negative);
-        }
-
-        @Override
-        public Negative<ControlPort> getControlPort() {
-            return NodeManager.this.control;
-        }
-
-        @Override
-        public <T extends ComponentDefinition> Component create(Class<T> definition, Init<T> initEvent) {
-            return NodeManager.this.create(definition, initEvent);
-        }
-
-        @Override
-        public <T extends ComponentDefinition> Component create(Class<T> definition, None initEvent) {
-            return NodeManager.this.create(definition, initEvent);
-        }
-    };
 
     public NodeManager(NodeManagerInit init) throws ClassNotFoundException, InstantiationException {
         networkPort = requires(Network.class);

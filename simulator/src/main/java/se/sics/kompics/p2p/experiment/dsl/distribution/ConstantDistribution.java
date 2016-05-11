@@ -23,7 +23,7 @@ package se.sics.kompics.p2p.experiment.dsl.distribution;
 /**
  * The <code>ConstantDistribution</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public final class ConstantDistribution<E extends Number> extends

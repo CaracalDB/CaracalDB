@@ -35,7 +35,7 @@ import se.sics.kompics.p2p.experiment.dsl.events.SimulatorEvent;
 
  * 
 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
 
  * @version $Id: FutureEventList.java 1102 2009-08-31 13:23:16Z Cosmin $
 

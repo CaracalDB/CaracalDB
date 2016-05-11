@@ -80,12 +80,13 @@ import se.sics.kompics.p2p.experiment.dsl.events.StochasticProcessStartEvent;
 import se.sics.kompics.p2p.experiment.dsl.events.StochasticProcessTerminatedEvent;
 import se.sics.kompics.p2p.experiment.dsl.events.TakeSnapshot;
 import se.sics.kompics.p2p.experiment.dsl.events.TakeSnapshotEvent;
-import se.sics.kompics.simulation.TimeInterceptor;
+import se.sics.kompics.simulator.instrumentation.CodeInterceptor;
+
 
 /**
  * The <code>SimulationScenario</code> class.
  * 
- * @author Cosmin Arad <cosmin@sics.se>
+ * @author Cosmin Arad {@literal <cosmin@sics.se>}
  * @version $Id$
  */
 public abstract class SimulationScenario implements Serializable {
@@ -140,7 +141,7 @@ public abstract class SimulationScenario implements Serializable {
 	/**
 	 * The <code>StochasticProcess</code> class.
 	 * 
-	 * @author Cosmin Arad <cosmin@sics.se>
+	 * @author Cosmin Arad {@literal <cosmin@sics.se>}
 	 * @version $Id$
 	 */
 	protected abstract class StochasticProcess implements Serializable {
@@ -709,7 +710,7 @@ public abstract class SimulationScenario implements Serializable {
 	/**
 	 * The <code>Snapshot</code> class.
 	 * 
-	 * @author Cosmin Arad <cosmin@sics.se>
+	 * @author Cosmin Arad {@literal <cosmin@sics.se>}
 	 * @version $Id$
 	 */
 	protected final static class Snapshot {
@@ -777,7 +778,7 @@ public abstract class SimulationScenario implements Serializable {
 							return new Loader();
 						}
 					});
-			cl.addTranslator(ClassPool.getDefault(), new TimeInterceptor(null));
+			cl.addTranslator(ClassPool.getDefault(), new CodeInterceptor(null, false)); //FIXME @alex I just put *something*
 			Thread.currentThread().setContextClassLoader(cl);
 			TimeZone.setDefault(TimeZone.getTimeZone("GMT"));
 			cl.run(main.getCanonicalName(), null);
@@ -827,7 +828,7 @@ public abstract class SimulationScenario implements Serializable {
 							return new Loader();
 						}
 					});
-			cl.addTranslator(ClassPool.getDefault(), new TimeInterceptor(dir));
+			cl.addTranslator(ClassPool.getDefault(), new CodeInterceptor(dir, false)); //FIXME @alex I just put *something*
 			Thread.currentThread().setContextClassLoader(cl);
 			TimeZone.setDefault(TimeZone.getTimeZone("GMT"));
 			cl.run(main.getCanonicalName(), null);

@@ -21,13 +21,13 @@
 package se.sics.caracaldb.flow;
 
 import java.util.UUID;
-import se.sics.kompics.ChannelFilter;
+import se.sics.kompics.ChannelSelector;
 
 /**
  *
  * @author lkroll
  */
-public class FlowFilter extends ChannelFilter<DataMessage, UUID> {
+public class FlowFilter extends ChannelSelector<DataMessage, UUID> {
 
     public FlowFilter(UUID val) {
         super(DataMessage.class, val, true);

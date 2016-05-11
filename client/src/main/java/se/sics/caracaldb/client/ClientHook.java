@@ -21,7 +21,7 @@
 
 package se.sics.caracaldb.client;
 
-import se.sics.caracaldb.system.ComponentProxy;
+import se.sics.kompics.ComponentProxy;
 
 /**
  *

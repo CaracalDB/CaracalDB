@@ -33,7 +33,7 @@ import se.sics.kompics.Fault;
 import se.sics.kompics.Init;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.p2p.experiment.dsl.SimulationScenario;
-import se.sics.kompics.simulation.SimulatorScheduler;
+import se.sics.kompics.simulator.scheduler.SimulationScheduler;
 import se.sics.kompics.timer.Timer;
 import se.sics.kompics.virtual.networkmodel.UniformRandomModel;
 import se.sics.kompics.virtual.simulator.VirtualSimulator;
@@ -54,7 +54,7 @@ public class SimulatorMain extends ComponentDefinition {
 
         // create
         Component simulator = create(VirtualSimulator.class,
-                new VirtualSimulatorInit((SimulatorScheduler) PaxosTest.getScheduler(),
+                new VirtualSimulatorInit((SimulationScheduler) PaxosTest.getScheduler(),
                 scenario, new UniformRandomModel(5, 90)));
         Component simulationComponent = create(SimulatorComponent.class, Init.NONE);
 
