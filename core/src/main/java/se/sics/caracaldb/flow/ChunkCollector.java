@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
  */
 public abstract class ChunkCollector<Ref extends DataRef> {
 
-    public static final ConcurrentMap<ClearFlowId, ChunkCollector> collectors = new ConcurrentSkipListMap<ClearFlowId, ChunkCollector>();
+    private static final ConcurrentMap<ClearFlowId, ChunkCollector> collectors = new ConcurrentSkipListMap<ClearFlowId, ChunkCollector>();
 
     public final ClearFlowId id;
 
@@ -50,7 +50,27 @@ public abstract class ChunkCollector<Ref extends DataRef> {
     public abstract Ref readChunk(long chunkNo, int length, ByteBuf buf);
     
     public abstract Ref getResult();
+    
+    public static ChunkCollector get(ClearFlowId id) {
+        return collectors.get(id);
+    }
+    
+    public static ChunkCollector getOrCreate(ClearFlowId id, CollectorDescriptor cd) {
+        ChunkCollector coll = ChunkCollector.collectors.get(id);
+        if (coll == null) {
+            ChunkCollector newColl = cd.create(id.flowId, id.clearId);
+            coll = ChunkCollector.collectors.putIfAbsent(id, newColl);
+            if (coll == null) { // there was no value put in since the get
+                coll = newColl;
+            }
+        }
+        return coll;
+    }
 
+    public static ChunkCollector remove(ClearFlowId id) {
+        return collectors.remove(id);
+    }
+    
     public static ClearFlowId getIdFor(UUID flowId, int clearId) {
         return new ClearFlowId(flowId, clearId);
     }

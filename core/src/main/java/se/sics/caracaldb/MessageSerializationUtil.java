@@ -50,6 +50,26 @@ public abstract class MessageSerializationUtil {
             AddressSerializer.INSTANCE.toBinary(msg.getOrigin(), buf);
         }
     }
+    
+    public static void msgToBinary(BaseDataMessage msg, ByteBuf buf, boolean flag1, boolean flag2) {
+        // Flags 1byte
+        boolean sourceEqOrigin = msg.getSource().equals(msg.getOrigin());
+        BitBuffer bbuf = BitBuffer.create(flag1, flag2, // good that a byte has so many bits... can compress it more if more protocols are necessary
+                sourceEqOrigin,
+                msg.getProtocol() == Transport.UDP,
+                msg.getProtocol() == Transport.TCP,
+                msg.getProtocol() == Transport.MULTICAST_UDP,
+                msg.getProtocol() == Transport.UDT,
+                msg.getProtocol() == Transport.LEDBAT);
+        byte[] bbufb = bbuf.finalise();
+        buf.writeBytes(bbufb);
+        // Addresses
+        AddressSerializer.INSTANCE.toBinary(msg.getSource(), buf);
+        AddressSerializer.INSTANCE.toBinary(msg.getDestination(), buf);
+        if (!sourceEqOrigin) {
+            AddressSerializer.INSTANCE.toBinary(msg.getOrigin(), buf);
+        }
+    }
 
     public static MessageFields msgFromBinary(ByteBuf buf) {
         MessageFields fields = new MessageFields();

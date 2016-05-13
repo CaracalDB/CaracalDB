@@ -41,8 +41,10 @@ import se.sics.caracaldb.experiment.dataflow.FileTransferAdapter.Mode;
 import se.sics.caracaldb.flow.DataFlow;
 import se.sics.caracaldb.flow.FlowManager;
 import se.sics.caracaldb.flow.FlowManagerInit;
+import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
+import se.sics.kompics.ComponentProxy;
 import se.sics.kompics.Handler;
 import se.sics.kompics.Kill;
 import se.sics.kompics.KompicsEvent;
@@ -51,6 +53,8 @@ import se.sics.kompics.Start;
 import se.sics.kompics.Stop;
 import se.sics.kompics.network.Network;
 import se.sics.kompics.network.Transport;
+import se.sics.kompics.network.data.DataNetwork;
+import se.sics.kompics.network.data.DataNetwork.NetHook;
 import se.sics.kompics.network.netty.NettyInit;
 import se.sics.kompics.network.netty.NettyNetwork;
 import se.sics.kompics.network.virtual.VirtualNetworkChannel;
@@ -97,10 +101,22 @@ public class Sender extends ComponentDefinition {
 
         timeC = create(JavaTimer.class, Init.NONE);
         connect(timer.getPair(), timeC.getPositive(Timer.class));
-        netC = create(NettyNetwork.class, new NettyInit(init.self));
+        netC = create(DataNetwork.class, new DataNetwork.Init(new NetHook() {
+
+            @Override
+            public Component setupNetwork(ComponentProxy proxy) {
+                Component nettyC = create(NettyNetwork.class, new NettyInit(self));
+                return nettyC;
+            }
+
+            @Override
+            public void connectTimer(ComponentProxy proxy, Component c) {
+                proxy.connect(timeC.getPositive(Timer.class), c.getNegative(Timer.class), Channel.TWO_WAY);
+            }
+        }));
         connect(net.getPair(), netC.getPositive(Network.class));
         vnc = VirtualNetworkChannel.connect(net, proxy);
-        flowC = create(FlowManager.class, new FlowManagerInit(init.bufferSize, init.minAlloc, init.maxAlloc, init.protocol, init.self));
+        flowC = create(FlowManager.class, new FlowManagerInit(init.bufferSize, init.minAlloc, init.maxAlloc, Transport.TCP, init.protocol, init.self));
         vnc.addConnection(null, flowC.getNegative(Network.class));
         connect(flowC.getNegative(Timer.class), timeC.getPositive(Timer.class));
 

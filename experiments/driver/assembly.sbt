@@ -11,6 +11,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "apache", "commons", xs @ _*)         => MergeStrategy.first
     case PathList("org", "codehaus", "jackson", xs @ _*)		=> MergeStrategy.first
     case PathList("javassist", xs @ _*)				=> MergeStrategy.first
+    case "log4j.properties"							=> MergeStrategy.filterDistinctLines
     case x => old(x)
   }
 }

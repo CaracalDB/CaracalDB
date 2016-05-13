@@ -151,11 +151,7 @@ public class FlowMessageSerializer implements Serializer {
         }
         ClearFlowId id = new ClearFlowId(flowId, clearId);
         CollectorDescriptor cd = (CollectorDescriptor) Serializers.fromBinary(buf, Optional.absent());
-        ChunkCollector coll = ChunkCollector.collectors.get(id);
-        if (coll == null) {
-            coll = cd.create(flowId, clearId);
-            ChunkCollector.collectors.put(id, coll);
-        }
+        ChunkCollector coll = ChunkCollector.getOrCreate(id, cd);
 
         if (buf.readableBytes() < length) {
             FlowManager.LOG.error("Expected to read {}, but only have {} in buffer. Chunk#{}",

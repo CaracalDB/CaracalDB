@@ -58,12 +58,12 @@ public class FileChunkCollector extends ChunkCollector<PartialFileRef> {
     }
 
     @Override
-    public boolean isComplete() {
+    public synchronized boolean isComplete() {
         return receivedChunks.size() == numberOfChunks;
     }
 
     @Override
-    public SortedSet<Long> getMissingChunks() {
+    public synchronized SortedSet<Long> getMissingChunks() {
         TreeSet<Long> missing = new TreeSet<Long>();
         if (isComplete()) {
             return missing;
@@ -99,7 +99,7 @@ public class FileChunkCollector extends ChunkCollector<PartialFileRef> {
     }
 
     @Override
-    public PartialFileRef getResult() {
+    public synchronized PartialFileRef getResult() {
         return new PartialFileRef(0, rafr.size(), rafr);
     }
 

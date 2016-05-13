@@ -21,11 +21,12 @@ class PingTransfer(val transport: Transport, val pingTransport: Transport) exten
     
     import scala.collection.JavaConverters._
     import Numeric._
+    import Math.sqrt
     
     private var sender: ActorRef = null;
     private var receiver: ActorRef = null;
     private var file: File = null;
-    private var ssdTarget = 0.01;
+    private var rseTarget = 0.01;
     val timeseries = scala.collection.mutable.ArrayBuffer.empty[Long];
 
     def postRun(system: ActorSystem): Boolean = {
@@ -37,9 +38,10 @@ class PingTransfer(val transport: Transport, val pingTransport: Transport) exten
         } 
         val ssd = stats.sampleStandardDeviation(timeseries: _*);
         val mean = stats.mean(timeseries: _*);    
-        val relssd = ssd/mean;
-        system.log.info(f"Samples = ${timeseries.size}%d, Mean = $mean%f, SSD = $ssd%f, Relative SSD = $relssd%f (target $ssdTarget%f)");
-        return relssd > ssdTarget;
+        val sem = ssd/sqrt(timeseries.length); // standard error of the mean
+        val rse = sem/mean; // relative standard error
+        system.log.info(f"Samples = ${timeseries.length}%d, µ = $mean%f, SSD = $ssd%f, SEM = $sem%f, RSE = $rse%f (target $rseTarget%f)");
+        return rse > rseTarget;
     }
     def preRun(system: ActorSystem) {}
     def run(system: ActorSystem): PingTransferData = {
@@ -53,7 +55,7 @@ class PingTransfer(val transport: Transport, val pingTransport: Transport) exten
         val rt = Await.result(rF, Duration.Inf);
         val r = rt.stats;
         val rtts = rt.rtts.asScala.map { x => 
-            val l: Long = x;
+            val l: Long = x; // implicit conversion between object and primitive
             l
         };
         val mRTT = stats.mean(rtts: _*);
@@ -70,7 +72,7 @@ class PingTransfer(val transport: Transport, val pingTransport: Transport) exten
         val (s, r) = Await.result(f, Duration.Inf);
         sender = s;
         receiver = r;
-        ssdTarget = system.settings.config.getDouble("experiment.ssdTarget");
+        rseTarget = system.settings.config.getDouble("experiment.rseTarget");
     }
     def tearDown(system: ActorSystem) {
         if (sender != null) {

@@ -38,7 +38,7 @@ object Main extends App {
     val runBound = conf.getInt("experiment.runBound");
 
     role match {
-        case Experimentor => {
+        case Experimenter => {
 
             
 

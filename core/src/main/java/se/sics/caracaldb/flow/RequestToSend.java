@@ -22,7 +22,7 @@
 package se.sics.caracaldb.flow;
 
 import se.sics.caracaldb.Address;
-import se.sics.kompics.Request;
+import se.sics.kompics.Direct;
 
 /**
  * The <code>RequestToSend</code> class.
@@ -31,7 +31,7 @@ import se.sics.kompics.Request;
  * @version $$
  * 
  */
-public class RequestToSend extends Request {
+public class RequestToSend extends Direct.Request {
     private ClearToSend event;
     public final long hint;
     

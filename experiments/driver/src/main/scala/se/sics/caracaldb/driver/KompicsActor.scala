@@ -3,7 +3,7 @@ package se.sics.caracaldb.driver
 import akka.actor.{Actor, ActorLogging}
 import akka.pattern.pipe
 import se.sics.kompics._
-import se.sics.caracaldb.system.ComponentProxy
+import se.sics.kompics.ComponentProxy
 import se.sics.caracaldb.experiment.dataflow.MessageRegistrator
 import com.google.common.util.concurrent._
 import scala.concurrent.Await
@@ -56,44 +56,7 @@ object KompicsActor {
 }
 
 class ActorComponent extends ComponentDefinition {
-    import ActorComponent._
-
-    private val proxy: ComponentProxy = new ComponentProxy() {
-
-        override def trigger[P <: PortType](e: KompicsEvent, p: Port[P]) {
-            ActorComponent.this.trigger(e, p)
-        }
-
-        override def destroy(component: Component) {
-            ActorComponent.this.destroy(component)
-        }
-
-        override def connect[P <: PortType](positive: Positive[P], negative: Negative[P]): Channel[P] = {
-            ActorComponent.this.connect(positive, negative)
-        }
-
-        override def connect[P <: PortType](negative: Negative[P], positive: Positive[P]): Channel[P] = {
-            ActorComponent.this.connect(negative, positive)
-        }
-
-        override def disconnect[P <: PortType](negative: Negative[P], positive: Positive[P]) {
-            ActorComponent.this.disconnect(negative, positive)
-        }
-
-        override def disconnect[P <: PortType](positive: Positive[P], negative: Negative[P]) {
-            ActorComponent.this.disconnect(positive, negative)
-        }
-
-        override def getControlPort(): Negative[ControlPort] = ActorComponent.this.control
-
-        override def create[T <: ComponentDefinition](definition: Class[T], initEvent: Init[T]): Component = {
-            ActorComponent.this.create(definition, initEvent)
-        }
-
-        override def create[T <: ComponentDefinition](definition: Class[T], initEvent: Init.None): Component = {
-            ActorComponent.this.create(definition, initEvent)
-        }
-    };
+    import ActorComponent._;
 
     val startHandler = new Handler[Start] {
         def handle(event: Start) {

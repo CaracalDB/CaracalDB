@@ -18,31 +18,53 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+package se.sics.caracaldb;
 
-package se.sics.caracaldb.flow;
-
-import se.sics.caracaldb.Address;
-import se.sics.kompics.Init;
+import se.sics.kompics.network.Msg;
 import se.sics.kompics.network.Transport;
 
 /**
  *
  * @author lkroll
  */
-public class FlowManagerInit extends Init<FlowManager> {
-    public final long bufferSize;
-    public final long minAlloc;
-    public final long maxAlloc;
-    public final Transport protocol;
-    public final Transport dataProtocol;
-    public final Address self;
-    
-    public FlowManagerInit(long bufferSize, long minAlloc, long maxAlloc, Transport protocol, Transport dataProtocol, Address self) {
-        this.bufferSize = bufferSize;
-        this.minAlloc = minAlloc;
-        this.maxAlloc = maxAlloc;
-        this.protocol = protocol;
-        this.dataProtocol = dataProtocol;
-        this.self = self;
+public class BaseDataMessage implements Msg<Address, DataHeader> {
+
+    public final DataHeader header;
+
+    public BaseDataMessage(DataHeader header) {
+        this.header = header;
     }
+
+    public BaseDataMessage(Address src, Address dst, Address orig, Transport proto) {
+        this(new DataHeader(src, dst, orig, proto));
+    }
+
+    public BaseDataMessage(Address src, Address dst, Transport proto) {
+        this(new DataHeader(src, dst, src, proto));
+    }
+
+    @Override
+    public DataHeader getHeader() {
+        return this.header;
+    }
+
+    @Override
+    public Address getSource() {
+        return this.header.getSource();
+    }
+
+    @Override
+    public Address getDestination() {
+        return this.header.getDestination();
+    }
+
+    public Address getOrigin() {
+        return this.header.getOrigin();
+    }
+
+    @Override
+    public Transport getProtocol() {
+        return this.header.getProtocol();
+    }
+
 }

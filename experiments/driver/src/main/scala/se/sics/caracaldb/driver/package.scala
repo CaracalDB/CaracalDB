@@ -1,7 +1,7 @@
 package se.sics.caracaldb
 
 import se.sics.kompics.Component
-import se.sics.caracaldb.system.ComponentProxy
+import se.sics.kompics.ComponentProxy
 
 package object driver {
     type ComponentSetup = ComponentProxy => Component

@@ -39,16 +39,20 @@ import se.sics.kompics.network.Transport;
  */
 public class Main {
 
+    private static final long MB = 1000l * 1000l;
+    private static final long GB = 1000l * 1000l * 1000l;
+
     public static volatile Address self;
-    public static volatile long bufferSize = 1000 * 1000 * 1000; // 1GB
-    public static volatile long minAlloc = 100 * 1000 * 1000; //100MB
-    public static volatile long maxAlloc = 512 * 1000 * 1000; //512MB
+    public static volatile long bufferSize = 16l * GB;
+    public static volatile long minAlloc = 100l * MB;
+    public static volatile long maxAlloc = 10l * GB;
     public static volatile long retryTime = 1000; // 1s
-    public static volatile Transport protocol = Transport.TCP;
+    public static volatile Transport protocol = Transport.DATA;
     public static volatile Sender sender = null;
     public static final BlockingQueue<TransferStats> resultQ = new LinkedBlockingQueue<TransferStats>(1);
 
     public static void main(String[] args) {
+        System.out.format("***** Starting with bufferSize=%d, minAllox=%d, maxAlloc=%d", bufferSize, minAlloc, maxAlloc);
         String proto = System.getProperty("protocol");
         if (proto != null) {
             protocol = Transport.valueOf(proto);

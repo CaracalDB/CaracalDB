@@ -26,7 +26,7 @@
         </dependency>
     </dependencies>
     
-        <build>
+    <build>
         <plugins>
             <plugin>
                 <inherited>true</inherited>
@@ -57,24 +57,27 @@
                   <!--<phase>package</phase>//-->
                   <goals>
                     <goal>shade</goal>
-                  </goals>
-                  <configuration>
+                </goals>
+                <configuration>
                     <minimizeJar>false</minimizeJar>
                     <shadedArtifactAttached>true</shadedArtifactAttached>
                     <shadedClassifierName>fat</shadedClassifierName> <!-- Any name that makes sense -->
-                    <createDependencyReducedPom>true</createDependencyReducedPom>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
                     <dependencyReducedPomLocation>
                       ${java.io.tmpdir}/dependency-reduced-pom.xml
-                    </dependencyReducedPomLocation>
-                    <transformers>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                            <mainClass>se.sics.caracaldb.experiment.dataflow.Main</mainClass>
-                        </transformer>
-                    </transformers>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
-        </plugins>
-    </build>
+                  </dependencyReducedPomLocation>
+                  <transformers>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                        <mainClass>se.sics.caracaldb.experiment.dataflow.Main</mainClass>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                        <resource>**/reference.conf</resource>
+                    </transformer>
+                </transformers>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+</plugins>
+</build>
 </project>
