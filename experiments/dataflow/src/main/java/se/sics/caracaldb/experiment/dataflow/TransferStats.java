@@ -20,11 +20,13 @@
  */
 package se.sics.caracaldb.experiment.dataflow;
 
+import java.io.Serializable;
+
 /**
  *
  * @author lkroll
  */
-public class TransferStats {
+public class TransferStats implements Serializable{
     public final double averageThroughput;
     public final long time;
     public final long bytes;

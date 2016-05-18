@@ -27,6 +27,7 @@ import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
+import se.sics.kompics.Kill;
 import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
@@ -106,10 +107,13 @@ public class Receiver extends ComponentDefinition {
         @Override
         public void handle(Start event) {
             LOG.info("{}starting...", logPrefix);
+            timerComp = create(JavaTimer.class, Init.NONE);
+            networkComp = create(NettyNetwork.class, new NettyInit(selfAdr));
+            trigger(Start.event, timerComp.control());
+            trigger(Start.event, networkComp.control());
+
             if (senderAdr != null) {
                 connect();
-                trigger(Start.event, timerComp.control());
-                trigger(Start.event, networkComp.control());
                 trigger(Start.event, streamComp.control());
             }
         }
@@ -121,8 +125,6 @@ public class Receiver extends ComponentDefinition {
             Receiver.this.senderAdr = NatAwareAddressImpl.open(new BasicAddress(event.senderAdr.getIp(), event.senderAdr.getPort(), experimentConfig.senderId));
             Receiver.this.promise = event.promise;
             connect();
-            trigger(Start.event, timerComp.control());
-            trigger(Start.event, networkComp.control());
             trigger(Start.event, streamComp.control());
         }
     };
@@ -133,14 +135,18 @@ public class Receiver extends ComponentDefinition {
             TransferStats stats = new TransferStats(event.transferSize, event.transferTime);
             LOG.info("{}transfer of:{} completed in:{}", new Object[]{logPrefix, event.transferSize, event.transferTime});
             if (promise != null) {
+                disconnect();
+                trigger(Kill.event, streamComp.control());
                 promise.set(stats);
             }
         }
     };
 
+    private void disconnect() {
+        disconnect(streamComp.getPositive(ReportPort.class), reportPort.getPair());
+    }
+
     private void connect() {
-        timerComp = create(JavaTimer.class, Init.NONE);
-        networkComp = create(NettyNetwork.class, new NettyInit(selfAdr));
 
         StreamHostComp.ExtPort extPorts = new StreamHostComp.ExtPort(timerComp.getPositive(Timer.class), networkComp.getPositive(Network.class));
         TorrentDetails torrentDetails = new TorrentDetails() {
@@ -194,7 +200,6 @@ public class Receiver extends ComponentDefinition {
     }
 
     public static class Init extends se.sics.kompics.Init<Receiver> {
-
 
         public final Address selfAdr;
         public final Address senderAdr;
