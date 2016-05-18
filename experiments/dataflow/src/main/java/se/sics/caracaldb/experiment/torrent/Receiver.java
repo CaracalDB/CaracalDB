@@ -5,6 +5,8 @@
  */
 package se.sics.caracaldb.experiment.torrent;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sics.caracaldb.Address;
 import se.sics.caracaldb.experiment.dataflow.MessageRegistrator;
+import se.sics.caracaldb.experiment.dataflow.StatsWithRTTs;
 import se.sics.caracaldb.experiment.dataflow.TransferStats;
 import se.sics.gvod.core.util.TorrentDetails;
 import se.sics.gvod.network.GVoDSerializerSetup;
@@ -25,6 +28,7 @@ import se.sics.kompics.Channel;
 import se.sics.kompics.Component;
 import se.sics.kompics.ComponentDefinition;
 import se.sics.kompics.Handler;
+import se.sics.kompics.KompicsEvent;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kompics.network.Network;
@@ -62,23 +66,25 @@ public class Receiver extends ComponentDefinition {
     private final ExperimentKCWrapper experimentConfig;
 
     private final KAddress selfAdr;
-    private final KAddress senderAdr;
-    private final BlockingQueue<TransferStats> resultQ;
+    private KAddress senderAdr = null;
     private final File outputDir;
+    public SettableFuture<TransferStats> promise;
 
     public Receiver(Init init) {
         experimentConfig = new ExperimentKCWrapper(config());
         selfAdr = NatAwareAddressImpl.open(new BasicAddress(init.selfAdr.getIp(), init.selfAdr.getPort(), experimentConfig.receiverId));
         LOG.debug("{}starting...", logPrefix);
 
-        senderAdr = NatAwareAddressImpl.open(new BasicAddress(init.senderAdr.getIp(), init.senderAdr.getPort(), experimentConfig.senderId));
+        if (init.senderAdr != null) {
+            senderAdr = NatAwareAddressImpl.open(new BasicAddress(init.senderAdr.getIp(), init.senderAdr.getPort(), experimentConfig.senderId));
+        }
         outputDir = init.outputDir;
-        resultQ = init.resultQ;
 
         registerSerializers();
         registerPortTracking();
 
         subscribe(handleStart, control);
+        subscribe(handleStartTransfer, loopback);
         subscribe(handleSummary, reportPort);
     }
 
@@ -92,10 +98,30 @@ public class Receiver extends ComponentDefinition {
     private void registerPortTracking() {
     }
 
+    public ListenableFuture<TransferStats> startTransfer(Address dst) {
+        StartTransferEvent st = new StartTransferEvent(dst);
+        trigger(st, onSelf);
+        return st.promise;
+    }
+
     Handler handleStart = new Handler<Start>() {
         @Override
         public void handle(Start event) {
             LOG.info("{}starting...", logPrefix);
+            if (senderAdr != null) {
+                connect();
+                trigger(Start.event, timerComp.control());
+                trigger(Start.event, networkComp.control());
+                trigger(Start.event, streamComp.control());
+            }
+        }
+    };
+
+    Handler handleStartTransfer = new Handler<StartTransferEvent>() {
+        @Override
+        public void handle(StartTransferEvent event) {
+            Receiver.this.senderAdr = NatAwareAddressImpl.open(new BasicAddress(event.senderAdr.getIp(), event.senderAdr.getPort(), experimentConfig.senderId));
+            Receiver.this.promise = event.promise;
             connect();
             trigger(Start.event, timerComp.control());
             trigger(Start.event, networkComp.control());
@@ -107,13 +133,9 @@ public class Receiver extends ComponentDefinition {
         @Override
         public void handle(SummaryEvent event) {
             TransferStats stats = new TransferStats(event.transferSize, event.transferTime);
-            try {
-                LOG.info("{}transfer of:{} completed in:{}", new Object[]{logPrefix, event.transferSize, event.transferTime});
-                if (resultQ != null) {
-                    resultQ.put(stats);
-                }
-            } catch (InterruptedException ex) {
-                throw new RuntimeException(ex);
+            LOG.info("{}transfer of:{} completed in:{}", new Object[]{logPrefix, event.transferSize, event.transferTime});
+            if (promise != null) {
+                promise.set(stats);
             }
         }
     };
@@ -161,6 +183,16 @@ public class Receiver extends ComponentDefinition {
         partners.add(senderAdr);
         streamComp = create(StreamHostComp.class, new StreamHostComp.Init(extPorts, selfAdr, torrentDetails, partners));
         connect(streamComp.getPositive(ReportPort.class), reportPort.getPair(), Channel.TWO_WAY);
+    }
+
+    public static class StartTransferEvent implements KompicsEvent {
+
+        public final Address senderAdr;
+        public final SettableFuture<TransferStats> promise = SettableFuture.create();
+
+        public StartTransferEvent(Address senderAdr) {
+            this.senderAdr = senderAdr;
+        }
     }
 
     public static class Init extends se.sics.kompics.Init<Sender> {

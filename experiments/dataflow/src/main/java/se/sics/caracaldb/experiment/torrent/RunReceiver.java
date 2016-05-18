@@ -31,7 +31,7 @@ public class RunReceiver {
             Kompics.shutdown();
         }
         Address self = new Address(InetAddress.getLocalHost(), 25000, null);
-        Address senderAdr = new Address(InetAddress.getLocalHost(), 15000, null);
+        Address senderAdr = new Address(InetAddress.getByName("193.10.64.216"), 15000, null);
         String outputDir = "./src/main/resources/torrent/downloader/";
         Receiver.Init init = new Receiver.Init(self, senderAdr, new File(outputDir), null);
         Kompics.createAndStart(Receiver.class, init, Runtime.getRuntime().availableProcessors(), 20); // Yes 20 is totally arbitrary

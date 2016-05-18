@@ -47,8 +47,8 @@
                 <version>2.3.2</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>1.7</source>
+                    <target>1.7</target>
                     <debug>true</debug>
                     <optimize>true</optimize>
                     <showDeprecations>true</showDeprecations>
@@ -80,7 +80,7 @@
                             </dependencyReducedPomLocation>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>se.sics.caracaldb.experiment.dataflow.Main</mainClass>
+                                    <mainClass>se.sics.caracaldb.experiment.torrent.RunSender</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

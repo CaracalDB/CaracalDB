@@ -32,7 +32,7 @@ public class SetupExperiment {
     final static int pieceSize = 1024;
     final static int piecesPerBlock = 1024;
     final static int blockSize = pieceSize * piecesPerBlock;
-    final static long fileSize = 1024 * 1024 * 100 + 1024 * 100 + 100;
+    final static long fileSize = 1024 * 1024 * 400 + 1024 * 100 + 100;
 
     public static void main(String[] args) throws IOException, HashUtil.HashBuilderException {
         String experimentDirPath = "./src/main/resources/torrent/";
