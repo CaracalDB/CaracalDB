@@ -5,6 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import se.sics.kompics.network.Transport
 import java.io.FileWriter
 

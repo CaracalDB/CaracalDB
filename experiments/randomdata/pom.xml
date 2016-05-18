@@ -7,9 +7,9 @@
         <version>0.0.9-SNAPSHOT</version>
     </parent>
 
-    <artifactId>caracaldb-dataflow</artifactId>
+    <artifactId>caracaldb-randomdata</artifactId>
     <packaging>jar</packaging>
-    <name>CaracalDB DataFlow</name>
+    <name>CaracalDB RandomData</name>
 
     <dependencies>
         <dependency>
@@ -23,18 +23,6 @@
             <artifactId>log4j</artifactId>
             <version>1.2.14</version>
             <scope>compile</scope>
-        </dependency>
-        
-        <!-- Alex dependencies -->
-        <dependency>
-            <groupId>se.sics.gvod.core</groupId>
-            <artifactId>core-impl</artifactId>
-            <version>0.0.8-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>se.sics.gvod</groupId>
-            <artifactId>network</artifactId>
-            <version>0.0.8-SNAPSHOT</version>
         </dependency>
     </dependencies>
     
@@ -80,7 +68,7 @@
                   </dependencyReducedPomLocation>
                   <transformers>
                     <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                        <mainClass>se.sics.caracaldb.experiment.dataflow.Main</mainClass>
+                        <mainClass>se.sics.caracaldb.experiment.randomdata.Main</mainClass>
                     </transformer>
                     <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                         <resource>**/reference.conf</resource>

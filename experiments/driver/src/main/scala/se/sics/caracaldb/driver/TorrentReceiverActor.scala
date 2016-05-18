@@ -14,14 +14,10 @@ import scala.concurrent.Await
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import se.sics.caracaldb.experiment.dataflow.Receiver
+import se.sics.caracaldb.experiment.torrent.Receiver
 import se.sics.caracaldb.experiment.dataflow.TransferStats
 
-case object GetAddress
-case class ReceiverAddress(addr: Address)
-case object Cleanup
-
-class ReceiverActor(val transport: Transport) extends Actor with ActorLogging {
+class TorrentReceiverActor extends Actor with ActorLogging {
     import context._
 
     val conf = system.settings.config
@@ -47,12 +43,9 @@ class ReceiverActor(val transport: Transport) extends Actor with ActorLogging {
         {
             import proxy._
             val recvInit = new Receiver.Init(addr,
-                conf.getBytes("experiment.bufferSize"),
-                conf.getBytes("experiment.minAlloc"),
-                conf.getBytes("experiment.maxAlloc"),
-                transport,
-                resultQ,
-                outputDir);
+                null, // sender address to be passed later
+                outputDir,
+                resultQ);
             val c = create(classOf[Receiver], recvInit);
             trigger(Start.event, c.control());
             c
@@ -70,7 +63,12 @@ class ReceiverActor(val transport: Transport) extends Actor with ActorLogging {
             val c = component; // this will block until the component is actually available
             sender ! Ready
         }
-        case GetAddress => sender ! ReceiverAddress(addr);
+        case Transfer(sendr, file) => {
+            val c = component;
+            val recvComponent = c.getComponent().asInstanceOf[Receiver];
+            val f = recvComponent.startTransfer(sendr).toPromise;
+            f pipeTo sender
+        }
         case Cleanup    => FileUtils.cleanDirectory(outputDir);
         case x          => println(x)
     }

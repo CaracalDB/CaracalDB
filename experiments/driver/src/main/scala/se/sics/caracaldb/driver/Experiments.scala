@@ -12,6 +12,7 @@ object Experiments {
         4 -> new SimplePings(Transport.UDT, 100),
         5 -> new PingTransfer(Transport.TCP, Transport.TCP),
         6 -> new PingTransfer(Transport.TCP, Transport.UDT),
-        7 -> new PingTransfer(Transport.TCP, Transport.DATA)
+        7 -> new PingTransfer(Transport.TCP, Transport.DATA),
+        8 -> new TorrentTransfer()
     )
 }

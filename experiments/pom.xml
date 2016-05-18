@@ -14,5 +14,6 @@
 
     <modules>
         <module>dataflow</module>
+        <module>randomdata</module>
     </modules>
 </project>
