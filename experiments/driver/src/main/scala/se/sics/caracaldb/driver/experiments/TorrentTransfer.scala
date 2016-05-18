@@ -15,7 +15,6 @@ class TorrentTransfer extends Experiment[TransferData] {
     
     private var sender: ActorRef = null;
     private var receiver: ActorRef = null;
-    private var file: File = null;
     private var rseTarget = 0.01;
     val timeseries = scala.collection.mutable.ArrayBuffer.empty[Long];
 
@@ -24,6 +23,14 @@ class TorrentTransfer extends Experiment[TransferData] {
         import Math.sqrt
         
         receiver ! Cleanup
+        if (sender != null) {
+            sender ! PoisonPill
+            sender = null
+        }
+        if (receiver != null) {
+            receiver ! PoisonPill
+            receiver = null
+        }
         if (timeseries.size <= 10) {
             system.log.info(f"Need at least 10 samples for SSD formula. Got ${timeseries.size}%d.");
             return true
@@ -33,9 +40,21 @@ class TorrentTransfer extends Experiment[TransferData] {
         val sem = ssd/sqrt(timeseries.length); // standard error of the mean
         val rse = sem/mean; // relative standard error
         system.log.info(f"Samples = ${timeseries.length}%d, µ = $mean%f, SSD = $ssd%f, SEM = $sem%f, RSE = $rse%f (target $rseTarget%f)");
-        return rse > rseTarget;
+        
+        val rerun = rse > rseTarget;
+        if (rerun) {
+            Thread sleep 5000; // wait a bit
+        }
+        return rerun;
     }
-    def preRun(system: ActorSystem) {}
+    def preRun(system: ActorSystem) {
+        implicit val ec: ExecutionContext = system.dispatcher;
+        
+        val f = createSR(system);
+        val (s, r) = Await.result(f, Duration.Inf);
+        sender = s;
+        receiver = r;
+    }
     def run(system: ActorSystem): TransferData = {
         implicit val ec: ExecutionContext = system.dispatcher;
         
@@ -77,9 +96,6 @@ class TorrentTransfer extends Experiment[TransferData] {
         if (receiver != null) {
             receiver ! PoisonPill
             receiver = null
-        }
-        if (file != null) {
-            file = null;
         }
         timeseries.clear();
     }
