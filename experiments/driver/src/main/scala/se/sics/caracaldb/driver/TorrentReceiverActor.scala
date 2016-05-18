@@ -19,6 +19,7 @@ import se.sics.caracaldb.experiment.dataflow.TransferStats
 
 class TorrentReceiverActor extends Actor with ActorLogging {
     import context._
+    import com.larskroll.common.FutureConversions._
 
     val conf = system.settings.config
 

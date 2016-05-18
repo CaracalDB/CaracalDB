@@ -1,6 +1,6 @@
 package se.sics.caracaldb.driver.experiments
 
-import akka.actor._
+import akka.actor.{Status=>_, _}
 import akka.pattern.ask
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -49,7 +49,7 @@ class TorrentTransfer extends Experiment[TransferData] {
         TransferData(rt.time, rt.bytes, rt.averageThroughput)
     }
     
-    override def createSR(system: ActorSystem)(implicit ec: ExecutionContext): Future[Tuple2[ActorRef, ActorRef]] = {
+    def createSR(system: ActorSystem)(implicit ec: ExecutionContext): Future[Tuple2[ActorRef, ActorRef]] = {
         val sender = system.actorOf(Props(classOf[TorrentSenderActor]), "sender");
         val receiver = system.actorOf(Props(classOf[TorrentReceiverActor]), "receiver");
         val senderReady = sender ? Status;
@@ -62,8 +62,6 @@ class TorrentTransfer extends Experiment[TransferData] {
     
     def setUp(system: ActorSystem) {
         implicit val ec: ExecutionContext = system.dispatcher;
-
-        file = new File(system.settings.config.getString("experiment.file"));
         
         val f = createSR(system);
         val (s, r) = Await.result(f, Duration.Inf);
